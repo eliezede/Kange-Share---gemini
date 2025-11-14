@@ -1,12 +1,21 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { dataStore } from '../data';
-import { WaterRequest } from '../types';
+import * as api from '../api';
+import { WaterRequest, User, Host } from '../types';
+import { SpinnerIcon } from '../components/Icons';
 
-const ChatPreviewCard: React.FC<{ request: WaterRequest }> = ({ request }) => {
-    const isUserHost = request.hostId === dataStore.currentUser.id;
+const ChatPreviewCard: React.FC<{ request: WaterRequest, allUsers: (User | Host)[] }> = ({ request, allUsers }) => {
+    const [currentUser, setCurrentUser] = useState<User | null>(null);
+
+    useEffect(() => {
+        api.getCurrentUser().then(setCurrentUser);
+    }, []);
+
+    if (!currentUser) return null;
+
+    const isUserHost = request.hostId === currentUser.id;
     const otherPartyId = isUserHost ? request.requesterId : request.hostId;
-    const otherParty = dataStore.findUserById(otherPartyId);
+    const otherParty = allUsers.find(u => u.id === otherPartyId);
 
     if (!otherParty) return null;
 
@@ -33,12 +42,24 @@ const ChatPreviewCard: React.FC<{ request: WaterRequest }> = ({ request }) => {
 
 
 export default function MessagesPage() {
-    const conversations = useMemo(() => 
-        dataStore.requests.filter(r => 
-            (r.requesterId === dataStore.currentUser.id || r.hostId === dataStore.currentUser.id) && 
-            ['accepted', 'completed', 'chatting'].includes(r.status)
-        ).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
-    []);
+    const [conversations, setConversations] = useState<WaterRequest[]>([]);
+    const [allUsers, setAllUsers] = useState<(User | Host)[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchData = async () => {
+            setLoading(true);
+            const currentUser = await api.getCurrentUser();
+            const [convos, hosts] = await Promise.all([
+                api.getConversationsByUserId(currentUser.id),
+                api.getHosts()
+            ]);
+            setConversations(convos);
+            setAllUsers([currentUser, ...hosts]);
+            setLoading(false);
+        };
+        fetchData();
+    }, []);
 
     return (
          <div className="flex flex-col h-full">
@@ -46,8 +67,12 @@ export default function MessagesPage() {
                 <h1 className="text-2xl font-bold text-center">Messages</h1>
             </header>
             <div className="flex-1 overflow-y-auto">
-                {conversations.length > 0 ? (
-                    conversations.map(req => <ChatPreviewCard key={req.id} request={req} />)
+                {loading ? (
+                    <div className="flex justify-center items-center h-64">
+                        <SpinnerIcon className="w-10 h-10 text-brand-blue animate-spin" />
+                    </div>
+                ) : conversations.length > 0 ? (
+                    conversations.map(req => <ChatPreviewCard key={req.id} request={req} allUsers={allUsers} />)
                 ) : (
                     <div className="text-center p-8 text-gray-500">
                         <h3 className="text-lg font-semibold">No active conversations</h3>

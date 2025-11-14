@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { dataStore } from '../data';
+import * as api from '../api';
 import { WaterRequest, Host, RequestStatus, User } from '../types';
-import { ChevronLeftIcon, DropletIcon, CalendarDaysIcon, ClockIcon, ChatBubbleOvalLeftEllipsisIcon } from '../components/Icons';
+import { ChevronLeftIcon, DropletIcon, CalendarDaysIcon, ClockIcon, ChatBubbleOvalLeftEllipsisIcon, SpinnerIcon } from '../components/Icons';
 
 const StatusBadge: React.FC<{ status: RequestStatus }> = ({ status }) => {
     const statusInfo: Record<RequestStatus, { className: string; text: string }> = {
@@ -35,30 +35,56 @@ export default function RequestDetailPage() {
     const { requestId } = useParams<{ requestId: string }>();
     const navigate = useNavigate();
     
-    // Use a state variable to re-render when data changes
-    const [request, setRequest] = useState<WaterRequest | undefined>(
-        dataStore.requests.find(r => r.id === requestId)
-    );
+    const [request, setRequest] = useState<WaterRequest | null>(null);
+    const [currentUser, setCurrentUser] = useState<User | null>(null);
+    const [host, setHost] = useState<Host | null>(null);
+    const [requester, setRequester] = useState<User | Host | null>(null);
+    const [loading, setLoading] = useState(true);
 
-    if (!request) {
-        return <div className="p-4 text-center">Request not found.</div>;
-    }
-    
-    const isUserTheHost = request.hostId === dataStore.currentUser.id;
-    const host = dataStore.findUserById(request.hostId) as Host;
-    const requester = dataStore.findUserById(request.requesterId);
+    useEffect(() => {
+        if (!requestId) return;
+        const fetchData = async () => {
+            setLoading(true);
+            const reqData = await api.getRequestById(requestId);
+            if (!reqData) {
+                setLoading(false);
+                return;
+            }
+            const [currentUserData, hostData, requesterData] = await Promise.all([
+                api.getCurrentUser(),
+                api.getUserById(reqData.hostId),
+                api.getUserById(reqData.requesterId)
+            ]);
+            setRequest(reqData);
+            setCurrentUser(currentUserData);
+            setHost(hostData as Host);
+            setRequester(requesterData);
+            setLoading(false);
+        };
+        fetchData();
+    }, [requestId]);
 
-    if (!host || !requester) {
-        return <div className="p-4 text-center">User data not found.</div>;
-    }
-    
-    const updateRequestStatus = (newStatus: RequestStatus) => {
-        const requestIndex = dataStore.requests.findIndex(r => r.id === requestId);
-        if (requestIndex !== -1) {
-            dataStore.requests[requestIndex].status = newStatus;
-            setRequest({ ...dataStore.requests[requestIndex] }); // Trigger re-render
+    const updateRequestStatus = async (newStatus: RequestStatus) => {
+        if (!requestId) return;
+        const updatedRequest = await api.updateRequestStatus(requestId, newStatus);
+        if (updatedRequest) {
+            setRequest(updatedRequest);
         }
     };
+    
+    if (loading) {
+        return (
+            <div className="flex justify-center items-center h-screen">
+                <SpinnerIcon className="w-10 h-10 text-brand-blue animate-spin" />
+            </div>
+        );
+    }
+    
+    if (!request || !currentUser || !host || !requester) {
+        return <div className="p-4 text-center">Request not found.</div>;
+    }
+
+    const isUserTheHost = request.hostId === currentUser.id;
     
     const formattedDate = new Date(request.pickupDate).toLocaleDateString(undefined, {
         weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC'

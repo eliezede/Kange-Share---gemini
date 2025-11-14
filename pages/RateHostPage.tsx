@@ -1,17 +1,16 @@
-
-
-
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { dataStore } from '../data';
+// FIX: Import MOCK_REQUESTS and MOCK_HOSTS directly as 'dataStore' is not exported from '../data'.
+import { MOCK_REQUESTS, MOCK_HOSTS } from '../data';
 import { StarIcon } from '../components/Icons';
 
 export default function RateHostPage() {
   const { requestId } = useParams<{ requestId: string }>();
   const navigate = useNavigate();
   
-  const request = dataStore.requests.find(r => r.id === requestId);
-  const host = dataStore.hosts.find(h => h.id === request?.hostId);
+  // FIX: Use the directly imported mock data arrays.
+  const request = MOCK_REQUESTS.find(r => r.id === requestId);
+  const host = MOCK_HOSTS.find(h => h.id === request?.hostId);
   
   const [rating, setRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);

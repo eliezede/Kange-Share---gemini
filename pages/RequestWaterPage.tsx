@@ -1,10 +1,8 @@
-
-
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { dataStore } from '../data';
-import { ChevronLeftIcon } from '../components/Icons';
-import { WaterRequest } from '../types';
+import * as api from '../api';
+import { ChevronLeftIcon, SpinnerIcon } from '../components/Icons';
+import { Host } from '../types';
 
 const LITER_OPTIONS = [1, 2, 5, 10];
 
@@ -24,14 +22,28 @@ const generateTimeSlots = (start: string, end: string, intervalMinutes: number):
 export default function RequestWaterPage() {
   const { hostId } = useParams<{ hostId: string }>();
   const navigate = useNavigate();
-  const host = dataStore.hosts.find(h => h.id === hostId);
+  const [host, setHost] = useState<Host | null>(null);
+  const [loading, setLoading] = useState(true);
 
   const today = new Date().toISOString().split('T')[0];
   const [selectedDate, setSelectedDate] = useState(today);
-  const [selectedPh, setSelectedPh] = useState<number | null>(host?.phLevels[0] || null);
+  const [selectedPh, setSelectedPh] = useState<number | null>(null);
   const [liters, setLiters] = useState(5);
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
   const [notes, setNotes] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (hostId) {
+      api.getHostById(hostId).then(hostData => {
+        if (hostData) {
+          setHost(hostData);
+          setSelectedPh(hostData.phLevels[0] || null);
+        }
+        setLoading(false);
+      });
+    }
+  }, [hostId]);
 
   const availableTimeSlots = useMemo(() => {
     if (!host || !selectedDate) return [];
@@ -43,15 +55,17 @@ export default function RequestWaterPage() {
     return [];
   }, [host, selectedDate]);
   
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
     if (!hostId || !selectedPh || !selectedTime) {
       alert('Please fill out all fields.');
       return;
     }
     
-    const newRequest: WaterRequest = {
-        id: `req_${Date.now()}`,
-        requesterId: dataStore.currentUser.id,
+    setIsSubmitting(true);
+    const currentUser = await api.getCurrentUser();
+
+    await api.createRequest({
+        requesterId: currentUser.id,
         hostId: hostId,
         status: 'pending',
         phLevel: selectedPh,
@@ -59,14 +73,21 @@ export default function RequestWaterPage() {
         pickupDate: selectedDate,
         pickupTime: selectedTime,
         notes,
-        createdAt: new Date().toISOString(),
-    };
+    });
     
-    dataStore.requests.unshift(newRequest);
+    setIsSubmitting(false);
     alert('Request sent!');
     navigate('/requests');
   };
   
+  if (loading) {
+    return (
+        <div className="flex justify-center items-center h-screen">
+            <SpinnerIcon className="w-10 h-10 text-brand-blue animate-spin" />
+        </div>
+    );
+  }
+
   if (!host) {
     return <div className="p-4 text-center">Host not found.</div>;
   }
@@ -164,10 +185,10 @@ export default function RequestWaterPage() {
         <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-sm border-t border-gray-200 max-w-4xl mx-auto">
             <button 
                 onClick={handleConfirm} 
-                disabled={!selectedPh || !selectedTime}
-                className="w-full bg-brand-blue text-white font-bold py-3.5 px-4 rounded-xl hover:bg-blue-600 transition-colors disabled:bg-gray-300"
+                disabled={!selectedPh || !selectedTime || isSubmitting}
+                className="w-full bg-brand-blue text-white font-bold py-3.5 px-4 rounded-xl hover:bg-blue-600 transition-colors disabled:bg-gray-300 flex justify-center items-center"
             >
-                Confirm Request
+                {isSubmitting ? <SpinnerIcon className="w-5 h-5 animate-spin"/> : 'Confirm Request'}
             </button>
         </div>
     </div>

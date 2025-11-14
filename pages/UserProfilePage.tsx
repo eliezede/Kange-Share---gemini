@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { dataStore } from '../data';
+import * as api from '../api';
 import { User } from '../types';
-import { ChevronLeftIcon, CameraIcon, ArrowLeftOnRectangleIcon, TrashIcon, ShieldCheckIcon } from '../components/Icons';
+import { ChevronLeftIcon, CameraIcon, ArrowLeftOnRectangleIcon, TrashIcon, ShieldCheckIcon, SpinnerIcon } from '../components/Icons';
 import { useAuth } from '../App';
 
 const ImageCropperModal: React.FC<{
@@ -205,49 +205,63 @@ const parsePhoneNumber = (phone: string, countryName: string): { countryCode: st
 export default function UserProfilePage() {
   const navigate = useNavigate();
   const { logout } = useAuth();
-  const [user, setUser] = useState<User>({ ...dataStore.currentUser });
+  const [user, setUser] = useState<User | null>(null);
+  const [originalUser, setOriginalUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
   const [isDirty, setIsDirty] = useState(false);
-  const [previewImage, setPreviewImage] = useState<string | null>(user.profilePicture);
-  const [phoneParts, setPhoneParts] = useState(() => parsePhoneNumber(user.phone, user.address.country));
+  const [isSaving, setIsSaving] = useState(false);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [phoneParts, setPhoneParts] = useState({ countryCode: '+1', number: '' });
   const [imageToCrop, setImageToCrop] = useState<string | null>(null);
 
   const ALL_PH_LEVELS = [2.5, 8.5, 9.0, 9.5, 11.5];
   const DAYS_OF_WEEK = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-
+  
+  useEffect(() => {
+    api.getCurrentUser().then(userData => {
+        setUser(userData);
+        setOriginalUser(userData);
+        setPreviewImage(userData.profilePicture);
+        setPhoneParts(parsePhoneNumber(userData.phone, userData.address.country));
+        setLoading(false);
+    });
+  }, []);
 
   useEffect(() => {
-    // Check if user object is different from the one in the store
-    const isUserChanged = JSON.stringify(user) !== JSON.stringify(dataStore.currentUser);
-    setIsDirty(isUserChanged);
-  }, [user]);
+    if (user && originalUser) {
+        setIsDirty(JSON.stringify(user) !== JSON.stringify(originalUser));
+    }
+  }, [user, originalUser]);
   
   const handlePhoneChange = (part: 'countryCode' | 'number', value: string) => {
+    if (!user) return;
     const newParts = { ...phoneParts, [part]: value };
     setPhoneParts(newParts);
-    setUser(prevUser => ({
+    setUser(prevUser => prevUser ? ({
       ...prevUser,
       phone: `${newParts.countryCode} ${newParts.number}`.trim()
-    }));
+    }) : null);
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    if (!user) return;
     const { name, value } = e.target;
     if (name.includes('.')) {
       const [section, key] = name.split('.');
-      setUser(prevUser => ({
+      setUser(prevUser => prevUser ? ({
         ...prevUser,
         [section]: {
           ...(prevUser[section as keyof User] as object),
           [key]: value
         }
-      }));
+      }) : null);
     } else {
-      setUser(prevUser => ({ ...prevUser, [name]: value }));
+      setUser(prevUser => prevUser ? ({ ...prevUser, [name]: value }) : null);
     }
   };
 
   const handleAvailabilityChange = (day: string, field: 'enabled' | 'startTime' | 'endTime', value: boolean | string) => {
-    setUser(prev => ({
+    setUser(prev => prev ? ({
       ...prev,
       availability: {
         ...prev.availability,
@@ -256,11 +270,12 @@ export default function UserProfilePage() {
           [field]: value,
         }
       }
-    }));
+    }) : null);
   };
   
   const togglePh = (ph: number) => {
     setUser(prevUser => {
+        if (!prevUser) return null;
         const newPhLevels = prevUser.phLevels.includes(ph)
             ? prevUser.phLevels.filter(p => p !== ph)
             : [...prevUser.phLevels, ph];
@@ -286,15 +301,19 @@ export default function UserProfilePage() {
 
   const handleCropComplete = (croppedImage: string) => {
     setPreviewImage(croppedImage);
-    setUser(prev => ({ ...prev, profilePicture: croppedImage }));
+    setUser(prev => prev ? ({ ...prev, profilePicture: croppedImage }) : null);
     setImageToCrop(null); // Close modal
   };
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    dataStore.currentUser = { ...user };
+    if (!user) return;
+    setIsSaving(true);
+    const updatedUser = await api.updateCurrentUser(user);
+    setUser(updatedUser);
+    setOriginalUser(updatedUser);
+    setIsSaving(false);
     alert('Profile saved!');
-    setIsDirty(false);
   };
 
   const handleLogout = () => {
@@ -309,6 +328,14 @@ export default function UserProfilePage() {
         navigate('/');
     }
   };
+  
+  if (loading || !user) {
+    return (
+        <div className="flex justify-center items-center h-screen">
+            <SpinnerIcon className="w-10 h-10 text-brand-blue animate-spin" />
+        </div>
+    );
+  }
 
   return (
     <div className="pb-6 bg-gray-50 min-h-screen">
@@ -320,10 +347,10 @@ export default function UserProfilePage() {
         <button 
           type="submit"
           form="user-profile-form"
-          disabled={!isDirty}
-          className="font-semibold text-brand-blue disabled:text-gray-400 transition-colors px-4"
+          disabled={!isDirty || isSaving}
+          className="font-semibold text-brand-blue disabled:text-gray-400 transition-colors px-4 w-16"
         >
-          Save
+          {isSaving ? <SpinnerIcon className="w-5 h-5 animate-spin mx-auto" /> : "Save"}
         </button>
       </header>
       

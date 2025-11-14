@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { dataStore } from '../data';
-import { StarIcon, ChevronLeftIcon, CheckBadgeIcon, MapPinIcon, ChatBubbleOvalLeftEllipsisIcon } from '../components/Icons';
-import { Review, WaterRequest } from '../types';
+import * as api from '../api';
+import { StarIcon, ChevronLeftIcon, CheckBadgeIcon, MapPinIcon, ChatBubbleOvalLeftEllipsisIcon, SpinnerIcon } from '../components/Icons';
+import { Review, Host, User } from '../types';
 
 const RatingStars: React.FC<{ rating: number; className?: string }> = ({ rating, className = 'w-5 h-5' }) => (
     <div className="flex items-center">
@@ -34,39 +34,45 @@ const ReviewCard: React.FC<{ review: Review }> = ({ review }) => (
 export default function HostProfilePage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [_, forceUpdate] = useState(0);
+  const [host, setHost] = useState<Host | null>(null);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const host = dataStore.hosts.find(h => h.id === id);
-  const currentUser = dataStore.currentUser;
-
-  if (!host) {
-    return <div className="p-4 text-center">Host not found.</div>;
-  }
-
-  const isFollowing = currentUser.following.includes(host.id);
-
-  const handleFollowToggle = () => {
-    const hostId = host.id;
-    const currentUserId = currentUser.id;
-    const hostInDataStore = dataStore.hosts.find(h => h.id === hostId);
-
-    if (isFollowing) {
-      currentUser.following = currentUser.following.filter(id => id !== hostId);
-      if (hostInDataStore) {
-        hostInDataStore.followers = hostInDataStore.followers.filter(id => id !== currentUserId);
-      }
-    } else {
-      currentUser.following.push(hostId);
-      if (hostInDataStore) {
-        hostInDataStore.followers.push(currentUserId);
-      }
-    }
-    forceUpdate(n => n + 1); // Re-render the component
+  useEffect(() => {
+    if (!id) return;
+    const fetchData = async () => {
+        setLoading(true);
+        const [hostData, userData] = await Promise.all([
+            api.getHostById(id),
+            api.getCurrentUser()
+        ]);
+        if (hostData) {
+            setHost(hostData);
+        }
+        setCurrentUser(userData);
+        setLoading(false);
+    };
+    fetchData();
+  }, [id]);
+  
+  const handleFollowToggle = async () => {
+    if (!host || !currentUser) return;
+    await api.toggleFollowHost(host.id);
+    // Re-fetch both to get updated follower/following counts
+    const [updatedHost, updatedUser] = await Promise.all([
+        api.getHostById(host.id),
+        api.getCurrentUser()
+    ]);
+    if (updatedHost) setHost(updatedHost);
+    setCurrentUser(updatedUser);
   };
   
-  const handleSendMessage = () => {
-    // Check for existing conversation (either a chat-only or a real request)
-    const existingRequest = dataStore.requests.find(r => 
+  const handleSendMessage = async () => {
+    if (!host || !currentUser) return;
+
+    // This logic is simplified; in a real app, you'd have a more robust way to find existing chats
+    const allRequests = await api.getAllRequests();
+    const existingRequest = allRequests.find(r => 
         r.hostId === host.id && r.requesterId === currentUser.id
     );
 
@@ -75,24 +81,29 @@ export default function HostProfilePage() {
         return;
     }
 
-    // Create a new request with 'chatting' status
-    const newChatRequest: WaterRequest = {
-        id: `chat_${currentUser.id}_${host.id}_${Date.now()}`,
-        requesterId: currentUser.id,
-        hostId: host.id,
-        status: 'chatting',
-        phLevel: 0,
-        liters: 0,
-        pickupDate: '',
-        pickupTime: '',
-        notes: '',
-        createdAt: new Date().toISOString(),
-    };
-
-    dataStore.requests.unshift(newChatRequest);
+    const newChatRequest = await api.createNewChat(host.id, currentUser.id);
     navigate(`/chat/${newChatRequest.id}`);
   };
 
+  if (loading) {
+    return (
+        <div className="flex justify-center items-center h-screen">
+            <SpinnerIcon className="w-10 h-10 text-brand-blue animate-spin" />
+        </div>
+    );
+  }
+
+  if (!host) {
+    return <div className="p-4 text-center">Host not found.</div>;
+  }
+  
+  if (!currentUser) {
+    // This should ideally not happen if the user is authenticated
+    return <div className="p-4 text-center">Could not load user data.</div>;
+  }
+
+  const isFollowing = currentUser.following.includes(host.id);
+  
   const availableDays = Object.entries(host.availability)
     .filter(([, details]) => details.enabled)
     .map(([day, details]) => ({ day, ...details }));
@@ -104,7 +115,6 @@ export default function HostProfilePage() {
     const formattedHour = hourNum % 12 === 0 ? 12 : hourNum % 12;
     return `${formattedHour}:${minute} ${ampm}`;
   }
-
 
   return (
     <div className="pb-24">

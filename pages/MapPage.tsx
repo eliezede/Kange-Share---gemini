@@ -1,9 +1,8 @@
-
 import React, { useState, useMemo, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { dataStore } from '../data';
-import { StarIcon, SearchIcon, AdjustmentsHorizontalIcon, CheckBadgeIcon, ClipboardDocumentListIcon, ChevronRightIcon } from '../components/Icons';
-import { Host } from '../types';
+import * as api from '../api';
+import { StarIcon, SearchIcon, AdjustmentsHorizontalIcon, CheckBadgeIcon, ClipboardDocumentListIcon, ChevronRightIcon, SpinnerIcon } from '../components/Icons';
+import { Host, WaterRequest } from '../types';
 
 const HostCard: React.FC<{ host: Host }> = ({ host }) => (
   <Link to={`/host/${host.id}`} className="flex items-center space-x-4 p-4 rounded-xl hover:bg-gray-100 transition-colors duration-200 border-b border-gray-100">
@@ -24,9 +23,15 @@ const HostCard: React.FC<{ host: Host }> = ({ host }) => (
 );
 
 const MyRequestsCard: React.FC = () => {
-    const pendingRequestsCount = useMemo(() => 
-        dataStore.requests.filter(r => r.requesterId === dataStore.currentUser.id && r.status === 'pending').length
-    , []);
+    const [pendingCount, setPendingCount] = useState(0);
+
+    useEffect(() => {
+        api.getCurrentUser().then(user => {
+            api.getRequestsByUserId(user.id).then(requests => {
+                setPendingCount(requests.filter(r => r.status === 'pending').length);
+            });
+        });
+    }, []);
 
     return (
         <div className="p-4">
@@ -38,8 +43,8 @@ const MyRequestsCard: React.FC = () => {
                     <div>
                         <h4 className="font-bold text-gray-800">My Requests</h4>
                         <p className="text-sm text-gray-600">
-                            {pendingRequestsCount > 0 
-                                ? `You have ${pendingRequestsCount} pending request${pendingRequestsCount > 1 ? 's' : ''}.` 
+                            {pendingCount > 0 
+                                ? `You have ${pendingCount} pending request${pendingCount > 1 ? 's' : ''}.` 
                                 : "View your request history."}
                         </p>
                     </div>
@@ -51,9 +56,8 @@ const MyRequestsCard: React.FC = () => {
 };
 
 
-const allPhLevels = Array.from(new Set(dataStore.hosts.flatMap(h => h.phLevels))).sort((a,b) => a - b);
+const allPhLevels = [2.5, 8.5, 9.0, 9.5, 11.5]; // Hardcoded for simplicity
 const AVAILABILITY_OPTIONS = ['Weekdays', 'Weekends'];
-// FIX: Define weekday/weekend constants for availability filtering.
 const WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
 const WEEKENDS = ['Saturday', 'Sunday'];
 
@@ -133,23 +137,28 @@ const FilterModal: React.FC<FilterModalProps> = ({ isOpen, onClose, onApply, act
 
 
 export default function MapPage() {
+  const [hosts, setHosts] = useState<Host[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [isFilterOpen, setFilterOpen] = useState(false);
   const [activeFilters, setActiveFilters] = useState<{ ph: number[], days: string[] }>({ ph: [], days: [] });
 
+  useEffect(() => {
+      api.getHosts().then(data => {
+          setHosts(data);
+          setLoading(false);
+      });
+  }, []);
+
   const isFilterActive = activeFilters.ph.length > 0 || activeFilters.days.length > 0;
 
   const filteredHosts = useMemo(() => {
-    return dataStore.hosts.filter(host => {
-      // Search filter
+    return hosts.filter(host => {
       const matchesSearch = host.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                             host.city.toLowerCase().includes(searchQuery.toLowerCase());
 
-      // pH filter
       const matchesPh = activeFilters.ph.length === 0 || activeFilters.ph.some(ph => host.phLevels.includes(ph));
 
-      // Availability filter
-      // FIX: Correctly check host availability for weekdays and weekends based on the `availability` object structure.
       const hostIsWeekday = WEEKDAYS.some(day => host.availability[day]?.enabled);
       const hostIsWeekend = WEEKENDS.some(day => host.availability[day]?.enabled);
       const matchesDays = activeFilters.days.length === 0 || activeFilters.days.every(dayFilter => {
@@ -160,7 +169,28 @@ export default function MapPage() {
 
       return matchesSearch && matchesPh && matchesDays;
     });
-  }, [searchQuery, activeFilters]);
+  }, [searchQuery, activeFilters, hosts]);
+  
+  const renderContent = () => {
+    if (loading) {
+        return (
+            <div className="flex justify-center items-center h-64">
+                <SpinnerIcon className="w-10 h-10 text-brand-blue animate-spin" />
+            </div>
+        );
+    }
+    
+    if (filteredHosts.length > 0) {
+        return filteredHosts.map(host => <HostCard key={host.id} host={host} />);
+    }
+
+    return (
+        <div className="text-center p-8 text-gray-500">
+            <h3 className="text-lg font-semibold">No hosts found</h3>
+            <p>Try adjusting your search or filters.</p>
+        </div>
+    );
+  };
 
   return (
     <>
@@ -190,14 +220,7 @@ export default function MapPage() {
         <div className="overflow-y-auto flex-1">
             <MyRequestsCard />
             <div className="px-4 pt-2 text-sm font-semibold text-gray-500">NEARBY HOSTS</div>
-            {filteredHosts.length > 0 ? (
-              filteredHosts.map(host => <HostCard key={host.id} host={host} />)
-            ) : (
-              <div className="text-center p-8 text-gray-500">
-                  <h3 className="text-lg font-semibold">No hosts found</h3>
-                  <p>Try adjusting your search or filters.</p>
-              </div>
-            )}
+            {renderContent()}
         </div>
       </div>
     </>

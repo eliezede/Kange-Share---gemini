@@ -1,28 +1,25 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { dataStore } from '../data';
+import * as api from '../api';
 import { User, Host } from '../types';
-import { ChevronLeftIcon } from '../components/Icons';
+import { ChevronLeftIcon, SpinnerIcon } from '../components/Icons';
 
-// FIX: Define props interface for UserCard for better type safety and clarity.
 interface UserCardProps {
     user: User | Host;
     currentUser: User;
     onFollowToggle: (userId: string) => void;
 }
 
-// FIX: Explicitly type UserCard as a React.FC to resolve the issue with the 'key' prop.
 const UserCard: React.FC<UserCardProps> = ({ user, currentUser, onFollowToggle }) => {
     const isFollowing = currentUser.following.includes(user.id);
 
     const handleFollowClick = (e: React.MouseEvent) => {
-        e.preventDefault(); // Prevent navigation if clicking the button
+        e.preventDefault();
         onFollowToggle(user.id);
     };
 
     const userImage = 'image' in user ? user.image : user.profilePicture;
     const userCity = 'city' in user ? user.city : user.address.city;
-    // Don't show follow button for the current user themselves
     const isCurrentUserProfile = user.id === currentUser.id;
 
     return (
@@ -35,7 +32,7 @@ const UserCard: React.FC<UserCardProps> = ({ user, currentUser, onFollowToggle }
             {!isCurrentUserProfile && (
                 <button
                     onClick={handleFollowClick}
-                    className={`px-4 py-1.5 rounded-full font-semibold text-sm transition ${isFollowing ? 'bg-gray-200 text-gray-800' : 'bg-brand-blue text-white'}`}
+                    className={`px-4 py-1.5 rounded-full font-semibold text-sm transition w-24 ${isFollowing ? 'bg-gray-200 text-gray-800' : 'bg-brand-blue text-white'}`}
                 >
                     {isFollowing ? 'Following' : 'Follow'}
                 </button>
@@ -48,34 +45,56 @@ const UserCard: React.FC<UserCardProps> = ({ user, currentUser, onFollowToggle }
 export default function FollowListPage() {
     const { userId, followType } = useParams<{ userId: string, followType: 'followers' | 'following' }>();
     const navigate = useNavigate();
-    const [_, setForceUpdate] = useState(0); 
     
-    const currentUser = dataStore.currentUser;
-    const profileUser = dataStore.findUserById(userId);
+    const [profileUser, setProfileUser] = useState<User | Host | null>(null);
+    const [currentUser, setCurrentUser] = useState<User | null>(null);
+    const [userList, setUserList] = useState<(User | Host)[]>([]);
+    const [loading, setLoading] = useState(true);
 
-    const title = followType === 'followers' ? 'Followers' : 'Following';
-    const userIds = profileUser && followType ? profileUser[followType] : [];
-    const userList = userIds.map(id => dataStore.findUserById(id)).filter(Boolean) as (User | Host)[];
-    
-    const handleFollowToggle = (targetUserId: string) => {
-        const isCurrentlyFollowing = currentUser.following.includes(targetUserId);
-        const targetUser = dataStore.findUserById(targetUserId);
-        if (!targetUser) return;
+    const fetchData = async () => {
+        if (!userId || !followType) return;
+        setLoading(true);
 
-        if (isCurrentlyFollowing) {
-            currentUser.following = currentUser.following.filter(id => id !== targetUserId);
-            targetUser.followers = targetUser.followers.filter(id => id !== currentUser.id);
-        } else {
-            currentUser.following.push(targetUserId);
-            targetUser.followers.push(currentUser.id);
+        const [pUser, cUser] = await Promise.all([
+            api.getUserById(userId),
+            api.getCurrentUser()
+        ]);
+
+        if (pUser) {
+            const userIds = pUser[followType] || [];
+            const users = await Promise.all(userIds.map(id => api.getUserById(id)));
+            setUserList(users.filter(Boolean) as (User | Host)[]);
         }
-        setForceUpdate(v => v + 1);
+        
+        setProfileUser(pUser || null);
+        setCurrentUser(cUser);
+        setLoading(false);
+    };
+
+    useEffect(() => {
+        fetchData();
+    }, [userId, followType]);
+    
+    const handleFollowToggle = async (targetUserId: string) => {
+        await api.toggleFollowHost(targetUserId);
+        // Refetch all data to ensure consistency
+        fetchData();
     };
 
 
-    if (!profileUser) {
+    if (loading) {
+        return (
+            <div className="flex justify-center items-center h-screen">
+                <SpinnerIcon className="w-10 h-10 text-brand-blue animate-spin" />
+            </div>
+        );
+    }
+    
+    if (!profileUser || !currentUser) {
         return <div className="p-4 text-center">User not found.</div>;
     }
+
+    const title = followType === 'followers' ? 'Followers' : 'Following';
 
     return (
         <div className="flex flex-col h-screen">

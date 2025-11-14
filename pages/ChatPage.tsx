@@ -1,86 +1,99 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { dataStore } from '../data';
-import { ChevronLeftIcon, PaperAirplaneIcon } from '../components/Icons';
+import * as api from '../api';
+import { ChevronLeftIcon, PaperAirplaneIcon, SpinnerIcon } from '../components/Icons';
 import { Message, WaterRequest, Host, User } from '../types';
 
 export default function ChatPage() {
   const { requestId } = useParams<{ requestId: string }>();
   const navigate = useNavigate();
   
-  const [request, setRequest] = useState<WaterRequest | undefined>(
-    dataStore.requests.find(r => r.id === requestId)
-  );
-
-  const isUserHost = request?.hostId === dataStore.currentUser.id;
-  const otherPartyId = isUserHost ? request?.requesterId : request?.hostId;
-  const otherParty = dataStore.findUserById(otherPartyId || '');
-
+  const [request, setRequest] = useState<WaterRequest | null>(null);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [otherParty, setOtherParty] = useState<User | Host | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
+  const [loading, setLoading] = useState(true);
+
   const [newMessage, setNewMessage] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
   useEffect(() => {
-    if (requestId) {
-        setMessages(dataStore.conversations[requestId] || []);
-    }
+    if (!requestId) return;
+
+    const fetchData = async () => {
+        setLoading(true);
+        const reqData = await api.getRequestById(requestId);
+        if (!reqData) {
+            setLoading(false);
+            return;
+        }
+
+        const [currentUserData, messagesData] = await Promise.all([
+            api.getCurrentUser(),
+            api.getMessages(requestId)
+        ]);
+
+        const isUserHost = reqData.hostId === currentUserData.id;
+        const otherPartyId = isUserHost ? reqData.requesterId : reqData.hostId;
+        const otherPartyData = await api.getUserById(otherPartyId);
+
+        setRequest(reqData);
+        setCurrentUser(currentUserData);
+        setOtherParty(otherPartyData || null);
+        setMessages(messagesData);
+        setLoading(false);
+    };
+
+    fetchData();
   }, [requestId]);
 
   useEffect(scrollToBottom, [messages]);
 
-  const handleSend = () => {
+  const handleSend = async () => {
     if (newMessage.trim() && requestId) {
-      const userMessage: Message = {
-        id: Date.now(),
-        text: newMessage,
-        sender: 'user', // Simplified for now
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit'}),
-      };
-      
-      const currentMessages = dataStore.conversations[requestId] || [];
-      dataStore.conversations[requestId] = [...currentMessages, userMessage];
-      setMessages([...dataStore.conversations[requestId]]);
-
+      const text = newMessage;
       setNewMessage('');
 
+      const sentMessage = await api.sendMessage(requestId, text, 'user');
+      setMessages(prev => [...prev, sentMessage]);
+
       // Mock host reply
-      setTimeout(() => {
-        const hostReply: Message = {
-            id: Date.now() + 1,
-            text: 'Sounds good!',
-            sender: 'host',
-            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit'}),
-        };
-        const currentMessagesWithUser = dataStore.conversations[requestId] || [];
-        dataStore.conversations[requestId] = [...currentMessagesWithUser, hostReply];
-        setMessages([...dataStore.conversations[requestId]]);
+      setTimeout(async () => {
+        const reply = await api.sendMessage(requestId, 'Sounds good!', 'host');
+        setMessages(prev => [...prev, reply]);
       }, 1500);
     }
   };
 
-  const handleComplete = () => {
-    const requestIndex = dataStore.requests.findIndex(r => r.id === requestId);
-    if (requestIndex !== -1) {
-        dataStore.requests[requestIndex].status = 'completed';
-        navigate(`/rate/${requestId}`);
-    }
+  const handleComplete = async () => {
+    if (!requestId) return;
+    await api.updateRequestStatus(requestId, 'completed');
+    navigate(`/rate/${requestId}`);
   };
 
-  if (!request || !otherParty) {
+  if (loading) {
+    return (
+        <div className="flex justify-center items-center h-screen">
+            <SpinnerIcon className="w-10 h-10 text-brand-blue animate-spin" />
+        </div>
+    );
+  }
+
+  if (!request || !otherParty || !currentUser) {
     return <div className="p-4 text-center">Chat not found.</div>;
   }
   
+  const isUserHost = request.hostId === currentUser.id;
   const otherPartyName = otherParty.name;
   const otherPartyImage = 'image' in otherParty ? otherParty.image : otherParty.profilePicture;
 
   return (
     <div className="flex flex-col h-screen">
       <header className="flex items-center p-3 border-b border-gray-200 bg-white/80 backdrop-blur-sm sticky top-0 z-10">
-        {/* FIX: Correctly handle navigation logic by calling navigate with either a number for history traversal or a string for a path, resolving the TypeScript overload error. */}
         <button onClick={() => {
           if (request.status === 'chatting') {
             navigate(-1);

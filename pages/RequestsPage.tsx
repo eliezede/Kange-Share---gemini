@@ -1,7 +1,8 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { dataStore } from '../data';
+import * as api from '../api';
 import { WaterRequest, RequestStatus, Host, User } from '../types';
+import { SpinnerIcon } from '../components/Icons';
 
 const StatusBadge: React.FC<{ status: RequestStatus }> = ({ status }) => {
     const statusStyles: Record<RequestStatus, string> = {
@@ -19,11 +20,11 @@ const StatusBadge: React.FC<{ status: RequestStatus }> = ({ status }) => {
     );
 };
 
-const RequestCard: React.FC<{ request: WaterRequest; perspective: 'requester' | 'host' }> = ({ request, perspective }) => {
+const RequestCard: React.FC<{ request: WaterRequest; perspective: 'requester' | 'host', allUsers: (User | Host)[] }> = ({ request, perspective, allUsers }) => {
     const otherPartyId = perspective === 'requester' ? request.hostId : request.requesterId;
-    const otherParty = dataStore.findUserById(otherPartyId);
+    const otherParty = allUsers.find(u => u.id === otherPartyId);
 
-    if (!otherParty) return null; // Or some fallback UI
+    if (!otherParty) return null;
 
     const date = new Date(request.pickupDate).toLocaleDateString(undefined, {
         month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC'
@@ -54,14 +55,27 @@ const RequestCard: React.FC<{ request: WaterRequest; perspective: 'requester' | 
 
 export default function RequestsPage() {
     const [activeTab, setActiveTab] = useState<'my_requests' | 'host_dashboard'>('my_requests');
+    const [myRequests, setMyRequests] = useState<WaterRequest[]>([]);
+    const [hostRequests, setHostRequests] = useState<WaterRequest[]>([]);
+    const [allUsers, setAllUsers] = useState<(User | Host)[]>([]);
+    const [loading, setLoading] = useState(true);
 
-    const myRequests = useMemo(() => 
-        dataStore.requests.filter(r => r.requesterId === dataStore.currentUser.id && r.status !== 'chatting'), 
-    []);
-    
-    const hostRequests = useMemo(() =>
-        dataStore.requests.filter(r => r.hostId === dataStore.currentUser.id && r.status !== 'chatting'),
-    []);
+    useEffect(() => {
+        const fetchData = async () => {
+            setLoading(true);
+            const currentUser = await api.getCurrentUser();
+            const [myReqs, hostReqs, hosts] = await Promise.all([
+                api.getRequestsByUserId(currentUser.id),
+                api.getRequestsByHostId(currentUser.id),
+                api.getHosts()
+            ]);
+            setMyRequests(myReqs);
+            setHostRequests(hostReqs);
+            setAllUsers([currentUser, ...hosts]);
+            setLoading(false);
+        };
+        fetchData();
+    }, []);
 
     const TabButton: React.FC<{ tabId: 'my_requests' | 'host_dashboard', label: string, count: number }> = ({ tabId, label, count }) => (
         <button
@@ -73,6 +87,20 @@ export default function RequestsPage() {
             {label} <span className="text-sm bg-gray-200 rounded-full px-2 py-0.5">{count}</span>
         </button>
     );
+    
+    const renderContent = (requests: WaterRequest[], perspective: 'requester' | 'host', emptyMessage: string) => {
+        if (loading) {
+            return (
+                <div className="flex justify-center items-center h-64">
+                    <SpinnerIcon className="w-10 h-10 text-brand-blue animate-spin" />
+                </div>
+            );
+        }
+        if (requests.length === 0) {
+            return <p className="text-center p-8 text-gray-500">{emptyMessage}</p>;
+        }
+        return requests.map(req => <RequestCard key={req.id} request={req} perspective={perspective} allUsers={allUsers} />);
+    };
 
     return (
         <div className="flex flex-col h-full">
@@ -85,24 +113,8 @@ export default function RequestsPage() {
             </div>
 
             <div className="flex-1 overflow-y-auto">
-                {activeTab === 'my_requests' && (
-                    <div>
-                        {myRequests.length > 0 ? (
-                            myRequests.map(req => <RequestCard key={req.id} request={req} perspective="requester" />)
-                        ) : (
-                            <p className="text-center p-8 text-gray-500">You haven't made any requests yet.</p>
-                        )}
-                    </div>
-                )}
-                {activeTab === 'host_dashboard' && (
-                     <div>
-                        {hostRequests.length > 0 ? (
-                            hostRequests.map(req => <RequestCard key={req.id} request={req} perspective="host" />)
-                        ) : (
-                            <p className="text-center p-8 text-gray-500">You haven't received any requests yet.</p>
-                        )}
-                    </div>
-                )}
+                {activeTab === 'my_requests' && renderContent(myRequests, 'requester', "You haven't made any requests yet.")}
+                {activeTab === 'host_dashboard' && renderContent(hostRequests, 'host', "You haven't received any requests yet.")}
             </div>
         </div>
     );
