@@ -1,32 +1,24 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import * as api from '../api';
-import { WaterRequest, User, Host } from '../types';
+import { WaterRequest, User } from '../types';
 import { SpinnerIcon } from '../components/Icons';
+import { useAuth } from '../App';
 
-const ChatPreviewCard: React.FC<{ request: WaterRequest, allUsers: (User | Host)[] }> = ({ request, allUsers }) => {
-    const [currentUser, setCurrentUser] = useState<User | null>(null);
-
-    useEffect(() => {
-        api.getCurrentUser().then(setCurrentUser);
-    }, []);
-
+const ChatPreviewCard: React.FC<{ request: WaterRequest }> = ({ request }) => {
+    const { userData: currentUser } = useAuth();
     if (!currentUser) return null;
 
     const isUserHost = request.hostId === currentUser.id;
-    const otherPartyId = isUserHost ? request.requesterId : request.hostId;
-    const otherParty = allUsers.find(u => u.id === otherPartyId);
-
-    if (!otherParty) return null;
-
-    const image = 'image' in otherParty ? otherParty.image : otherParty.profilePicture;
+    const otherPartyName = isUserHost ? request.requesterName : request.hostName;
+    const otherPartyImage = isUserHost ? request.requesterImage : request.hostImage;
 
     return (
         <Link to={`/chat/${request.id}`} className="flex items-center gap-4 p-4 border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-            <img src={image} alt={otherParty.name} className="w-14 h-14 rounded-full object-cover"/>
+            <img src={otherPartyImage} alt={otherPartyName} className="w-14 h-14 rounded-full object-cover"/>
             <div className="flex-1">
                 <div className="flex justify-between items-start">
-                    <h3 className="font-bold text-lg text-gray-800 dark:text-gray-100">{otherParty.name}</h3>
+                    <h3 className="font-bold text-lg text-gray-800 dark:text-gray-100">{otherPartyName}</h3>
                     <p className="text-xs text-gray-500 dark:text-gray-400">{new Date(request.createdAt).toLocaleDateString()}</p>
                 </div>
                 <p className="text-sm text-gray-600 dark:text-gray-300 truncate">
@@ -42,24 +34,20 @@ const ChatPreviewCard: React.FC<{ request: WaterRequest, allUsers: (User | Host)
 
 
 export default function MessagesPage() {
+    const { userData } = useAuth();
     const [conversations, setConversations] = useState<WaterRequest[]>([]);
-    const [allUsers, setAllUsers] = useState<(User | Host)[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
+        if (!userData) return;
         const fetchData = async () => {
             setLoading(true);
-            const currentUser = await api.getCurrentUser();
-            const [convos, hosts] = await Promise.all([
-                api.getConversationsByUserId(currentUser.id),
-                api.getHosts()
-            ]);
+            const convos = await api.getConversationsByUserId(userData.id);
             setConversations(convos);
-            setAllUsers([currentUser, ...hosts]);
             setLoading(false);
         };
         fetchData();
-    }, []);
+    }, [userData]);
 
     return (
          <div className="flex flex-col h-full">
@@ -72,7 +60,7 @@ export default function MessagesPage() {
                         <SpinnerIcon className="w-10 h-10 text-brand-blue animate-spin" />
                     </div>
                 ) : conversations.length > 0 ? (
-                    conversations.map(req => <ChatPreviewCard key={req.id} request={req} allUsers={allUsers} />)
+                    conversations.map(req => <ChatPreviewCard key={req.id} request={req} />)
                 ) : (
                     <div className="text-center p-8 text-gray-500 dark:text-gray-400">
                         <h3 className="text-lg font-semibold dark:text-gray-200">No active conversations</h3>

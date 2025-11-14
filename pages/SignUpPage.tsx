@@ -6,7 +6,7 @@ import { GoogleIcon, EnvelopeIcon, SpinnerIcon, ChevronLeftIcon } from '../compo
 
 export default function SignUpPage() {
     const navigate = useNavigate();
-    const { openLoginModal } = useAuth();
+    const { openLoginModal, loginWithGoogle } = useAuth();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
@@ -15,8 +15,21 @@ export default function SignUpPage() {
 
     const handleGoogleSignUp = async () => {
         setIsLoading(true);
-        const newUser = await api.createUser();
-        navigate('/onboarding', { state: { userId: newUser.id } });
+        setError('');
+        try {
+            const userCredential = await loginWithGoogle();
+            const { user } = userCredential;
+            
+            // Check if user document already exists
+            const existingUser = await api.getUserById(user.uid);
+            if (!existingUser) {
+                await api.createInitialUser(user.uid, user.email || '', user.displayName || 'Google User', user.photoURL || '');
+            }
+            // AuthProvider will handle navigation
+        } catch (err: any) {
+            setError(err.message);
+            setIsLoading(false);
+        }
     };
 
     const handleEmailSignUp = async (e: React.FormEvent) => {
@@ -28,11 +41,16 @@ export default function SignUpPage() {
         setError('');
         setIsLoading(true);
 
-        // In a real app, you would check if the email is already in use.
-        const newUser = await api.createUser();
-        
-        setIsLoading(false);
-        navigate('/verify-email', { state: { userId: newUser.id } });
+        try {
+            const userCredential = await api.signUpWithEmail(email, password);
+            const user = userCredential.user;
+            await api.createInitialUser(user.uid, email, 'New User', '');
+            navigate('/onboarding', { state: { userId: user.uid } });
+        } catch (err: any) {
+             setError(err.message);
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     return (

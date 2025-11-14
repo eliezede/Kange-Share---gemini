@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import * as api from '../api';
-import { User, Host } from '../types';
+import { User } from '../types';
 import { ChevronLeftIcon, SpinnerIcon } from '../components/Icons';
+import { useAuth } from '../App';
 
 interface UserCardProps {
-    user: User | Host;
+    user: User;
     currentUser: User;
     onFollowToggle: (userId: string) => void;
 }
@@ -15,19 +16,18 @@ const UserCard: React.FC<UserCardProps> = ({ user, currentUser, onFollowToggle }
 
     const handleFollowClick = (e: React.MouseEvent) => {
         e.preventDefault();
+        e.stopPropagation();
         onFollowToggle(user.id);
     };
 
-    const userImage = 'image' in user ? user.image : user.profilePicture;
-    const userCity = 'city' in user ? user.city : user.address.city;
     const isCurrentUserProfile = user.id === currentUser.id;
 
     return (
         <Link to={`/host/${user.id}`} className="flex items-center p-4 border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800">
-            <img src={userImage} alt={user.name} className="w-12 h-12 rounded-full object-cover" />
+            <img src={user.profilePicture} alt={user.name} className="w-12 h-12 rounded-full object-cover" />
             <div className="flex-1 ml-4">
                 <p className="font-bold dark:text-gray-100">{user.name}</p>
-                <p className="text-sm text-gray-500 dark:text-gray-400">{userCity}</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">{user.address.city}</p>
             </div>
             {!isCurrentUserProfile && (
                 <button
@@ -45,29 +45,25 @@ const UserCard: React.FC<UserCardProps> = ({ user, currentUser, onFollowToggle }
 export default function FollowListPage() {
     const { userId, followType } = useParams<{ userId: string, followType: 'followers' | 'following' }>();
     const navigate = useNavigate();
+    const { userData: currentUser, setUserData } = useAuth();
     
-    const [profileUser, setProfileUser] = useState<User | Host | null>(null);
-    const [currentUser, setCurrentUser] = useState<User | null>(null);
-    const [userList, setUserList] = useState<(User | Host)[]>([]);
+    const [profileUser, setProfileUser] = useState<User | null>(null);
+    const [userList, setUserList] = useState<User[]>([]);
     const [loading, setLoading] = useState(true);
 
     const fetchData = async () => {
         if (!userId || !followType) return;
         setLoading(true);
 
-        const [pUser, cUser] = await Promise.all([
-            api.getUserById(userId),
-            api.getCurrentUser()
-        ]);
+        const pUser = await api.getUserById(userId);
 
         if (pUser) {
-            const userIds = pUser[followType] || [];
-            const users = await Promise.all(userIds.map(id => api.getUserById(id)));
-            setUserList(users.filter(Boolean) as (User | Host)[]);
+            const userIdsToFetch = pUser[followType] || [];
+            const users = await Promise.all(userIdsToFetch.map(id => api.getUserById(id)));
+            setUserList(users.filter(Boolean) as User[]);
         }
         
         setProfileUser(pUser || null);
-        setCurrentUser(cUser);
         setLoading(false);
     };
 
@@ -76,8 +72,14 @@ export default function FollowListPage() {
     }, [userId, followType]);
     
     const handleFollowToggle = async (targetUserId: string) => {
-        await api.toggleFollowHost(targetUserId);
-        // Refetch all data to ensure consistency
+        if (!currentUser) return;
+        await api.toggleFollowHost(currentUser.id, targetUserId);
+        
+        // Refetch current user's data to update their following list in context
+        const updatedCurrentUser = await api.getUserById(currentUser.id);
+        if (updatedCurrentUser) setUserData(updatedCurrentUser);
+
+        // Refetch the entire list to show changes
         fetchData();
     };
 

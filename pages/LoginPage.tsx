@@ -1,21 +1,32 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../App';
-import { GoogleIcon, EnvelopeIcon, XMarkIcon } from '../components/Icons';
+import { GoogleIcon, EnvelopeIcon, XMarkIcon, SpinnerIcon } from '../components/Icons';
 
 export default function LoginModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
-  const { login } = useAuth();
+  const { loginWithEmail, loginWithGoogle } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  const handleGoogleLogin = () => {
-    login('user@gmail.com');
+  const handleLogin = async (loginFn: () => Promise<any>) => {
+    setError('');
+    setIsLoading(true);
+    try {
+      await loginFn();
+      // The AuthProvider will handle closing the modal on success
+    } catch (err: any) {
+      setError(err.message || 'Failed to login. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
   };
   
   const handleEmailLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (email) { // Basic validation
-      login(email);
+    if (email && password) {
+      handleLogin(() => loginWithEmail(email, password));
     }
   };
 
@@ -41,7 +52,8 @@ export default function LoginModal({ isOpen, onClose }: { isOpen: boolean; onClo
         
         <div className="space-y-4">
           <button
-            onClick={handleGoogleLogin}
+            onClick={() => handleLogin(loginWithGoogle)}
+            disabled={isLoading}
             className="w-full flex items-center justify-center gap-3 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 font-semibold py-3 px-4 rounded-xl border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
           >
             <GoogleIcon className="w-6 h-6" />
@@ -58,32 +70,26 @@ export default function LoginModal({ isOpen, onClose }: { isOpen: boolean; onClo
             <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" htmlFor="email">Email</label>
                 <input 
-                    id="email"
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="you@example.com"
-                    required
+                    id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)}
+                    placeholder="you@example.com" required
                     className="w-full p-3 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-brand-blue focus:border-transparent outline-none transition"
                 />
             </div>
              <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" htmlFor="password">Password</label>
                 <input 
-                    id="password"
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="••••••••"
-                    required
+                    id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••" required
                     className="w-full p-3 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-brand-blue focus:border-transparent outline-none transition"
                 />
             </div>
+             {error && <p className="text-sm text-red-500">{error}</p>}
             <button
                 type="submit"
-                className="w-full flex items-center justify-center gap-3 bg-brand-blue text-white font-semibold py-3 px-4 rounded-xl hover:bg-blue-600 transition-colors"
+                disabled={isLoading}
+                className="w-full flex items-center justify-center gap-3 bg-brand-blue text-white font-semibold py-3 px-4 rounded-xl hover:bg-blue-600 transition-colors disabled:bg-blue-300"
             >
-                <EnvelopeIcon className="w-5 h-5" />
+                {isLoading ? <SpinnerIcon className="w-5 h-5 animate-spin" /> : <EnvelopeIcon className="w-5 h-5" />}
                 <span>Continue with Email</span>
             </button>
           </form>

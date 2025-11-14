@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import * as api from '../api';
-import { Host, WaterRequest, RequestStatus } from '../types';
+import { User, WaterRequest, RequestStatus } from '../types';
 import {
     ChevronLeftIcon,
     UserGroupIcon,
@@ -41,7 +41,7 @@ const StatusBadge: React.FC<{ status: RequestStatus }> = ({ status }) => {
 
 export default function AdminPage() {
     const navigate = useNavigate();
-    const [hosts, setHosts] = useState<Host[]>([]);
+    const [users, setUsers] = useState<User[]>([]);
     const [requests, setRequests] = useState<WaterRequest[]>([]);
     const [loading, setLoading] = useState(true);
     const [verifyingHostId, setVerifyingHostId] = useState<string | null>(null);
@@ -49,16 +49,18 @@ export default function AdminPage() {
     useEffect(() => {
         const fetchData = async () => {
             setLoading(true);
-            const [hostsData, requestsData] = await Promise.all([
-                api.getHosts(),
+            const [usersData, requestsData] = await Promise.all([
+                api.getAllUsers(),
                 api.getAllRequests()
             ]);
-            setHosts(hostsData);
+            setUsers(usersData);
             setRequests(requestsData);
             setLoading(false);
         };
         fetchData();
     }, []);
+    
+    const hosts = useMemo(() => users.filter(u => u.isHost), [users]);
 
     const metrics = useMemo(() => {
         return {
@@ -69,11 +71,11 @@ export default function AdminPage() {
         };
     }, [hosts, requests]);
     
-    const handleVerifyToggle = async (hostId: string) => {
-        setVerifyingHostId(hostId);
-        await api.toggleHostVerification(hostId);
-        const updatedHosts = await api.getHosts();
-        setHosts(updatedHosts);
+    const handleVerifyToggle = async (host: User) => {
+        setVerifyingHostId(host.id);
+        await api.toggleHostVerification(host.id, host.isVerified);
+        const updatedUsers = await api.getAllUsers();
+        setUsers(updatedUsers);
         setVerifyingHostId(null);
     };
 
@@ -115,16 +117,16 @@ export default function AdminPage() {
                     
                     {/* Manage Users & Hosts */}
                     <section>
-                        <h2 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-3">Manage Users & Hosts</h2>
+                        <h2 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-3">Manage Hosts</h2>
                         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
                             <div className="divide-y divide-gray-100 dark:divide-gray-700">
                                 {hosts.map(host => (
                                     <div key={host.id} className="p-4 flex items-center justify-between">
                                         <div className="flex items-center gap-3">
-                                            <img src={host.image} alt={host.name} className="w-10 h-10 rounded-full object-cover" />
+                                            <img src={host.profilePicture} alt={host.name} className="w-10 h-10 rounded-full object-cover" />
                                             <div>
                                                 <p className="font-semibold text-gray-800 dark:text-gray-100">{host.name}</p>
-                                                <p className="text-sm text-gray-500 dark:text-gray-400">{host.city}</p>
+                                                <p className="text-sm text-gray-500 dark:text-gray-400">{host.address.city}</p>
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-4">
@@ -136,7 +138,7 @@ export default function AdminPage() {
                                                 <span className="text-sm font-semibold text-gray-500 dark:text-gray-400">Not Verified</span>
                                             )}
                                             <button 
-                                                onClick={() => handleVerifyToggle(host.id)}
+                                                onClick={() => handleVerifyToggle(host)}
                                                 disabled={verifyingHostId === host.id}
                                                 className={`px-3 py-1.5 rounded-md font-semibold text-xs transition-colors w-20 text-center ${host.isVerified ? 'bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/50 dark:text-red-300 dark:hover:bg-red-900/70' : 'bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/50 dark:text-green-300 dark:hover:bg-green-900/70'}`}
                                             >
@@ -154,22 +156,17 @@ export default function AdminPage() {
                         <h2 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-3">Recent Water Requests</h2>
                          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
                              <div className="divide-y divide-gray-100 dark:divide-gray-700">
-                                {recentRequests.length > 0 ? recentRequests.map(req => {
-                                    const requester = hosts.find(h => h.id === req.requesterId) || (req.requesterId === 'user_alex_123' && { name: 'Alex Johnson' });
-                                    const host = hosts.find(h => h.id === req.hostId) || (req.hostId === 'user_alex_123' && { name: 'Alex Johnson' });
-                                    if (!requester || !host) return null;
-                                    return (
+                                {recentRequests.length > 0 ? recentRequests.map(req => (
                                         <Link to={`/request-detail/${req.id}`} key={req.id} className="p-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
                                             <div>
                                                 <p className="font-semibold text-gray-800 dark:text-gray-100">
-                                                    {requester.name} <span className="font-normal text-gray-500 dark:text-gray-400">to</span> {host.name}
+                                                    {req.requesterName} <span className="font-normal text-gray-500 dark:text-gray-400">to</span> {req.hostName}
                                                 </p>
                                                 <p className="text-sm text-gray-500 dark:text-gray-400">{new Date(req.createdAt).toLocaleString()}</p>
                                             </div>
                                             <StatusBadge status={req.status} />
                                         </Link>
-                                    );
-                                }) : <p className="p-4 text-gray-500 dark:text-gray-400 text-sm">No recent requests.</p>}
+                                )) : <p className="p-4 text-gray-500 dark:text-gray-400 text-sm">No recent requests.</p>}
                             </div>
                         </div>
                     </section>

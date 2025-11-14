@@ -1,19 +1,34 @@
 export interface Review {
-  id: string;
+  id: string; // Firestore doc ID
+  reviewerId: string;
   reviewerName: string;
   reviewerImage: string;
   rating: number;
   comment: string;
-  date: string;
+  date: string; // ISO String
 }
 
-export interface Host {
-  id: string;
+// A unified type for all users. Any user can become a host.
+export interface User {
+  id: string; // Firebase Auth UID
+  email: string;
   name: string;
-  city: string;
+  profilePicture: string; // URL from Firebase Storage
+  phone: string;
+
+  address: {
+    street: string;
+    number: string;
+    postalCode: string;
+    city: string;
+    country: string;
+  };
+  
+  isHost: boolean;
+
+  // Host-specific fields
   rating: number;
   reviews: number;
-  image: string;
   phLevels: number[];
   availability: Record<string, { enabled: boolean; startTime: string; endTime: string; }>;
   maintenance: {
@@ -21,52 +36,23 @@ export interface Host {
     lastECleaning: string;
   };
   isVerified: boolean;
-  address: {
-    street: string;
-    number: string;
-    postalCode: string;
-    city: string;
-    country: string;
-  };
-  fullReviews: Review[];
-  followers: string[];
-  following: string[];
+  
+  // Social fields
+  followers: string[]; // array of user UIDs
+  following: string[]; // array of user UIDs
 }
 
 export interface Message {
-  id: number;
+  id: string; // Firestore doc ID
   text: string;
-  sender: 'user' | 'host';
-  timestamp: string;
-}
-
-export interface User {
-  id: string;
-  name: string;
-  phone: string;
-  profilePicture: string;
-  preferredCities: string[];
-  phLevels: number[];
-  availability: Record<string, { enabled: boolean; startTime: string; endTime: string; }>;
-  maintenance: {
-    lastFilterChange: string;
-    lastECleaning: string;
-  };
-  address: {
-    street: string;
-    number: string;
-    postalCode: string;
-    city: string;
-    country: string;
-  };
-  followers: string[];
-  following: string[];
+  sender: string; // user UID
+  timestamp: string; // ISO String
 }
 
 export type RequestStatus = 'pending' | 'accepted' | 'completed' | 'cancelled' | 'declined' | 'chatting';
 
 export interface WaterRequest {
-  id: string;
+  id: string; // Firestore doc ID
   requesterId: string;
   hostId: string;
   status: RequestStatus;
@@ -76,4 +62,10 @@ export interface WaterRequest {
   pickupTime: string; // HH:MM
   notes: string;
   createdAt: string; // ISO String
+
+  // Denormalized data for easier display
+  requesterName: string;
+  requesterImage: string;
+  hostName: string;
+  hostImage: string;
 }

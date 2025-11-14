@@ -172,46 +172,31 @@ const Toggle: React.FC<{ checked: boolean; onChange: (checked: boolean) => void 
 );
 
 const COUNTRIES = [
-  { name: 'United States', code: '+1', flag: '🇺🇸' },
-  { name: 'Brazil', code: '+55', flag: '🇧🇷' },
-  { name: 'United Kingdom', code: '+44', flag: '🇬🇧' },
-  { name: 'Canada', code: '+1', flag: '🇨🇦' },
-  { name: 'Australia', code: '+61', flag: '🇦🇺' },
-  { name: 'Germany', code: '+49', flag: '🇩🇪' },
-  { name: 'France', code: '+33', flag: '🇫🇷' },
-  { name: 'Japan', code: '+81', flag: '🇯🇵' },
+  { name: 'United States', code: '+1', flag: '🇺🇸' }, { name: 'Brazil', code: '+55', flag: '🇧🇷' },
+  { name: 'United Kingdom', code: '+44', flag: '🇬🇧' }, { name: 'Canada', code: '+1', flag: '🇨🇦' },
+  { name: 'Australia', code: '+61', flag: '🇦🇺' }, { name: 'Germany', code: '+49', flag: '🇩🇪' },
+  { name: 'France', code: '+33', flag: '🇫🇷' }, { name: 'Japan', code: '+81', flag: '🇯🇵' },
   { name: 'Portugal', code: '+351', flag: '🇵🇹' },
 ];
 
-const parsePhoneNumber = (phone: string, countryName: string): { countryCode: string; number: string } => {
-    for (const country of COUNTRIES) {
-        if (phone.startsWith(country.code)) {
-            const number = phone.substring(country.code.length).trim();
-            if (country.code === '+1' && country.name !== countryName) {
-                continue;
-            }
-            return { countryCode: country.code, number };
-        }
-    }
+const parsePhoneNumber = (phone: string): { countryCode: string; number: string } => {
     const match = phone.match(/^(\+\d+)\s*(.*)$/);
     if (match) {
         return { countryCode: match[1], number: match[2] };
     }
-    
     return { countryCode: '+1', number: phone };
 };
 
 
 export default function UserProfilePage() {
   const navigate = useNavigate();
-  const { logout } = useAuth();
+  const { logout, userData, setUserData } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  
   const [user, setUser] = useState<User | null>(null);
   const [originalUser, setOriginalUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
   const [isDirty, setIsDirty] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [phoneParts, setPhoneParts] = useState({ countryCode: '+1', number: '' });
   const [imageToCrop, setImageToCrop] = useState<string | null>(null);
 
@@ -219,14 +204,13 @@ export default function UserProfilePage() {
   const DAYS_OF_WEEK = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
   
   useEffect(() => {
-    api.getCurrentUser().then(userData => {
-        setUser(userData);
-        setOriginalUser(userData);
-        setPreviewImage(userData.profilePicture);
-        setPhoneParts(parsePhoneNumber(userData.phone, userData.address.country));
-        setLoading(false);
-    });
-  }, []);
+    if (userData) {
+      const userCopy = JSON.parse(JSON.stringify(userData));
+      setUser(userCopy);
+      setOriginalUser(userCopy);
+      setPhoneParts(parsePhoneNumber(userCopy.phone));
+    }
+  }, [userData]);
 
   useEffect(() => {
     if (user && originalUser) {
@@ -238,48 +222,32 @@ export default function UserProfilePage() {
     if (!user) return;
     const newParts = { ...phoneParts, [part]: value };
     setPhoneParts(newParts);
-    setUser(prevUser => prevUser ? ({
-      ...prevUser,
-      phone: `${newParts.countryCode} ${newParts.number}`.trim()
-    }) : null);
+    setUser(prevUser => prevUser ? ({ ...prevUser, phone: `${newParts.countryCode} ${newParts.number}`.trim() }) : null);
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     if (!user) return;
     const { name, value } = e.target;
-    if (name.includes('.')) {
-      const [section, key] = name.split('.');
-      setUser(prevUser => prevUser ? ({
-        ...prevUser,
-        [section]: {
-          ...(prevUser[section as keyof User] as object),
-          [key]: value
-        }
-      }) : null);
+    const [section, key] = name.split('.');
+    if (key) {
+      setUser(prevUser => prevUser ? ({ ...prevUser, [section]: { ...(prevUser[section as keyof User] as object), [key]: value } }) : null);
     } else {
       setUser(prevUser => prevUser ? ({ ...prevUser, [name]: value }) : null);
     }
   };
+  
+  const handleToggleChange = (name: keyof User, value: boolean) => {
+    setUser(prev => prev ? ({ ...prev, [name]: value }) : null);
+  };
 
   const handleAvailabilityChange = (day: string, field: 'enabled' | 'startTime' | 'endTime', value: boolean | string) => {
-    setUser(prev => prev ? ({
-      ...prev,
-      availability: {
-        ...prev.availability,
-        [day]: {
-          ...prev.availability[day],
-          [field]: value,
-        }
-      }
-    }) : null);
+    setUser(prev => prev ? ({ ...prev, availability: { ...prev.availability, [day]: { ...prev.availability[day], [field]: value } } }) : null);
   };
   
   const togglePh = (ph: number) => {
     setUser(prevUser => {
         if (!prevUser) return null;
-        const newPhLevels = prevUser.phLevels.includes(ph)
-            ? prevUser.phLevels.filter(p => p !== ph)
-            : [...prevUser.phLevels, ph];
+        const newPhLevels = prevUser.phLevels.includes(ph) ? prevUser.phLevels.filter(p => p !== ph) : [...prevUser.phLevels, ph];
         newPhLevels.sort((a, b) => a - b);
         return { ...prevUser, phLevels: newPhLevels };
     });
@@ -288,37 +256,37 @@ export default function UserProfilePage() {
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-       if (!file.type.startsWith('image/')) {
-          alert('Please select an image file.');
-          return;
-       }
+      if (!file.type.startsWith('image/')) { alert('Please select an image file.'); return; }
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setImageToCrop(reader.result as string);
-      };
+      reader.onloadend = () => { setImageToCrop(reader.result as string); };
       reader.readAsDataURL(file);
     }
   };
 
-  const handleCropComplete = (croppedImage: string) => {
-    setPreviewImage(croppedImage);
-    setUser(prev => prev ? ({ ...prev, profilePicture: croppedImage }) : null);
-    setImageToCrop(null); // Close modal
-  };
-
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleCropComplete = async (croppedImage: string) => {
     if (!user) return;
     setIsSaving(true);
-    const updatedUser = await api.updateCurrentUser(user);
-    setUser(updatedUser);
-    setOriginalUser(updatedUser);
+    const downloadURL = await api.uploadProfilePicture(user.id, croppedImage);
+    const updatedUser = { ...user, profilePicture: downloadURL };
+    await handleSave(undefined, updatedUser); // Save with new image URL
+    setImageToCrop(null); // Close modal
     setIsSaving(false);
-    alert('Profile saved!');
   };
 
-  const handleLogout = () => {
-    logout();
+  const handleSave = async (e?: React.FormEvent, userToSave?: User) => {
+    e?.preventDefault();
+    const finalUser = userToSave || user;
+    if (!finalUser) return;
+    setIsSaving(true);
+    await api.updateUser(finalUser.id, finalUser);
+    setUserData(finalUser); // Update global context
+    setOriginalUser(JSON.parse(JSON.stringify(finalUser)));
+    setIsSaving(false);
+    if (e) alert('Profile saved!');
+  };
+
+  const handleLogout = async () => {
+    await logout();
     navigate('/');
   };
 
@@ -330,7 +298,7 @@ export default function UserProfilePage() {
     }
   };
   
-  if (loading || !user) {
+  if (!user) {
     return (
         <div className="flex justify-center items-center h-screen bg-gray-50 dark:bg-gray-900">
             <SpinnerIcon className="w-10 h-10 text-brand-blue animate-spin" />
@@ -346,9 +314,7 @@ export default function UserProfilePage() {
         </button>
         <h1 className="text-xl font-bold flex-1 text-center dark:text-gray-100">Edit Profile</h1>
         <button 
-          type="submit"
-          form="user-profile-form"
-          disabled={!isDirty || isSaving}
+          type="submit" form="user-profile-form" disabled={!isDirty || isSaving}
           className="font-semibold text-brand-blue disabled:text-gray-400 dark:disabled:text-gray-500 transition-colors px-4 w-16"
         >
           {isSaving ? <SpinnerIcon className="w-5 h-5 animate-spin mx-auto" /> : "Save"}
@@ -359,7 +325,7 @@ export default function UserProfilePage() {
         <form id="user-profile-form" onSubmit={handleSave} className="space-y-6">
             <div className="flex flex-col items-center">
                 <div className="relative w-32 h-32 mb-2">
-                    <img src={previewImage || 'https://via.placeholder.com/128'} alt="Profile" className="w-full h-full rounded-full object-cover shadow-md border-4 border-white dark:border-gray-800" />
+                    <img src={user.profilePicture || 'https://via.placeholder.com/128'} alt="Profile" className="w-full h-full rounded-full object-cover shadow-md border-4 border-white dark:border-gray-800" />
                     <label htmlFor="photo-upload" className="absolute bottom-1 right-1 bg-white dark:bg-gray-600 p-2 rounded-full shadow-md cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-500 transition">
                     <CameraIcon className="w-6 h-6 text-gray-700 dark:text-gray-200" />
                     <input id="photo-upload" type="file" accept="image/*" className="hidden" onChange={handlePhotoChange} />
@@ -383,22 +349,13 @@ export default function UserProfilePage() {
                 <label htmlFor="phone" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Phone</label>
                 <div className="flex items-center gap-2">
                     <select 
-                        name="countryCode"
-                        value={phoneParts.countryCode}
-                        onChange={(e) => handlePhoneChange('countryCode', e.target.value)}
+                        name="countryCode" value={phoneParts.countryCode} onChange={(e) => handlePhoneChange('countryCode', e.target.value)}
                         className="p-3 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 rounded-lg focus:ring-2 focus:ring-brand-blue focus:border-transparent outline-none transition"
                     >
-                        {COUNTRIES.map((country) => (
-                            <option key={country.name} value={country.code}>
-                                {country.flag} {country.code}
-                            </option>
-                        ))}
+                        {COUNTRIES.map((c) => (<option key={c.name} value={c.code}>{c.flag} {c.code}</option>))}
                     </select>
                     <input
-                        id="phone"
-                        type="tel"
-                        value={phoneParts.number}
-                        onChange={(e) => handlePhoneChange('number', e.target.value)}
+                        id="phone" type="tel" value={phoneParts.number} onChange={(e) => handlePhoneChange('number', e.target.value)}
                         placeholder="(555) 123-4567"
                         className="w-full p-3 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-lg focus:ring-2 focus:ring-brand-blue focus:border-transparent outline-none transition flex-1"
                     />
@@ -408,46 +365,52 @@ export default function UserProfilePage() {
             </FormSection>
 
             <FormSection title="Host Settings">
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Water Available (pH)</label>
-                    <div className="flex flex-wrap gap-2">
-                        {ALL_PH_LEVELS.map(ph => (
-                            <button key={ph} type="button" onClick={() => togglePh(ph)} className={`px-4 py-2 rounded-full font-semibold transition text-sm ${user.phLevels.includes(ph) ? 'bg-brand-blue text-white' : 'bg-gray-200 dark:bg-gray-600 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-500'}`}>
-                                {ph.toFixed(1)}
-                            </button>
-                        ))}
-                    </div>
+                <div className="flex justify-between items-center">
+                  <span className="font-semibold text-gray-800 dark:text-gray-200">Are you available to host?</span>
+                  <Toggle checked={user.isHost} onChange={(checked) => handleToggleChange('isHost', checked)} />
                 </div>
-                <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Pickup Availability</label>
-                <div className="space-y-3">
-                    {DAYS_OF_WEEK.map(day => (
-                    <div key={day} className="space-y-2">
-                        <div className="flex items-center justify-between">
-                        <span className="font-semibold text-gray-800 dark:text-gray-200">{day}</span>
-                        <Toggle 
-                            checked={user.availability[day]?.enabled || false}
-                            onChange={(checked) => handleAvailabilityChange(day, 'enabled', checked)}
-                        />
-                        </div>
-                        {user.availability[day]?.enabled && (
-                        <div className="grid grid-cols-2 gap-3 pl-4">
-                            <div>
-                            <label className="text-xs text-gray-500 dark:text-gray-400">From</label>
-                            <input type="time" value={user.availability[day].startTime} onChange={(e) => handleAvailabilityChange(day, 'startTime', e.target.value)} className="w-full p-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-md text-sm focus:ring-1 focus:ring-brand-blue focus:border-transparent outline-none"/>
-                            </div>
-                            <div>
-                            <label className="text-xs text-gray-500 dark:text-gray-400">To</label>
-                            <input type="time" value={user.availability[day].endTime} onChange={(e) => handleAvailabilityChange(day, 'endTime', e.target.value)} className="w-full p-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-md text-sm focus:ring-1 focus:ring-brand-blue focus:border-transparent outline-none"/>
-                            </div>
-                        </div>
-                        )}
-                    </div>
-                    ))}
-                </div>
-                </div>
-                <InputField label="Last Filter Change" id="maintenance.lastFilterChange" name="maintenance.lastFilterChange" type="date" value={user.maintenance.lastFilterChange} onChange={handleInputChange} />
-                <InputField label="Last E-Cleaning" id="maintenance.lastECleaning" name="maintenance.lastECleaning" type="date" value={user.maintenance.lastECleaning} onChange={handleInputChange} />
+                {user.isHost && (<>
+                  <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Water Available (pH)</label>
+                      <div className="flex flex-wrap gap-2">
+                          {ALL_PH_LEVELS.map(ph => (
+                              <button key={ph} type="button" onClick={() => togglePh(ph)} className={`px-4 py-2 rounded-full font-semibold transition text-sm ${user.phLevels.includes(ph) ? 'bg-brand-blue text-white' : 'bg-gray-200 dark:bg-gray-600 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-500'}`}>
+                                  {ph.toFixed(1)}
+                              </button>
+                          ))}
+                      </div>
+                  </div>
+                  <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Pickup Availability</label>
+                  <div className="space-y-3">
+                      {DAYS_OF_WEEK.map(day => (
+                      <div key={day} className="space-y-2">
+                          <div className="flex items-center justify-between">
+                          <span className="font-semibold text-gray-800 dark:text-gray-200">{day}</span>
+                          <Toggle 
+                              checked={user.availability[day]?.enabled || false}
+                              onChange={(checked) => handleAvailabilityChange(day, 'enabled', checked)}
+                          />
+                          </div>
+                          {user.availability[day]?.enabled && (
+                          <div className="grid grid-cols-2 gap-3 pl-4">
+                              <div>
+                              <label className="text-xs text-gray-500 dark:text-gray-400">From</label>
+                              <input type="time" value={user.availability[day].startTime} onChange={(e) => handleAvailabilityChange(day, 'startTime', e.target.value)} className="w-full p-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-md text-sm focus:ring-1 focus:ring-brand-blue focus:border-transparent outline-none"/>
+                              </div>
+                              <div>
+                              <label className="text-xs text-gray-500 dark:text-gray-400">To</label>
+                              <input type="time" value={user.availability[day].endTime} onChange={(e) => handleAvailabilityChange(day, 'endTime', e.target.value)} className="w-full p-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-md text-sm focus:ring-1 focus:ring-brand-blue focus:border-transparent outline-none"/>
+                              </div>
+                          </div>
+                          )}
+                      </div>
+                      ))}
+                  </div>
+                  </div>
+                  <InputField label="Last Filter Change" id="maintenance.lastFilterChange" name="maintenance.lastFilterChange" type="date" value={user.maintenance.lastFilterChange} onChange={handleInputChange} />
+                  <InputField label="Last E-Cleaning" id="maintenance.lastECleaning" name="maintenance.lastECleaning" type="date" value={user.maintenance.lastECleaning} onChange={handleInputChange} />
+                </>)}
             </FormSection>
 
             <FormSection title="Address">
@@ -464,11 +427,7 @@ export default function UserProfilePage() {
             <div className="flex justify-between items-center">
                 <label htmlFor="dark-mode-toggle" className="font-medium text-gray-700 dark:text-gray-300">Dark Mode</label>
                 <button
-                    id="dark-mode-toggle"
-                    type="button"
-                    role="switch"
-                    aria-checked={theme === 'dark'}
-                    onClick={toggleTheme}
+                    id="dark-mode-toggle" type="button" role="switch" aria-checked={theme === 'dark'} onClick={toggleTheme}
                     className={`relative inline-flex items-center h-8 w-14 rounded-full transition-colors bg-gray-200 dark:bg-gray-700`}
                 >
                     <span className="sr-only">Toggle Dark Mode</span>

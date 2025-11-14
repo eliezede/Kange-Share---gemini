@@ -2,15 +2,16 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import * as api from '../api';
 import { ChevronLeftIcon, PaperAirplaneIcon, SpinnerIcon } from '../components/Icons';
-import { Message, WaterRequest, Host, User } from '../types';
+import { Message, WaterRequest, User } from '../types';
+import { useAuth } from '../App';
 
 export default function ChatPage() {
   const { requestId } = useParams<{ requestId: string }>();
   const navigate = useNavigate();
+  const { userData: currentUser } = useAuth();
   
   const [request, setRequest] = useState<WaterRequest | null>(null);
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [otherParty, setOtherParty] = useState<User | Host | null>(null);
+  const [otherParty, setOtherParty] = useState<User | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -22,7 +23,9 @@ export default function ChatPage() {
   };
 
   useEffect(() => {
-    if (!requestId) return;
+    if (!requestId || !currentUser) return;
+
+    let unsubscribe: () => void;
 
     const fetchData = async () => {
         setLoading(true);
@@ -32,40 +35,36 @@ export default function ChatPage() {
             return;
         }
 
-        const [currentUserData, messagesData] = await Promise.all([
-            api.getCurrentUser(),
-            api.getMessages(requestId)
-        ]);
-
-        const isUserHost = reqData.hostId === currentUserData.id;
+        const isUserHost = reqData.hostId === currentUser.id;
         const otherPartyId = isUserHost ? reqData.requesterId : reqData.hostId;
         const otherPartyData = await api.getUserById(otherPartyId);
 
         setRequest(reqData);
-        setCurrentUser(currentUserData);
         setOtherParty(otherPartyData || null);
-        setMessages(messagesData);
+        
+        unsubscribe = api.getMessagesStream(requestId, (newMessages) => {
+            setMessages(newMessages);
+        });
+        
         setLoading(false);
     };
 
     fetchData();
-  }, [requestId]);
+
+    return () => {
+        if (unsubscribe) {
+            unsubscribe();
+        }
+    };
+  }, [requestId, currentUser]);
 
   useEffect(scrollToBottom, [messages]);
 
   const handleSend = async () => {
-    if (newMessage.trim() && requestId) {
+    if (newMessage.trim() && requestId && currentUser) {
       const text = newMessage;
       setNewMessage('');
-
-      const sentMessage = await api.sendMessage(requestId, text, 'user');
-      setMessages(prev => [...prev, sentMessage]);
-
-      // Mock host reply
-      setTimeout(async () => {
-        const reply = await api.sendMessage(requestId, 'Sounds good!', 'host');
-        setMessages(prev => [...prev, reply]);
-      }, 1500);
+      await api.sendMessage(requestId, text, currentUser.id);
     }
   };
 
@@ -88,8 +87,6 @@ export default function ChatPage() {
   }
   
   const isUserHost = request.hostId === currentUser.id;
-  const otherPartyName = otherParty.name;
-  const otherPartyImage = 'image' in otherParty ? otherParty.image : otherParty.profilePicture;
 
   return (
     <div className="flex flex-col h-screen">
@@ -104,17 +101,17 @@ export default function ChatPage() {
           <ChevronLeftIcon className="w-6 h-6 text-gray-800 dark:text-gray-200" />
         </button>
         <div className="flex items-center mx-auto">
-          <img src={otherPartyImage} alt={otherPartyName} className="w-9 h-9 rounded-full object-cover" />
-          <span className="ml-3 font-bold text-lg dark:text-gray-100">{otherPartyName}</span>
+          <img src={otherParty.profilePicture} alt={otherParty.name} className="w-9 h-9 rounded-full object-cover" />
+          <span className="ml-3 font-bold text-lg dark:text-gray-100">{otherParty.name}</span>
         </div>
         <div className="w-6"></div>
       </header>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.map((msg) => (
-          <div key={msg.id} className={`flex items-end gap-2 ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
-            {msg.sender === 'host' && <img src={otherPartyImage} alt={otherPartyName} className="w-6 h-6 rounded-full" />}
-            <div className={`max-w-xs md:max-w-md px-4 py-2 rounded-2xl ${msg.sender === 'user' ? 'bg-brand-blue text-white rounded-br-lg' : 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-bl-lg'}`}>
+          <div key={msg.id} className={`flex items-end gap-2 ${msg.sender === currentUser.id ? 'justify-end' : 'justify-start'}`}>
+            {msg.sender !== currentUser.id && <img src={otherParty.profilePicture} alt={otherParty.name} className="w-6 h-6 rounded-full" />}
+            <div className={`max-w-xs md:max-w-md px-4 py-2 rounded-2xl ${msg.sender === currentUser.id ? 'bg-brand-blue text-white rounded-br-lg' : 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-bl-lg'}`}>
               <p>{msg.text}</p>
             </div>
           </div>

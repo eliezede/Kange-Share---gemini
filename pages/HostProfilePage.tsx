@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import * as api from '../api';
 import { StarIcon, ChevronLeftIcon, CheckBadgeIcon, MapPinIcon, ChatBubbleOvalLeftEllipsisIcon, SpinnerIcon } from '../components/Icons';
-import { Review, Host, User } from '../types';
+import { Review, User } from '../types';
+import { useAuth } from '../App';
 
 const RatingStars: React.FC<{ rating: number; className?: string }> = ({ rating, className = 'w-5 h-5' }) => (
     <div className="flex items-center">
@@ -34,22 +35,23 @@ const ReviewCard: React.FC<{ review: Review }> = ({ review }) => (
 export default function HostProfilePage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [host, setHost] = useState<Host | null>(null);
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const { userData: currentUser, setUserData } = useAuth();
+  const [host, setHost] = useState<User | null>(null);
+  const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!id) return;
     const fetchData = async () => {
         setLoading(true);
-        const [hostData, userData] = await Promise.all([
-            api.getHostById(id),
-            api.getCurrentUser()
+        const [hostData, reviewsData] = await Promise.all([
+            api.getUserById(id),
+            api.getReviewsForHost(id)
         ]);
         if (hostData) {
             setHost(hostData);
         }
-        setCurrentUser(userData);
+        setReviews(reviewsData);
         setLoading(false);
     };
     fetchData();
@@ -57,32 +59,51 @@ export default function HostProfilePage() {
   
   const handleFollowToggle = async () => {
     if (!host || !currentUser) return;
-    await api.toggleFollowHost(host.id);
-    // Re-fetch both to get updated follower/following counts
+
+    // The state *before* the toggle
+    const isFollowing = currentUser.following?.includes(host.id);
+
+    // Optimistically update UI state immediately
+    setUserData(prev => {
+        if (!prev) return null;
+        const following = prev.following || [];
+        return {
+            ...prev,
+            following: isFollowing
+                ? following.filter(id => id !== host.id)
+                : [...following, host.id],
+        };
+    });
+    setHost(prev => {
+        if (!prev) return null;
+        const followers = prev.followers || [];
+        return {
+            ...prev,
+            followers: isFollowing
+                ? followers.filter(id => id !== currentUser.id)
+                : [...followers, currentUser.id],
+        };
+    });
+    
+    // Now, make the API call to persist the change.
+    await api.toggleFollowHost(currentUser.id, host.id);
+    
+    // Re-fetch from the source of truth to ensure UI is consistent
     const [updatedHost, updatedUser] = await Promise.all([
-        api.getHostById(host.id),
-        api.getCurrentUser()
+        api.getUserById(host.id),
+        api.getUserById(currentUser.id)
     ]);
     if (updatedHost) setHost(updatedHost);
-    setCurrentUser(updatedUser);
+    if (updatedUser) setUserData(updatedUser);
   };
   
   const handleSendMessage = async () => {
     if (!host || !currentUser) return;
 
-    // This logic is simplified; in a real app, you'd have a more robust way to find existing chats
-    const allRequests = await api.getAllRequests();
-    const existingRequest = allRequests.find(r => 
-        r.hostId === host.id && r.requesterId === currentUser.id
-    );
-
-    if (existingRequest) {
-        navigate(`/chat/${existingRequest.id}`);
-        return;
-    }
-
-    const newChatRequest = await api.createNewChat(host.id, currentUser.id);
-    navigate(`/chat/${newChatRequest.id}`);
+    // A more robust chat existence check would be a direct query. This is simplified.
+    // For now, we'll just create a new chat request.
+    const newChatId = await api.createNewChat(host.id, currentUser.id, host, currentUser);
+    navigate(`/chat/${newChatId}`);
   };
 
   if (loading) {
@@ -98,11 +119,10 @@ export default function HostProfilePage() {
   }
   
   if (!currentUser) {
-    // This should ideally not happen if the user is authenticated
     return <div className="p-4 text-center dark:text-gray-300">Could not load user data.</div>;
   }
 
-  const isFollowing = currentUser.following.includes(host.id);
+  const isFollowing = currentUser.following?.includes(host.id);
   
   const availableDays = Object.entries(host.availability)
     .filter(([, details]) => details.enabled)
@@ -127,7 +147,7 @@ export default function HostProfilePage() {
       
       <div className="p-6">
         <div className="flex items-start mb-4">
-          <img src={host.image} alt={host.name} className="w-20 h-20 rounded-full object-cover border-4 border-white dark:border-gray-900 -mt-16 shadow-lg" />
+          <img src={host.profilePicture} alt={host.name} className="w-20 h-20 rounded-full object-cover border-4 border-white dark:border-gray-900 -mt-16 shadow-lg" />
           <div className="ml-4 mt-1 flex-1">
             <div className="flex items-center gap-2">
                 <h1 className="text-3xl font-bold dark:text-white">{host.name}</h1>
@@ -206,16 +226,16 @@ export default function HostProfilePage() {
           <div>
             <h2 className="text-xl font-semibold mb-3 dark:text-gray-100">Machine Maintenance</h2>
             <div className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-4 rounded-lg space-y-1 text-gray-800 dark:text-gray-300">
-                <p><span className="font-semibold dark:text-gray-200">Last Filter Change:</span> {new Date(host.maintenance.lastFilterChange).toLocaleDateString()}</p>
-                <p><span className="font-semibold dark:text-gray-200">Last E-Cleaning:</span> {new Date(host.maintenance.lastECleaning).toLocaleDateString()}</p>
+                <p><span className="font-semibold dark:text-gray-200">Last Filter Change:</span> {host.maintenance.lastFilterChange ? new Date(host.maintenance.lastFilterChange).toLocaleDateString() : 'N/A'}</p>
+                <p><span className="font-semibold dark:text-gray-200">Last E-Cleaning:</span> {host.maintenance.lastECleaning ? new Date(host.maintenance.lastECleaning).toLocaleDateString() : 'N/A'}</p>
             </div>
           </div>
           
           <div>
-            <h2 className="text-xl font-semibold mb-3 dark:text-gray-100">Reviews ({host.fullReviews.length})</h2>
+            <h2 className="text-xl font-semibold mb-3 dark:text-gray-100">Reviews ({reviews.length})</h2>
             <div className="space-y-4">
-              {host.fullReviews.length > 0 ? (
-                host.fullReviews.map(review => <ReviewCard key={review.id} review={review} />)
+              {reviews.length > 0 ? (
+                reviews.map(review => <ReviewCard key={review.id} review={review} />)
               ) : (
                 <p className="text-gray-500 dark:text-gray-400">No reviews yet.</p>
               )}

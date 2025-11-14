@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate, Navigate } from 'react-router-dom';
 import * as api from '../api';
-// FIX: Import 'User' type to resolve reference error.
-import { Host, User } from '../types';
+import { User } from '../types';
 import { useAuth } from '../App';
 import { SpinnerIcon } from '../components/Icons';
 
@@ -36,22 +35,21 @@ const Toggle: React.FC<{ checked: boolean; onChange: (checked: boolean) => void 
 export default function OnboardingPage() {
     const navigate = useNavigate();
     const location = useLocation();
-    const { login } = useAuth();
+    const { loginWithEmail } = useAuth();
     
-    const { userId } = location.state || {};
-    const [user, setUser] = useState<Partial<Host> | null>(null);
+    const { userId, email, password } = location.state || {};
+    const [user, setUser] = useState<Partial<User> | null>(null);
     const [loading, setLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
     const [showHostSettings, setShowHostSettings] = useState(false);
 
-    const ALL_PH_LEVELS = [2.5, 8.5, 9.0, 9.5, 11.5];
     const DAYS_OF_WEEK = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
     useEffect(() => {
         if (userId) {
             api.getUserById(userId).then(userData => {
                 if (userData) {
-                    setUser(userData as Host);
+                    setUser(userData);
                 }
                 setLoading(false);
             });
@@ -65,7 +63,7 @@ export default function OnboardingPage() {
         const { name, value } = e.target;
         if (name.includes('.')) {
             const [section, key] = name.split('.');
-            setUser(prev => prev ? ({ ...prev, [section]: { ...(prev[section as keyof Host] as object), [key]: value } }) : null);
+            setUser(prev => prev ? ({ ...prev, [section]: { ...(prev[section as keyof User] as object), [key]: value } }) : null);
         } else {
             setUser(prev => prev ? ({ ...prev, [name]: value }) : null);
         }
@@ -89,14 +87,17 @@ export default function OnboardingPage() {
         if (!userId || !user) return;
 
         setIsSaving(true);
-        await api.updateUser(userId, user);
+        await api.updateUser(userId, {
+            ...user,
+            isHost: showHostSettings
+        });
         
-        // This is a mock login. In a real app, you'd handle sessions properly.
-        // We use a dummy email because the user object might not have one yet.
-        login('newuser@kangen.share'); 
+        // Log the user in after they complete onboarding
+        if (email && password) {
+            await loginWithEmail(email, password);
+        }
         
-        setIsSaving(false);
-        navigate('/map');
+        // The auth provider will redirect to /map
     };
 
     if (loading) {
@@ -123,7 +124,7 @@ export default function OnboardingPage() {
                 <form id="onboarding-form" onSubmit={handleSave} className="space-y-6">
                     <FormSection title="Personal Info">
                         <InputField label="Full Name" id="name" name="name" value={user.name || ''} onChange={handleInputChange} required />
-                        <InputField label="Phone" id="phone" name="phone" type="tel" value={(user as User).phone || ''} onChange={handleInputChange} required />
+                        <InputField label="Phone" id="phone" name="phone" type="tel" value={user.phone || ''} onChange={handleInputChange} required />
                     </FormSection>
                     
                     <FormSection title="Your Location">
@@ -133,7 +134,7 @@ export default function OnboardingPage() {
                     </FormSection>
 
                     {showHostSettings ? (
-                        <FormSection title="Host Settings (Optional)">
+                        <FormSection title="Host Settings">
                              <div>
                                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Pickup Availability</label>
                                 <div className="space-y-3">

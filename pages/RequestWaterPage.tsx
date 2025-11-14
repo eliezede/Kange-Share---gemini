@@ -2,7 +2,8 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import * as api from '../api';
 import { ChevronLeftIcon, SpinnerIcon } from '../components/Icons';
-import { Host } from '../types';
+import { User } from '../types';
+import { useAuth } from '../App';
 
 const LITER_OPTIONS = [1, 2, 5, 10];
 
@@ -22,7 +23,8 @@ const generateTimeSlots = (start: string, end: string, intervalMinutes: number):
 export default function RequestWaterPage() {
   const { hostId } = useParams<{ hostId: string }>();
   const navigate = useNavigate();
-  const [host, setHost] = useState<Host | null>(null);
+  const { userData: currentUser } = useAuth();
+  const [host, setHost] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
   const today = new Date().toISOString().split('T')[0];
@@ -35,7 +37,7 @@ export default function RequestWaterPage() {
 
   useEffect(() => {
     if (hostId) {
-      api.getHostById(hostId).then(hostData => {
+      api.getUserById(hostId).then(hostData => {
         if (hostData) {
           setHost(hostData);
           setSelectedPh(hostData.phLevels[0] || null);
@@ -56,13 +58,12 @@ export default function RequestWaterPage() {
   }, [host, selectedDate]);
   
   const handleConfirm = async () => {
-    if (!hostId || !selectedPh || !selectedTime) {
+    if (!hostId || !selectedPh || !selectedTime || !currentUser || !host) {
       alert('Please fill out all fields.');
       return;
     }
     
     setIsSubmitting(true);
-    const currentUser = await api.getCurrentUser();
 
     await api.createRequest({
         requesterId: currentUser.id,
@@ -73,6 +74,10 @@ export default function RequestWaterPage() {
         pickupDate: selectedDate,
         pickupTime: selectedTime,
         notes,
+        requesterName: currentUser.name,
+        requesterImage: currentUser.profilePicture,
+        hostName: host.name,
+        hostImage: host.profilePicture,
     });
     
     setIsSubmitting(false);

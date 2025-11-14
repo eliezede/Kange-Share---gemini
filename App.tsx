@@ -1,5 +1,10 @@
 import React, { useState, useContext, createContext, useCallback, useEffect } from 'react';
 import { HashRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
+// Centralize Firebase imports to resolve initialization errors.
+import { firebase, auth } from './firebase';
+import * as api from './api';
+import { User } from './types';
+
 import LoginModal from './pages/LoginPage';
 import MapPage from './pages/MapPage';
 import HostProfilePage from './pages/HostProfilePage';
@@ -17,8 +22,13 @@ import AdminPage from './pages/AdminPage';
 import SignUpPage from './pages/SignUpPage';
 import VerifyEmailPage from './pages/VerifyEmailPage';
 import OnboardingPage from './pages/OnboardingPage';
+import { SpinnerIcon } from './components/Icons';
 
 type Theme = 'light' | 'dark';
+
+// Use the imported firebase namespace for types.
+// FIX: Changed firebase.User to the more explicit firebase.auth.User to resolve the type error.
+type FirebaseUser = firebase.auth.User;
 
 interface ThemeContextType {
   theme: Theme;
@@ -69,12 +79,17 @@ const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) =>
 };
 
 interface AuthContextType {
+  user: FirebaseUser | null;
+  userData: User | null;
   isAuthenticated: boolean;
   isLoginModalOpen: boolean;
-  login: (email: string) => void;
-  logout: () => void;
+  loginWithEmail: typeof api.loginWithEmail;
+  loginWithGoogle: typeof api.loginWithGoogle;
+  signUpWithEmail: typeof api.signUpWithEmail;
+  logout: typeof api.logout;
   openLoginModal: () => void;
   closeLoginModal: () => void;
+  setUserData: React.Dispatch<React.SetStateAction<User | null>>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -87,27 +102,104 @@ export const useAuth = () => {
   return context;
 };
 
-const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isLoginModalOpen, setLoginModalOpen] = useState(false);
+const defaultAvailability = {
+  'Monday': { enabled: false, startTime: '09:00', endTime: '17:00' },
+  'Tuesday': { enabled: false, startTime: '09:00', endTime: '17:00' },
+  'Wednesday': { enabled: false, startTime: '09:00', endTime: '17:00' },
+  'Thursday': { enabled: false, startTime: '09:00', endTime: '17:00' },
+  'Friday': { enabled: false, startTime: '09:00', endTime: '17:00' },
+  'Saturday': { enabled: false, startTime: '10:00', endTime: '14:00' },
+  'Sunday': { enabled: false, startTime: '10:00', endTime: '14:00' },
+};
 
-  const login = useCallback((email: string) => {
-    if (email) {
-        setIsAuthenticated(true);
-        setLoginModalOpen(false); // Close modal on successful login
+const sanitizeUser = (user: User | null): User | null => {
+    if (!user) return null;
+
+    // Perform a deep merge for availability to ensure all days and their properties exist
+    const mergedAvailability = { ...defaultAvailability };
+    if (user.availability && typeof user.availability === 'object') {
+        for (const day of Object.keys(mergedAvailability)) {
+            if (user.availability[day]) {
+                mergedAvailability[day] = { ...mergedAvailability[day], ...user.availability[day] };
+            }
+        }
     }
+
+    return {
+        ...user,
+        followers: user.followers || [],
+        following: user.following || [],
+        phLevels: user.phLevels || [],
+        availability: mergedAvailability,
+        phone: user.phone || '',
+        address: user.address || { street: '', number: '', postalCode: '', city: '', country: '' },
+        maintenance: user.maintenance || { lastFilterChange: '', lastECleaning: '' },
+    };
+};
+
+const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [user, setUser] = useState<FirebaseUser | null>(null);
+  const [userData, setUserDataInternal] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [isLoginModalOpen, setLoginModalOpen] = useState(false);
+  
+  const setUserData = useCallback((value: React.SetStateAction<User | null>) => {
+      if (typeof value === 'function') {
+          setUserDataInternal(prev => sanitizeUser(value(prev)));
+      } else {
+          setUserDataInternal(sanitizeUser(value));
+      }
   }, []);
 
-  const logout = useCallback(() => {
-    setIsAuthenticated(false);
-  }, []);
+  useEffect(() => {
+    const unsubscribe = auth.onAuthStateChanged(async (firebaseUser) => {
+      setLoading(true);
+      if (firebaseUser) {
+        setUser(firebaseUser);
+        const dbUser = await api.getUserById(firebaseUser.uid);
+        if (dbUser) {
+            setUserData(dbUser);
+        } else {
+            // This case might happen if user is created in Auth but not in Firestore yet (e.g., during signup).
+            // The onboarding flow should handle creating the Firestore doc.
+            setUserData(null);
+        }
+      } else {
+        setUser(null);
+        setUserData(null);
+      }
+      setLoading(false);
+    });
+    return () => unsubscribe();
+  }, [setUserData]);
 
   const openLoginModal = useCallback(() => setLoginModalOpen(true), []);
   const closeLoginModal = useCallback(() => setLoginModalOpen(false), []);
 
+  const value: AuthContextType = {
+    user,
+    userData,
+    isAuthenticated: !!user,
+    isLoginModalOpen,
+    loginWithEmail: (email, password) => api.loginWithEmail(email, password).then(res => { closeLoginModal(); return res; }),
+    loginWithGoogle: () => api.loginWithGoogle().then(res => { closeLoginModal(); return res; }),
+    signUpWithEmail: api.signUpWithEmail,
+    logout: api.logout,
+    openLoginModal,
+    closeLoginModal,
+    setUserData,
+  };
+  
+   if (loading) {
+    return (
+      <div className="w-full h-screen flex justify-center items-center bg-gray-50 dark:bg-gray-950">
+        <SpinnerIcon className="w-12 h-12 text-brand-blue animate-spin" />
+      </div>
+    );
+  }
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, login, logout, isLoginModalOpen, openLoginModal, closeLoginModal }}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );
@@ -123,7 +215,6 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
     }, [isAuthenticated, openLoginModal]);
 
     if (!isAuthenticated) {
-      // Render a blank page while the modal is active
       return <div className="w-full h-screen bg-gray-50 dark:bg-gray-950" />;
     }
     return <>{children}</>;
@@ -146,20 +237,16 @@ const AppRoutes = () => {
         <Route path="/" element={!isAuthenticated ? <LandingPage /> : <Navigate to="/map" />} />
         <Route path="/signup" element={<SignUpPage />} />
         <Route path="/verify-email" element={<VerifyEmailPage />} />
+        
+        {/* Onboarding is protected in a sense that it needs a userId, but user is not fully auth'd yet */}
         <Route path="/onboarding" element={<OnboardingPage />} />
         
         {/* Protected Routes */}
-        <Route path="/map" element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
-          <Route index element={<MapPage />} />
-        </Route>
-         <Route path="/requests" element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
-          <Route index element={<RequestsPage />} />
-        </Route>
-         <Route path="/messages" element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
-          <Route index element={<MessagesPage />} />
-        </Route>
-         <Route path="/profile" element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
-          <Route index element={<UserProfilePage />} />
+        <Route element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
+          <Route path="/map" element={<MapPage />} />
+          <Route path="/requests" element={<RequestsPage />} />
+          <Route path="/messages" element={<MessagesPage />} />
+          <Route path="/profile" element={<UserProfilePage />} />
         </Route>
         
         <Route path="/host/:id" element={<ProtectedRoute><HostProfilePage /></ProtectedRoute>} />

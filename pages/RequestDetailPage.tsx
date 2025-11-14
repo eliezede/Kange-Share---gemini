@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import * as api from '../api';
-import { WaterRequest, Host, RequestStatus, User } from '../types';
+import { WaterRequest, RequestStatus, User } from '../types';
 import { ChevronLeftIcon, DropletIcon, CalendarDaysIcon, ClockIcon, ChatBubbleOvalLeftEllipsisIcon, SpinnerIcon } from '../components/Icons';
+import { useAuth } from '../App';
 
 const StatusBadge: React.FC<{ status: RequestStatus }> = ({ status }) => {
     const statusInfo: Record<RequestStatus, { className: string; text: string }> = {
@@ -34,11 +35,11 @@ const DetailItem: React.FC<{ icon: React.ReactNode; label: string; value: string
 export default function RequestDetailPage() {
     const { requestId } = useParams<{ requestId: string }>();
     const navigate = useNavigate();
+    const { userData: currentUser } = useAuth();
     
     const [request, setRequest] = useState<WaterRequest | null>(null);
-    const [currentUser, setCurrentUser] = useState<User | null>(null);
-    const [host, setHost] = useState<Host | null>(null);
-    const [requester, setRequester] = useState<User | Host | null>(null);
+    const [host, setHost] = useState<User | null>(null);
+    const [requester, setRequester] = useState<User | null>(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -50,14 +51,12 @@ export default function RequestDetailPage() {
                 setLoading(false);
                 return;
             }
-            const [currentUserData, hostData, requesterData] = await Promise.all([
-                api.getCurrentUser(),
+            const [hostData, requesterData] = await Promise.all([
                 api.getUserById(reqData.hostId),
                 api.getUserById(reqData.requesterId)
             ]);
             setRequest(reqData);
-            setCurrentUser(currentUserData);
-            setHost(hostData as Host);
+            setHost(hostData);
             setRequester(requesterData);
             setLoading(false);
         };
@@ -66,9 +65,9 @@ export default function RequestDetailPage() {
 
     const updateRequestStatus = async (newStatus: RequestStatus) => {
         if (!requestId) return;
-        const updatedRequest = await api.updateRequestStatus(requestId, newStatus);
-        if (updatedRequest) {
-            setRequest(updatedRequest);
+        await api.updateRequestStatus(requestId, newStatus);
+        if(request) {
+            setRequest({ ...request, status: newStatus });
         }
     };
     
@@ -93,7 +92,6 @@ export default function RequestDetailPage() {
     const canCancel = request.status === 'pending' || request.status === 'accepted';
 
     const otherParty = isUserTheHost ? requester : host;
-    const otherPartyImage = 'image' in otherParty ? otherParty.image : otherParty.profilePicture;
 
 
     return (
@@ -140,7 +138,7 @@ export default function RequestDetailPage() {
                     </h2>
                     <div className="flex items-center gap-4">
                         <img 
-                            src={otherPartyImage} 
+                            src={otherParty.profilePicture} 
                             alt={otherParty.name} 
                             className="w-16 h-16 rounded-full object-cover"
                         />
@@ -168,7 +166,7 @@ export default function RequestDetailPage() {
             </div>
             
             <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border-t border-gray-200 dark:border-gray-700 max-w-4xl mx-auto space-y-2">
-                 {(request.status === 'accepted' || request.status === 'chatting') && (
+                 {(request.status === 'accepted' || request.status === 'chatting' || request.status === 'pending') && (
                     <Link to={`/chat/${request.id}`} className="w-full flex items-center justify-center gap-2 bg-brand-blue text-white font-bold py-3 px-4 rounded-xl hover:bg-blue-600 transition-colors text-center">
                        <ChatBubbleOvalLeftEllipsisIcon className="w-5 h-5"/>
                        <span>Chat with {otherParty.name.split(' ')[0]}</span>

@@ -1,8 +1,9 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import * as api from '../api';
-import { WaterRequest, RequestStatus, Host, User } from '../types';
+import { WaterRequest, RequestStatus, User } from '../types';
 import { SpinnerIcon } from '../components/Icons';
+import { useAuth } from '../App';
 
 const StatusBadge: React.FC<{ status: RequestStatus }> = ({ status }) => {
     const statusStyles: Record<RequestStatus, string> = {
@@ -20,27 +21,26 @@ const StatusBadge: React.FC<{ status: RequestStatus }> = ({ status }) => {
     );
 };
 
-const RequestCard: React.FC<{ request: WaterRequest; perspective: 'requester' | 'host', allUsers: (User | Host)[] }> = ({ request, perspective, allUsers }) => {
-    const otherPartyId = perspective === 'requester' ? request.hostId : request.requesterId;
-    const otherParty = allUsers.find(u => u.id === otherPartyId);
+const RequestCard: React.FC<{ request: WaterRequest; perspective: 'requester' | 'host' }> = ({ request, perspective }) => {
+    
+    const otherPartyName = perspective === 'requester' ? request.hostName : request.requesterName;
+    const otherPartyImage = perspective === 'requester' ? request.hostImage : request.requesterImage;
 
-    if (!otherParty) return null;
+    if (!otherPartyName) return null;
 
     const date = new Date(request.pickupDate).toLocaleDateString(undefined, {
         month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC'
     });
     
-    const image = 'image' in otherParty ? otherParty.image : otherParty.profilePicture;
-
     return (
         <Link to={`/request-detail/${request.id}`} className="block p-4 border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
             <div className="flex items-center gap-4">
-                <img src={image} alt={otherParty.name} className="w-14 h-14 rounded-full object-cover"/>
+                <img src={otherPartyImage} alt={otherPartyName} className="w-14 h-14 rounded-full object-cover"/>
                 <div className="flex-1">
                     <div className="flex justify-between items-start">
                         <div>
                             <p className="text-sm text-gray-500 dark:text-gray-400">
-                                {perspective === 'requester' ? `Host: ${otherParty.name}` : `From: ${otherParty.name}`}
+                                {perspective === 'requester' ? `Host: ${otherPartyName}` : `From: ${otherPartyName}`}
                             </p>
                             <p className="font-bold text-gray-800 dark:text-gray-100">{date} at {request.pickupTime}</p>
                         </div>
@@ -54,28 +54,26 @@ const RequestCard: React.FC<{ request: WaterRequest; perspective: 'requester' | 
 };
 
 export default function RequestsPage() {
+    const { userData } = useAuth();
     const [activeTab, setActiveTab] = useState<'my_requests' | 'host_dashboard'>('my_requests');
     const [myRequests, setMyRequests] = useState<WaterRequest[]>([]);
     const [hostRequests, setHostRequests] = useState<WaterRequest[]>([]);
-    const [allUsers, setAllUsers] = useState<(User | Host)[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
+        if (!userData) return;
         const fetchData = async () => {
             setLoading(true);
-            const currentUser = await api.getCurrentUser();
-            const [myReqs, hostReqs, hosts] = await Promise.all([
-                api.getRequestsByUserId(currentUser.id),
-                api.getRequestsByHostId(currentUser.id),
-                api.getHosts()
+            const [myReqs, hostReqs] = await Promise.all([
+                api.getRequestsByUserId(userData.id),
+                api.getRequestsByHostId(userData.id),
             ]);
             setMyRequests(myReqs);
             setHostRequests(hostReqs);
-            setAllUsers([currentUser, ...hosts]);
             setLoading(false);
         };
         fetchData();
-    }, []);
+    }, [userData]);
 
     const TabButton: React.FC<{ tabId: 'my_requests' | 'host_dashboard', label: string, count: number }> = ({ tabId, label, count }) => (
         <button
@@ -99,7 +97,7 @@ export default function RequestsPage() {
         if (requests.length === 0) {
             return <p className="text-center p-8 text-gray-500 dark:text-gray-400">{emptyMessage}</p>;
         }
-        return requests.map(req => <RequestCard key={req.id} request={req} perspective={perspective} allUsers={allUsers} />);
+        return requests.map(req => <RequestCard key={req.id} request={req} perspective={perspective} />);
     };
 
     return (
