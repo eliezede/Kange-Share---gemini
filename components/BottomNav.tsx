@@ -1,11 +1,12 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { MapIcon, ClipboardDocumentListIcon, UserIcon } from './Icons';
+import { MapIcon, ClipboardDocumentListIcon, UserIcon, ChatBubbleOvalLeftEllipsisIcon } from './Icons';
 
 const navItems = [
-  { path: '/map', label: 'Map', icon: MapIcon },
+  { path: '/map', label: 'Home', icon: MapIcon },
   { path: '/requests', label: 'Requests', icon: ClipboardDocumentListIcon },
-  { path: '/profile', label: 'Profile', icon: UserIcon },
+  { path: '/messages', label: 'Messages', icon: ChatBubbleOvalLeftEllipsisIcon },
+  { path: '/profile', label: 'You', icon: UserIcon },
 ];
 
 export default function BottomNav() {
