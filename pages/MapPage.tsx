@@ -1,7 +1,8 @@
+
 import React, { useState, useMemo, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { MOCK_HOSTS } from '../data';
-import { StarIcon, SearchIcon, AdjustmentsHorizontalIcon, CheckBadgeIcon, UserCircleIcon } from '../components/Icons';
+import { MOCK_HOSTS, dataStore, MOCK_USER } from '../data';
+import { StarIcon, SearchIcon, AdjustmentsHorizontalIcon, CheckBadgeIcon, ClipboardDocumentListIcon, ChevronRightIcon } from '../components/Icons';
 import { Host } from '../types';
 
 const HostCard: React.FC<{ host: Host }> = ({ host }) => (
@@ -22,8 +23,39 @@ const HostCard: React.FC<{ host: Host }> = ({ host }) => (
   </Link>
 );
 
+const MyRequestsCard: React.FC = () => {
+    const pendingRequestsCount = useMemo(() => 
+        dataStore.requests.filter(r => r.requesterId === MOCK_USER.id && r.status === 'pending').length
+    , [dataStore.requests]);
+
+    return (
+        <div className="p-4">
+            <Link to="/requests" className="flex items-center justify-between p-4 rounded-xl bg-brand-light hover:bg-blue-100 transition-colors duration-200 border border-brand-blue/20">
+                <div className="flex items-center gap-4">
+                    <div className="p-2 bg-white rounded-full">
+                         <ClipboardDocumentListIcon className="w-6 h-6 text-brand-blue" />
+                    </div>
+                    <div>
+                        <h4 className="font-bold text-gray-800">My Requests</h4>
+                        <p className="text-sm text-gray-600">
+                            {pendingRequestsCount > 0 
+                                ? `You have ${pendingRequestsCount} pending request${pendingRequestsCount > 1 ? 's' : ''}.` 
+                                : "View your request history."}
+                        </p>
+                    </div>
+                </div>
+                <ChevronRightIcon className="w-5 h-5 text-gray-500" />
+            </Link>
+        </div>
+    );
+};
+
+
 const allPhLevels = Array.from(new Set(MOCK_HOSTS.flatMap(h => h.phLevels))).sort((a,b) => a - b);
 const AVAILABILITY_OPTIONS = ['Weekdays', 'Weekends'];
+// FIX: Define weekday/weekend constants for availability filtering.
+const WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+const WEEKENDS = ['Saturday', 'Sunday'];
 
 interface FilterModalProps {
     isOpen: boolean;
@@ -117,8 +149,9 @@ export default function MapPage() {
       const matchesPh = activeFilters.ph.length === 0 || activeFilters.ph.some(ph => host.phLevels.includes(ph));
 
       // Availability filter
-      const hostIsWeekday = host.availability.days !== 'Weekends Only';
-      const hostIsWeekend = host.availability.days.includes('Weekend') || host.availability.days.includes('All Week');
+      // FIX: Correctly check host availability for weekdays and weekends based on the `availability` object structure.
+      const hostIsWeekday = WEEKDAYS.some(day => host.availability[day]?.enabled);
+      const hostIsWeekend = WEEKENDS.some(day => host.availability[day]?.enabled);
       const matchesDays = activeFilters.days.length === 0 || activeFilters.days.every(dayFilter => {
           if (dayFilter === 'Weekdays') return hostIsWeekday;
           if (dayFilter === 'Weekends') return hostIsWeekend;
@@ -137,7 +170,7 @@ export default function MapPage() {
         onApply={setActiveFilters}
         activeFilters={activeFilters}
       />
-      <div className="flex flex-col">
+      <div className="flex flex-col h-full">
         <div className="p-4 border-b border-gray-200 flex items-center gap-2 sticky top-0 bg-white z-10">
           <div className="relative flex-1">
             <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -153,11 +186,10 @@ export default function MapPage() {
               <AdjustmentsHorizontalIcon className="w-6 h-6 text-gray-700"/>
               {isFilterActive && <span className="absolute top-1.5 right-1.5 block w-2 h-2 bg-brand-blue rounded-full"></span>}
           </button>
-           <Link to="/profile" className="p-2.5 border border-gray-300 rounded-full hover:bg-gray-100 transition">
-              <UserCircleIcon className="w-6 h-6 text-gray-700"/>
-          </Link>
         </div>
-        <div className="overflow-y-auto">
+        <div className="overflow-y-auto flex-1">
+            <MyRequestsCard />
+            <div className="px-4 pt-2 text-sm font-semibold text-gray-500">NEARBY HOSTS</div>
             {filteredHosts.length > 0 ? (
               filteredHosts.map(host => <HostCard key={host.id} host={host} />)
             ) : (

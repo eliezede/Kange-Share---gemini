@@ -1,24 +1,28 @@
 
+
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { MOCK_HOSTS } from '../data';
+import { MOCK_HOSTS, dataStore } from '../data';
 import { StarIcon } from '../components/Icons';
 
 export default function RateHostPage() {
-  const { id } = useParams<{ id: string }>();
+  const { requestId } = useParams<{ requestId: string }>();
   const navigate = useNavigate();
-  const host = MOCK_HOSTS.find(h => h.id === id);
+  
+  const request = dataStore.requests.find(r => r.id === requestId);
+  const host = MOCK_HOSTS.find(h => h.id === request?.hostId);
+  
   const [rating, setRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
 
   const handleSubmit = () => {
     // Submit rating logic
     alert('Thank you for your feedback!');
-    navigate('/map');
+    navigate('/requests');
   };
 
   if (!host) {
-    return <div className="p-4 text-center">Host not found.</div>;
+    return <div className="p-4 text-center">Host not found for this request.</div>;
   }
 
   return (
@@ -55,7 +59,7 @@ export default function RateHostPage() {
         >
           Submit Rating
         </button>
-        <button onClick={() => navigate('/map')} className="mt-2 text-gray-500 hover:text-gray-700">
+        <button onClick={() => navigate('/requests')} className="mt-2 text-gray-500 hover:text-gray-700">
           Skip
         </button>
       </div>

@@ -89,8 +89,8 @@ export default function LandingPage() {
       <header className="fixed top-0 left-0 right-0 bg-white/80 backdrop-blur-sm z-50 border-b border-gray-200/80">
         <div className="container mx-auto px-6 py-4 flex justify-between items-center">
           <h1 className="text-xl font-bold">Kangen Share</h1>
-          <Link to="/login" className="bg-brand-blue text-white font-semibold px-5 py-2 rounded-full hover:opacity-90 transition-opacity">
-            Join Waitlist
+          <Link to="/map" className="bg-brand-blue text-white font-semibold px-5 py-2 rounded-full hover:opacity-90 transition-opacity">
+            Login
           </Link>
         </div>
       </header>
@@ -106,8 +106,8 @@ export default function LandingPage() {
               Connect with verified Kangen K8 owners and get alkaline water wherever you go.
             </p>
             <div className="flex justify-center gap-4 mb-16 opacity-0 animate-fade-in-up" style={{ animationDelay: '300ms' }}>
-              <Link to="/login" className="bg-brand-blue text-white font-bold px-8 py-3 rounded-full hover:opacity-90 transition-opacity">
-                Join Waitlist
+              <Link to="/map" className="bg-brand-blue text-white font-bold px-8 py-3 rounded-full hover:opacity-90 transition-opacity">
+                Get Started
               </Link>
               <a href="#features" className="bg-white text-gray-800 font-bold px-8 py-3 rounded-full border border-gray-300 hover:bg-gray-100 transition-colors">
                 Learn More
@@ -207,8 +207,8 @@ export default function LandingPage() {
           <div className="container mx-auto px-6 text-center">
             <div className="bg-brand-blue text-white rounded-3xl p-12 md:p-16 max-w-4xl mx-auto opacity-0 animate-fade-in-up">
               <h2 className="text-3xl md:text-4xl font-bold mb-4">Be the first to access Kangen water anywhere.</h2>
-              <Link to="/login" className="bg-white text-brand-blue font-bold px-8 py-3 rounded-full hover:bg-gray-100 transition-colors mt-4 inline-block">
-                Join the Waitlist
+              <Link to="/map" className="bg-white text-brand-blue font-bold px-8 py-3 rounded-full hover:bg-gray-100 transition-colors mt-4 inline-block">
+                Get Started Now
               </Link>
             </div>
           </div>

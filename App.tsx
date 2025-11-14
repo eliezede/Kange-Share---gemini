@@ -1,7 +1,7 @@
 
-import React, { useState, useContext, createContext, useCallback } from 'react';
-import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
-import LoginPage from './pages/LoginPage';
+import React, { useState, useContext, createContext, useCallback, useEffect } from 'react';
+import { HashRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
+import LoginModal from './pages/LoginPage';
 import MapPage from './pages/MapPage';
 import HostProfilePage from './pages/HostProfilePage';
 import RequestWaterPage from './pages/RequestWaterPage';
@@ -9,11 +9,17 @@ import ChatPage from './pages/ChatPage';
 import RateHostPage from './pages/RateHostPage';
 import LandingPage from './pages/LandingPage';
 import UserProfilePage from './pages/UserProfilePage';
+import RequestsPage from './pages/RequestsPage';
+import RequestDetailPage from './pages/RequestDetailPage';
+import BottomNav from './components/BottomNav';
 
 interface AuthContextType {
   isAuthenticated: boolean;
+  isLoginModalOpen: boolean;
   login: (email: string) => void;
   logout: () => void;
+  openLoginModal: () => void;
+  closeLoginModal: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -28,6 +34,7 @@ export const useAuth = () => {
 
 const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isLoginModalOpen, setLoginModalOpen] = useState(false);
 
   const login = useCallback((email: string) => {
     if (email) {
@@ -39,35 +46,68 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
     setIsAuthenticated(false);
   }, []);
 
+  const openLoginModal = useCallback(() => setLoginModalOpen(true), []);
+  const closeLoginModal = useCallback(() => setLoginModalOpen(false), []);
+
+
   return (
-    <AuthContext.Provider value={{ isAuthenticated, login, logout }}>
+    <AuthContext.Provider value={{ isAuthenticated, login, logout, isLoginModalOpen, openLoginModal, closeLoginModal }}>
       {children}
     </AuthContext.Provider>
   );
 };
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    const { isAuthenticated } = useAuth();
+    const { isAuthenticated, openLoginModal } = useAuth();
+    
+    useEffect(() => {
+        if (!isAuthenticated) {
+            openLoginModal();
+        }
+    }, [isAuthenticated, openLoginModal]);
+
     if (!isAuthenticated) {
-        return <Navigate to="/login" replace />;
+      // Render a blank page while the modal is active
+      return <div className="w-full h-screen bg-gray-50" />;
     }
     return <>{children}</>;
 };
 
-const AppWithContainer = () => (
-  <div className="max-w-4xl mx-auto bg-white min-h-screen shadow-2xl shadow-gray-300/20">
-    <Routes>
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/map" element={<ProtectedRoute><MapPage /></ProtectedRoute>} />
-      <Route path="/host/:id" element={<ProtectedRoute><HostProfilePage /></ProtectedRoute>} />
-      <Route path="/request/:id" element={<ProtectedRoute><RequestWaterPage /></ProtectedRoute>} />
-      <Route path="/chat/:id" element={<ProtectedRoute><ChatPage /></ProtectedRoute>} />
-      <Route path="/rate/:id" element={<ProtectedRoute><RateHostPage /></ProtectedRoute>} />
-      <Route path="/profile" element={<ProtectedRoute><UserProfilePage /></ProtectedRoute>} />
-      <Route path="/*" element={<Navigate to="/login" replace />} />
-    </Routes>
-  </div>
+const MainLayout: React.FC = () => (
+    <div className="flex flex-col h-screen">
+        <main className="flex-1 overflow-y-auto pb-16">
+            <Outlet />
+        </main>
+        <BottomNav />
+    </div>
 );
+
+
+const AppWithContainer = () => {
+  const { isLoginModalOpen, closeLoginModal } = useAuth();
+  return (
+    <div className="max-w-4xl mx-auto bg-white min-h-screen shadow-2xl shadow-gray-300/20">
+      <LoginModal isOpen={isLoginModalOpen} onClose={closeLoginModal} />
+      <Routes>
+        {/* Routes with Bottom Nav */}
+        <Route element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
+          <Route path="/map" element={<MapPage />} />
+          <Route path="/requests" element={<RequestsPage />} />
+          <Route path="/profile" element={<UserProfilePage />} />
+        </Route>
+        
+        {/* Routes without Bottom Nav */}
+        <Route path="/host/:id" element={<ProtectedRoute><HostProfilePage /></ProtectedRoute>} />
+        <Route path="/request/:hostId" element={<ProtectedRoute><RequestWaterPage /></ProtectedRoute>} />
+        <Route path="/request-detail/:requestId" element={<ProtectedRoute><RequestDetailPage /></ProtectedRoute>} />
+        <Route path="/chat/:requestId" element={<ProtectedRoute><ChatPage /></ProtectedRoute>} />
+        <Route path="/rate/:requestId" element={<ProtectedRoute><RateHostPage /></ProtectedRoute>} />
+        
+        <Route path="/*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </div>
+  );
+};
 
 export default function App() {
   return (
