@@ -1,7 +1,6 @@
-// FIX: Changed from a namespace import (`import * as firebase`) to a default import.
-// The `firebase/compat/app` package provides a default export that is augmented
-// by the side-effect imports for other services (auth, firestore, etc.).
-import firebase from "firebase/compat/app";
+// Centralize Firebase imports to resolve initialization errors.
+// FIX: The `firebase/compat/app` module does not have a default export. A namespace import (`* as firebase`) is required to correctly load the Firebase SDK and its services.
+import * as firebase from "firebase/compat/app";
 import "firebase/compat/auth";
 import "firebase/compat/firestore";
 import "firebase/compat/storage";
