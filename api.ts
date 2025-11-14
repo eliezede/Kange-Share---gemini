@@ -1,5 +1,11 @@
-// Centralize Firebase imports to resolve initialization errors.
-import { firebase, db, auth, storage } from './firebase';
+
+// FIX: Use firebase v8 compat imports to resolve module errors.
+import firebase from 'firebase/compat/app';
+import 'firebase/compat/auth';
+import 'firebase/compat/firestore';
+import 'firebase/compat/storage';
+
+import { db, auth, storage, googleProvider } from './firebase';
 import { User, WaterRequest, Message, RequestStatus, Review } from './types';
 
 // Placed at the top for reuse
@@ -13,22 +19,30 @@ const defaultAvailability = {
   'Sunday': { enabled: false, startTime: '10:00', endTime: '14:00' },
 };
 
+// --- TYPES and HELPERS ---
+type DocumentSnapshot = firebase.firestore.DocumentSnapshot;
+const Timestamp = firebase.firestore.Timestamp;
+const serverTimestamp = firebase.firestore.FieldValue.serverTimestamp;
+const arrayUnion = firebase.firestore.FieldValue.arrayUnion;
+const arrayRemove = firebase.firestore.FieldValue.arrayRemove;
+type UserCredential = firebase.auth.UserCredential;
+
 
 // --- DATA TRANSFORMATION UTILS ---
 
 // Converts Firestore document snapshot to a typed object
-const fromDoc = <T>(docSnap: firebase.firestore.DocumentSnapshot): T => {
-    const data = docSnap.data() as firebase.firestore.DocumentData;
+const fromDoc = <T>(docSnap: DocumentSnapshot): T => {
+    const data = docSnap.data() as Record<string, any>;
     // Convert all Timestamps to ISO strings
     Object.keys(data).forEach(key => {
-        if (data[key] instanceof firebase.firestore.Timestamp) {
+        if (data[key] instanceof Timestamp) {
             data[key] = data[key].toDate().toISOString();
         }
     });
 
     // Ensure array and object properties exist on User objects to prevent runtime errors
     // if they are missing from the Firestore document.
-    if (docSnap.ref.parent.path === 'users') {
+    if (docSnap.ref.parent.id === 'users') {
         data.followers = data.followers || [];
         data.following = data.following || [];
         data.phLevels = data.phLevels || [];
@@ -54,15 +68,14 @@ const fromDoc = <T>(docSnap: firebase.firestore.DocumentSnapshot): T => {
 
 // --- AUTH API ---
 
-export const loginWithEmail = (email: string, password: string): Promise<firebase.auth.UserCredential> =>
+export const loginWithEmail = (email: string, password: string): Promise<UserCredential> =>
     auth.signInWithEmailAndPassword(email, password);
 
-export const loginWithGoogle = (): Promise<firebase.auth.UserCredential> => {
-    const provider = new firebase.auth.GoogleAuthProvider();
-    return auth.signInWithPopup(provider);
+export const loginWithGoogle = (): Promise<UserCredential> => {
+    return auth.signInWithPopup(googleProvider);
 };
 
-export const signUpWithEmail = (email: string, password: string): Promise<firebase.auth.UserCredential> =>
+export const signUpWithEmail = (email: string, password: string): Promise<UserCredential> =>
     auth.createUserWithEmailAndPassword(email, password);
 
 export const logout = (): Promise<void> => auth.signOut();
@@ -71,8 +84,8 @@ export const logout = (): Promise<void> => auth.signOut();
 // --- USER API ---
 
 export const getUserById = async (id: string): Promise<User | null> => {
-    const userDoc = await db.collection('users').doc(id).get();
-    return userDoc.exists ? fromDoc<User>(userDoc) : null;
+    const userDocSnap = await db.collection('users').doc(id).get();
+    return userDocSnap.exists ? fromDoc<User>(userDocSnap) : null;
 };
 
 export const getHosts = async (): Promise<User[]> => {
@@ -82,7 +95,6 @@ export const getHosts = async (): Promise<User[]> => {
 };
 
 export const createInitialUser = (uid: string, email: string, name: string, profilePicture: string): Promise<void> => {
-    // Uses the module-scoped defaultAvailability constant
     const newUser: Omit<User, 'id'> = {
         email, name, profilePicture, isHost: false, phone: '',
         address: { street: '', number: '', postalCode: '', city: '', country: '' },
@@ -112,11 +124,11 @@ export const toggleFollowHost = async (currentUserId: string, targetHostId: stri
 
     const batch = db.batch();
     if (isFollowing) {
-        batch.update(currentUserRef, { following: firebase.firestore.FieldValue.arrayRemove(targetHostId) });
-        batch.update(targetHostRef, { followers: firebase.firestore.FieldValue.arrayRemove(currentUserId) });
+        batch.update(currentUserRef, { following: arrayRemove(targetHostId) });
+        batch.update(targetHostRef, { followers: arrayRemove(currentUserId) });
     } else {
-        batch.update(currentUserRef, { following: firebase.firestore.FieldValue.arrayUnion(targetHostId) });
-        batch.update(targetHostRef, { followers: firebase.firestore.FieldValue.arrayUnion(currentUserId) });
+        batch.update(currentUserRef, { following: arrayUnion(targetHostId) });
+        batch.update(targetHostRef, { followers: arrayUnion(currentUserId) });
     }
     return batch.commit();
 };
@@ -137,14 +149,14 @@ export const getRequestsByHostId = async (hostId: string): Promise<WaterRequest[
 };
 
 export const getRequestById = async (id: string): Promise<WaterRequest | null> => {
-    const reqDoc = await db.collection('requests').doc(id).get();
-    return reqDoc.exists ? fromDoc<WaterRequest>(reqDoc) : null;
+    const reqDocSnap = await db.collection('requests').doc(id).get();
+    return reqDocSnap.exists ? fromDoc<WaterRequest>(reqDocSnap) : null;
 };
 
 export const createRequest = async (newRequestData: Omit<WaterRequest, 'id' | 'createdAt'>): Promise<string> => {
     const docRef = await db.collection('requests').add({
         ...newRequestData,
-        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+        createdAt: serverTimestamp(),
     });
     return docRef.id;
 };
@@ -162,7 +174,7 @@ export const createNewChat = async (hostId: string, requesterId: string, host: U
     };
     const docRef = await db.collection('requests').add({
         ...newChatRequest,
-        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+        createdAt: serverTimestamp(),
     });
     return docRef.id;
 };
@@ -178,41 +190,37 @@ export const getMessagesStream = (requestId: string, callback: (messages: Messag
     });
 };
 
-export const sendMessage = (requestId: string, text: string, senderId: string): Promise<void> => {
-    db.collection(`requests/${requestId}/messages`).add({
+export const sendMessage = (requestId: string, text: string, senderId: string): Promise<any> => {
+    return db.collection(`requests/${requestId}/messages`).add({
         text,
         sender: senderId,
-        timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+        timestamp: serverTimestamp(),
     });
-    return Promise.resolve();
 };
 
 export const getConversationsByUserId = async (userId: string): Promise<WaterRequest[]> => {
+    // FIX: Firebase v8 does not support `or` queries. Performing two separate queries and merging the results.
     const requesterQuery = db.collection('requests')
         .where('requesterId', '==', userId)
         .where('status', 'in', ['accepted', 'completed', 'chatting']);
-    
     const hostQuery = db.collection('requests')
         .where('hostId', '==', userId)
         .where('status', 'in', ['accepted', 'completed', 'chatting']);
-    
+
     const [requesterSnapshot, hostSnapshot] = await Promise.all([
         requesterQuery.get(),
-        hostQuery.get()
+        hostQuery.get(),
     ]);
 
-    const conversationsMap = new Map<string, WaterRequest>();
+    const convos: { [id: string]: WaterRequest } = {};
     requesterSnapshot.docs.forEach(d => {
-        const req = fromDoc<WaterRequest>(d);
-        conversationsMap.set(req.id, req);
+        convos[d.id] = fromDoc<WaterRequest>(d);
     });
     hostSnapshot.docs.forEach(d => {
-        const req = fromDoc<WaterRequest>(d);
-        conversationsMap.set(req.id, req);
+        convos[d.id] = fromDoc<WaterRequest>(d);
     });
     
-    const convos = Array.from(conversationsMap.values());
-    return convos.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    return Object.values(convos).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 };
 
 
@@ -226,7 +234,7 @@ export const getReviewsForHost = async (hostId: string): Promise<Review[]> => {
 
 export const addReview = async (hostId: string, review: Omit<Review, 'id'>): Promise<void> => {
     const hostRef = db.collection('users').doc(hostId);
-    const reviewRef = db.collection(`users/${hostId}/reviews`).doc();
+    const reviewCollRef = db.collection(`users/${hostId}/reviews`);
 
     return db.runTransaction(async (transaction) => {
         const hostDoc = await transaction.get(hostRef);
@@ -244,12 +252,11 @@ export const addReview = async (hostId: string, review: Omit<Review, 'id'>): Pro
             rating: newAverageRating
         });
         
-        transaction.set(reviewRef, review);
+        transaction.set(reviewCollRef.doc(), review);
     });
 };
 
 // --- ADMIN API ---
-// In a real app, these would be protected by security rules or a Cloud Function
 
 export const getAllUsers = async (): Promise<User[]> => {
     const querySnapshot = await db.collection('users').get();

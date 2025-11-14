@@ -1,7 +1,7 @@
 import React, { useState, useContext, createContext, useCallback, useEffect } from 'react';
 import { HashRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
-// Centralize Firebase imports to resolve initialization errors.
-import { firebase, auth } from './firebase';
+import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
+import { auth } from './firebase';
 import * as api from './api';
 import { User } from './types';
 
@@ -25,10 +25,6 @@ import OnboardingPage from './pages/OnboardingPage';
 import { SpinnerIcon } from './components/Icons';
 
 type Theme = 'light' | 'dark';
-
-// Use the imported firebase namespace for types.
-// FIX: Changed firebase.User to the more explicit firebase.auth.User to resolve the type error.
-type FirebaseUser = firebase.auth.User;
 
 interface ThemeContextType {
   theme: Theme;
@@ -152,7 +148,7 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
   }, []);
 
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged(async (firebaseUser) => {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       setLoading(true);
       if (firebaseUser) {
         setUser(firebaseUser);

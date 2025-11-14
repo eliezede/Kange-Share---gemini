@@ -1,9 +1,10 @@
-// Centralize Firebase imports to resolve initialization errors.
-// FIX: The `firebase/compat/app` module does not have a default export. A namespace import (`* as firebase`) is required to correctly load the Firebase SDK and its services.
-import * as firebase from "firebase/compat/app";
+
+// FIX: Use firebase v8 compat imports to resolve module errors.
+import firebase from "firebase/compat/app";
 import "firebase/compat/auth";
 import "firebase/compat/firestore";
 import "firebase/compat/storage";
+import { GoogleAuthProvider } from "firebase/auth";
 
 // Using the provided Firebase project configuration.
 const firebaseConfig = {
@@ -16,7 +17,6 @@ const firebaseConfig = {
 };
 
 // Initialize Firebase
-// This check prevents errors on hot reloads.
 if (!firebase.apps.length) {
     firebase.initializeApp(firebaseConfig);
 }
@@ -25,6 +25,4 @@ if (!firebase.apps.length) {
 export const auth = firebase.auth();
 export const db = firebase.firestore();
 export const storage = firebase.storage();
-
-// Export the augmented firebase namespace to be used for types and static properties across the app
-export { firebase };
+export const googleProvider = new firebase.auth.GoogleAuthProvider();

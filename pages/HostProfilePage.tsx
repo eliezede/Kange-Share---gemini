@@ -63,7 +63,8 @@ export default function HostProfilePage() {
     // The state *before* the toggle
     const isFollowing = currentUser.following?.includes(host.id);
 
-    // Optimistically update UI state immediately
+    // Optimistically update the current user's 'following' list.
+    // This is safe because setUserData uses a central sanitizer.
     setUserData(prev => {
         if (!prev) return null;
         const following = prev.following || [];
@@ -74,21 +75,34 @@ export default function HostProfilePage() {
                 : [...following, host.id],
         };
     });
+    
+    // Optimistically update the local host's 'followers' list.
+    // This is where the error likely occurs, so we need to be defensive.
     setHost(prev => {
         if (!prev) return null;
-        const followers = prev.followers || [];
-        return {
+        
+        // Sanitize the host object before updating it to prevent crashes
+        // on re-render if other properties like 'following' are missing.
+        const sanitizedHost = {
             ...prev,
+            followers: prev.followers || [],
+            following: prev.following || [],
+            phLevels: prev.phLevels || [],
+        };
+
+        return {
+            ...sanitizedHost,
             followers: isFollowing
-                ? followers.filter(id => id !== currentUser.id)
-                : [...followers, currentUser.id],
+                ? sanitizedHost.followers.filter(id => id !== currentUser.id)
+                : [...sanitizedHost.followers, currentUser.id],
         };
     });
     
     // Now, make the API call to persist the change.
     await api.toggleFollowHost(currentUser.id, host.id);
     
-    // Re-fetch from the source of truth to ensure UI is consistent
+    // Re-fetch from the source of truth to ensure UI is consistent.
+    // This is good practice to correct any optimistic update discrepancies.
     const [updatedHost, updatedUser] = await Promise.all([
         api.getUserById(host.id),
         api.getUserById(currentUser.id)
