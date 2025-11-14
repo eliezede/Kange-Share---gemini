@@ -1,6 +1,3 @@
-
-
-
 import React, { useState, useContext, createContext, useCallback, useEffect } from 'react';
 import { HashRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import LoginModal from './pages/LoginPage';
@@ -97,6 +94,7 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
   const login = useCallback((email: string) => {
     if (email) {
         setIsAuthenticated(true);
+        setLoginModalOpen(false); // Close modal on successful login
     }
   }, []);
 
@@ -177,18 +175,23 @@ const AppRoutes = () => {
   );
 };
 
-export default function App() {
-  const [isLoginModalOpen, setLoginModalOpen] = useState(false);
+const AppContent = () => {
+    const { isLoginModalOpen, closeLoginModal } = useAuth();
+    return (
+        <HashRouter>
+            <div className="max-w-4xl mx-auto bg-white dark:bg-gray-900 min-h-screen shadow-2xl shadow-gray-300/20 dark:shadow-black/20">
+                <LoginModal isOpen={isLoginModalOpen} onClose={closeLoginModal} />
+                <AppRoutes />
+            </div>
+        </HashRouter>
+    );
+};
 
+export default function App() {
   return (
     <ThemeProvider>
         <AuthProvider>
-            <HashRouter>
-                 <div className="max-w-4xl mx-auto bg-white dark:bg-gray-900 min-h-screen shadow-2xl shadow-gray-300/20 dark:shadow-black/20">
-                    <LoginModal isOpen={isLoginModalOpen} onClose={() => setLoginModalOpen(false)} />
-                    <AppRoutes />
-                 </div>
-            </HashRouter>
+            <AppContent />
         </AuthProvider>
     </ThemeProvider>
   );

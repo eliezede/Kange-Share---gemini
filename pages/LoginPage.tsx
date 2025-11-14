@@ -10,14 +10,12 @@ export default function LoginModal({ isOpen, onClose }: { isOpen: boolean; onClo
 
   const handleGoogleLogin = () => {
     login('user@gmail.com');
-    onClose();
   };
   
   const handleEmailLogin = (e: React.FormEvent) => {
     e.preventDefault();
     if (email) { // Basic validation
       login(email);
-      onClose();
     }
   };
 
