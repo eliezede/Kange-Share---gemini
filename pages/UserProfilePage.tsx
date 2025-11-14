@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { dataStore } from '../data';
 import { User } from '../types';
-import { ChevronLeftIcon, CameraIcon, ArrowLeftOnRectangleIcon, TrashIcon } from '../components/Icons';
+import { ChevronLeftIcon, CameraIcon, ArrowLeftOnRectangleIcon, TrashIcon, ShieldCheckIcon } from '../components/Icons';
 import { useAuth } from '../App';
 
 const ImageCropperModal: React.FC<{
@@ -435,6 +435,13 @@ export default function UserProfilePage() {
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
             <h2 className="text-xl font-semibold mb-4 text-gray-800 border-b pb-2">Account Actions</h2>
             <div className="space-y-3">
+                <Link 
+                    to="/admin"
+                    className="w-full flex items-center justify-center gap-2 text-left p-3 bg-brand-light hover:bg-blue-100 rounded-lg font-semibold text-brand-blue transition-colors"
+                >
+                    <ShieldCheckIcon className="w-5 h-5" />
+                    <span>Admin Dashboard</span>
+                </Link>
                 <button 
                     onClick={handleLogout}
                     className="w-full flex items-center justify-center gap-2 text-left p-3 bg-gray-100 hover:bg-gray-200 rounded-lg font-semibold text-gray-700 transition-colors"

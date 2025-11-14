@@ -80,7 +80,14 @@ export default function ChatPage() {
   return (
     <div className="flex flex-col h-screen">
       <header className="flex items-center p-3 border-b border-gray-200 bg-white/80 backdrop-blur-sm sticky top-0 z-10">
-        <button onClick={() => navigate(request?.status === 'chatting' ? -1 : `/request-detail/${requestId}`)} className="p-1 rounded-full hover:bg-gray-100">
+        {/* FIX: Correctly handle navigation logic by calling navigate with either a number for history traversal or a string for a path, resolving the TypeScript overload error. */}
+        <button onClick={() => {
+          if (request.status === 'chatting') {
+            navigate(-1);
+          } else {
+            navigate(`/request-detail/${requestId}`);
+          }
+        }} className="p-1 rounded-full hover:bg-gray-100">
           <ChevronLeftIcon className="w-6 h-6 text-gray-800" />
         </button>
         <div className="flex items-center mx-auto">

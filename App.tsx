@@ -1,4 +1,5 @@
 
+
 import React, { useState, useContext, createContext, useCallback, useEffect } from 'react';
 import { HashRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import LoginModal from './pages/LoginPage';
@@ -14,6 +15,7 @@ import RequestDetailPage from './pages/RequestDetailPage';
 import BottomNav from './components/BottomNav';
 import MessagesPage from './pages/MessagesPage';
 import FollowListPage from './pages/FollowListPage';
+import AdminPage from './pages/AdminPage';
 
 interface AuthContextType {
   isAuthenticated: boolean;
@@ -106,6 +108,7 @@ const AppWithContainer = () => {
         <Route path="/request-detail/:requestId" element={<ProtectedRoute><RequestDetailPage /></ProtectedRoute>} />
         <Route path="/chat/:requestId" element={<ProtectedRoute><ChatPage /></ProtectedRoute>} />
         <Route path="/rate/:requestId" element={<ProtectedRoute><RateHostPage /></ProtectedRoute>} />
+        <Route path="/admin" element={<ProtectedRoute><AdminPage /></ProtectedRoute>} />
         
         <Route path="/*" element={<Navigate to="/" replace />} />
       </Routes>
