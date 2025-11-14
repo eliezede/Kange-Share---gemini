@@ -1,6 +1,7 @@
-// The Firebase compat library from the CDN must be imported as a namespace.
-// The namespace itself is the main firebase object that gets augmented by the other compat imports.
-// FIX: Changed `import * as firebase` to `import firebase` to correctly import the default export from `firebase/compat/app`.
+// The Firebase compat library from the CDN doesn't have a default export,
+// so it must be imported as a namespace. The side-effect imports for other
+// services will augment this `firebase` namespace object.
+// FIX: Use a default import for firebase/compat/app, as `* as firebase` does not provide the expected object with services attached.
 import firebase from "firebase/compat/app";
 import "firebase/compat/auth";
 import "firebase/compat/firestore";
