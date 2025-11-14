@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { DropletIcon, MapPinIcon, StarIcon, ShieldCheckIcon, DevicePhoneMobileIcon, ChatBubbleOvalLeftEllipsisIcon, GlobeAltIcon, CheckBadgeIcon } from '../components/Icons';
 
 const FeatureCard: React.FC<{ icon: React.ReactNode; title: string; children: React.ReactNode }> = ({ icon, title, children }) => (
-  <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+  <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 h-full">
     <div className="flex items-center justify-center h-12 w-12 rounded-full bg-brand-light text-brand-blue mb-4">
       {icon}
     </div>
@@ -105,96 +105,126 @@ export default function LandingPage() {
             <p className="text-lg md:text-xl text-gray-600 max-w-2xl mx-auto mb-8 opacity-0 animate-fade-in-up" style={{ animationDelay: '200ms' }}>
               Connect with verified Kangen K8 owners and get alkaline water wherever you go.
             </p>
-            <div className="flex justify-center gap-4 opacity-0 animate-fade-in-up" style={{ animationDelay: '300ms' }}>
-              <Link to="/login" className="bg-brand-blue text-white font-semibold px-8 py-3 rounded-full hover:opacity-90 transition-opacity shadow-lg shadow-blue-500/20">
+            <div className="flex justify-center gap-4 mb-16 opacity-0 animate-fade-in-up" style={{ animationDelay: '300ms' }}>
+              <Link to="/login" className="bg-brand-blue text-white font-bold px-8 py-3 rounded-full hover:opacity-90 transition-opacity">
                 Join Waitlist
               </Link>
-              <a href="#how-it-works" className="bg-white text-gray-800 font-semibold px-8 py-3 rounded-full hover:bg-gray-100 transition-colors border border-gray-200">
+              <a href="#features" className="bg-white text-gray-800 font-bold px-8 py-3 rounded-full border border-gray-300 hover:bg-gray-100 transition-colors">
                 Learn More
               </a>
             </div>
-            <div className="mt-16 opacity-0 animate-fade-in-up" style={{ animationDelay: '400ms' }}>
-              <AppMockup />
+            <div className="opacity-0 animate-fade-in-up" style={{ animationDelay: '400ms' }}>
+                <AppMockup />
             </div>
           </div>
         </section>
 
         {/* How It Works Section */}
-        <section id="how-it-works" className="py-24">
-            <div className="container mx-auto px-6 text-center opacity-0 animate-fade-in-up">
-                <h2 className="text-3xl md:text-4xl font-bold mb-4">How It Works</h2>
-                <p className="text-lg text-gray-600 max-w-xl mx-auto mb-16">Getting fresh Kangen water on the go is simple.</p>
+        <section className="py-20">
+            <div className="container mx-auto px-6">
+                <div className="text-center mb-12 opacity-0 animate-fade-in-up">
+                    <h2 className="text-3xl md:text-4xl font-bold">How It Works</h2>
+                    <p className="text-lg text-gray-600 mt-2">Get water in three simple steps.</p>
+                </div>
                 <div className="grid md:grid-cols-3 gap-12">
-                   <HowItWorksStep icon={<MapPinIcon className="w-8 h-8"/>} title="1. Find a host">
-                      Search for hosts in your travel destination.
-                   </HowItWorksStep>
-                    <HowItWorksStep icon={<DropletIcon className="w-8 h-8"/>} title="2. Request water">
-                      Choose your pH level and schedule a pickup.
-                    </HowItWorksStep>
-                    <HowItWorksStep icon={<StarIcon className="w-8 h-8"/>} title="3. Pick up & enjoy">
-                      Meet your host and enjoy healthy water.
-                    </HowItWorksStep>
+                    <div className="opacity-0 animate-fade-in-up" style={{ animationDelay: '100ms' }}>
+                        <HowItWorksStep icon={<MapPinIcon className="w-8 h-8" />} title="1. Find a Host">
+                            Search for verified hosts in your travel destination.
+                        </HowItWorksStep>
+                    </div>
+                    <div className="opacity-0 animate-fade-in-up" style={{ animationDelay: '200ms' }}>
+                        <HowItWorksStep icon={<DropletIcon className="w-8 h-8" />} title="2. Request Water">
+                            Choose your pH level and schedule a pickup time.
+                        </HowItWorksStep>
+                    </div>
+                    <div className="opacity-0 animate-fade-in-up" style={{ animationDelay: '300ms' }}>
+                        <HowItWorksStep icon={<StarIcon className="w-8 h-8" />} title="3. Pick up & Enjoy">
+                            Meet your host, collect your water, and stay hydrated.
+                        </HowItWorksStep>
+                    </div>
                 </div>
             </div>
         </section>
-
+        
         {/* Features Section */}
-        <section className="py-24 bg-gray-50">
-          <div className="container mx-auto px-6 opacity-0 animate-fade-in-up">
-            <div className="text-center mb-16">
-                <h2 className="text-3xl md:text-4xl font-bold mb-4">Designed for Travelers</h2>
-                <p className="text-lg text-gray-600 max-w-xl mx-auto">Everything you need for a seamless experience.</p>
+        <section id="features" className="py-20 bg-gray-50">
+          <div className="container mx-auto px-6">
+            <div className="text-center mb-12 opacity-0 animate-fade-in-up">
+              <h2 className="text-3xl md:text-4xl font-bold">Designed for Travelers</h2>
+              <p className="text-lg text-gray-600 mt-2">Everything you need for a seamless experience.</p>
             </div>
             <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
-              <FeatureCard icon={<ShieldCheckIcon className="w-6 h-6"/>} title="Verified K8 Owners">
-                Connect with trusted owners who maintain their machines properly.
-              </FeatureCard>
-              <FeatureCard icon={<DevicePhoneMobileIcon className="w-6 h-6"/>} title="Clean & Minimal App">
-                An intuitive, easy-to-use app that gets you water, fast.
-              </FeatureCard>
-              <FeatureCard icon={<ChatBubbleOvalLeftEllipsisIcon className="w-6 h-6"/>} title="Host Ratings & Reviews">
-                Read reviews from other travelers to find the perfect host.
-              </FeatureCard>
-              <FeatureCard icon={<GlobeAltIcon className="w-6 h-6"/>} title="Travel-Friendly">
-                Lighten your load. Access Kangen water without carrying your machine.
-              </FeatureCard>
+                <div className="opacity-0 animate-fade-in-up" style={{ animationDelay: '100ms' }}>
+                    <FeatureCard icon={<ShieldCheckIcon className="w-7 h-7" />} title="Verified K8 Owners">
+                        Every host is a verified Kangen K8 owner, ensuring quality and safety.
+                    </FeatureCard>
+                </div>
+                <div className="opacity-0 animate-fade-in-up" style={{ animationDelay: '200ms' }}>
+                    <FeatureCard icon={<DevicePhoneMobileIcon className="w-7 h-7" />} title="Clean & Minimal App">
+                        Our app is designed to be intuitive and easy to use, so you can focus on your trip.
+                    </FeatureCard>
+                </div>
+                <div className="opacity-0 animate-fade-in-up" style={{ animationDelay: '300ms' }}>
+                    <FeatureCard icon={<ChatBubbleOvalLeftEllipsisIcon className="w-7 h-7" />} title="Host Ratings & Reviews">
+                        Read reviews from other travelers to find the perfect host for your needs.
+                    </FeatureCard>
+                </div>
+                <div className="opacity-0 animate-fade-in-up" style={{ animationDelay: '400ms' }}>
+                    <FeatureCard icon={<GlobeAltIcon className="w-7 h-7" />} title="Travel-Friendly">
+                        Access Kangen water in multiple cities, with more locations added regularly.
+                    </FeatureCard>
+                </div>
+            </div>
+          </div>
+        </section>
+        
+        {/* Why Kangen Share */}
+        <section className="py-20">
+          <div className="container mx-auto px-6 max-w-3xl text-center">
+            <div className="opacity-0 animate-fade-in-up">
+                <h2 className="text-3xl md:text-4xl font-bold mb-4">Why Kangen Share?</h2>
+                <p className="text-lg text-gray-600">
+                Traveling with a Kangen machine can be cumbersome. Kangen Share eliminates the hassle by connecting you with a network of fellow owners. Now you can enjoy the benefits of alkaline water without sacrificing luggage space or worrying about transportation, making your travels lighter and healthier.
+                </p>
+            </div>
+          </div>
+        </section>
+        
+        {/* About Kangen Share */}
+        <section className="py-20 bg-gray-50">
+          <div className="container mx-auto px-6 max-w-3xl text-center">
+            <div className="opacity-0 animate-fade-in-up">
+                <h2 className="text-3xl md:text-4xl font-bold mb-4">About Kangen Share</h2>
+                <p className="text-lg text-gray-600">
+                Our mission is to foster a global community of wellness enthusiasts, making healthy hydration accessible everywhere. We value trust, community, and the shared passion for Kangen water, ensuring every connection made on our platform is safe, reliable, and positive.
+                </p>
             </div>
           </div>
         </section>
 
-        {/* Why Kangen Share Section */}
-        <section className="py-24">
-            <div className="container mx-auto px-6 max-w-3xl text-center opacity-0 animate-fade-in-up">
-                <h2 className="text-3xl md:text-4xl font-bold mb-6">Travel Lighter, Live Healthier</h2>
-                <p className="text-lg text-gray-600 leading-relaxed">
-                    Carrying a Kangen machine while traveling is a hassle. With Kangen Share, you can leave your machine at home and still enjoy the benefits of clean, alkaline water. Our network of generous hosts ensures you stay hydrated and healthy, no matter where your journey takes you. It's the perfect travel companion for the wellness-conscious adventurer.
-                </p>
-            </div>
-        </section>
-
         {/* Call to Action Section */}
-        <section className="py-24 bg-gray-50">
-          <div className="container mx-auto px-6 text-center opacity-0 animate-fade-in-up">
-            <div className="bg-white p-12 rounded-2xl shadow-xl shadow-gray-200/50 max-w-3xl mx-auto">
-                <h2 className="text-3xl md:text-4xl font-bold mb-4">Be the first to access Kangen water anywhere.</h2>
-                <Link to="/login" className="inline-block mt-4 bg-brand-blue text-white font-semibold px-8 py-3 rounded-full hover:opacity-90 transition-opacity shadow-lg shadow-blue-500/20">
-                    Join the Waitlist
-                </Link>
+        <section className="py-20">
+          <div className="container mx-auto px-6 text-center">
+            <div className="bg-brand-blue text-white rounded-3xl p-12 md:p-16 max-w-4xl mx-auto opacity-0 animate-fade-in-up">
+              <h2 className="text-3xl md:text-4xl font-bold mb-4">Be the first to access Kangen water anywhere.</h2>
+              <Link to="/login" className="bg-white text-brand-blue font-bold px-8 py-3 rounded-full hover:bg-gray-100 transition-colors mt-4 inline-block">
+                Join the Waitlist
+              </Link>
             </div>
           </div>
         </section>
       </main>
 
       {/* Footer */}
-      <footer className="py-12 border-t border-gray-200">
-        <div className="container mx-auto px-6 text-center">
+      <footer className="border-t border-gray-200">
+        <div className="container mx-auto px-6 py-8 text-center text-gray-500">
           <div className="flex justify-center gap-6 mb-4">
-            <a href="#" className="text-gray-600 hover:text-brand-blue">About</a>
-            <a href="#" className="text-gray-600 hover:text-brand-blue">Contact</a>
-            <a href="#" className="text-gray-600 hover:text-brand-blue">Privacy Policy</a>
-            <a href="#" className="text-gray-600 hover:text-brand-blue">Terms</a>
+            <a href="#" className="hover:text-gray-800">About</a>
+            <a href="#" className="hover:text-gray-800">Contact</a>
+            <a href="#" className="hover:text-gray-800">Privacy Policy</a>
+            <a href="#" className="hover:text-gray-800">Terms & Conditions</a>
           </div>
-          <p className="text-gray-500">&copy; {new Date().getFullYear()} Kangen Share. All rights reserved.</p>
+          <p>&copy; {new Date().getFullYear()} Kangen Share. All rights reserved.</p>
         </div>
       </footer>
     </div>
