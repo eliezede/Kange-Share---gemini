@@ -6,12 +6,12 @@ import { SpinnerIcon } from '../components/Icons';
 
 const StatusBadge: React.FC<{ status: RequestStatus }> = ({ status }) => {
     const statusStyles: Record<RequestStatus, string> = {
-        pending: 'bg-yellow-100 text-yellow-800',
-        accepted: 'bg-green-100 text-green-800',
-        completed: 'bg-blue-100 text-blue-800',
-        cancelled: 'bg-gray-100 text-gray-800',
-        declined: 'bg-red-100 text-red-800',
-        chatting: 'bg-gray-100 text-gray-800',
+        pending: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300',
+        accepted: 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300',
+        completed: 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300',
+        cancelled: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200',
+        declined: 'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300',
+        chatting: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200',
     };
     return (
         <span className={`px-2.5 py-0.5 text-xs font-semibold rounded-full capitalize ${statusStyles[status]}`}>
@@ -33,20 +33,20 @@ const RequestCard: React.FC<{ request: WaterRequest; perspective: 'requester' | 
     const image = 'image' in otherParty ? otherParty.image : otherParty.profilePicture;
 
     return (
-        <Link to={`/request-detail/${request.id}`} className="block p-4 border-b border-gray-200 hover:bg-gray-50 transition-colors">
+        <Link to={`/request-detail/${request.id}`} className="block p-4 border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
             <div className="flex items-center gap-4">
                 <img src={image} alt={otherParty.name} className="w-14 h-14 rounded-full object-cover"/>
                 <div className="flex-1">
                     <div className="flex justify-between items-start">
                         <div>
-                            <p className="text-sm text-gray-500">
+                            <p className="text-sm text-gray-500 dark:text-gray-400">
                                 {perspective === 'requester' ? `Host: ${otherParty.name}` : `From: ${otherParty.name}`}
                             </p>
-                            <p className="font-bold text-gray-800">{date} at {request.pickupTime}</p>
+                            <p className="font-bold text-gray-800 dark:text-gray-100">{date} at {request.pickupTime}</p>
                         </div>
                         <StatusBadge status={request.status} />
                     </div>
-                    <p className="text-sm text-gray-600 mt-1">{request.liters}L of pH {request.phLevel.toFixed(1)}</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">{request.liters}L of pH {request.phLevel.toFixed(1)}</p>
                 </div>
             </div>
         </Link>
@@ -81,10 +81,10 @@ export default function RequestsPage() {
         <button
             onClick={() => setActiveTab(tabId)}
             className={`flex-1 pb-3 font-semibold text-center border-b-2 transition-colors ${
-                activeTab === tabId ? 'border-brand-blue text-brand-blue' : 'border-transparent text-gray-500 hover:text-gray-800'
+                activeTab === tabId ? 'border-brand-blue text-brand-blue' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'
             }`}
         >
-            {label} <span className="text-sm bg-gray-200 rounded-full px-2 py-0.5">{count}</span>
+            {label} <span className="text-sm bg-gray-200 dark:bg-gray-700 rounded-full px-2 py-0.5">{count}</span>
         </button>
     );
     
@@ -97,17 +97,17 @@ export default function RequestsPage() {
             );
         }
         if (requests.length === 0) {
-            return <p className="text-center p-8 text-gray-500">{emptyMessage}</p>;
+            return <p className="text-center p-8 text-gray-500 dark:text-gray-400">{emptyMessage}</p>;
         }
         return requests.map(req => <RequestCard key={req.id} request={req} perspective={perspective} allUsers={allUsers} />);
     };
 
     return (
         <div className="flex flex-col h-full">
-            <header className="p-4 border-b border-gray-200 sticky top-0 bg-white z-10">
-                <h1 className="text-2xl font-bold text-center">Water Requests</h1>
+            <header className="p-4 border-b border-gray-200 dark:border-gray-700 sticky top-0 bg-white dark:bg-gray-900 z-10">
+                <h1 className="text-2xl font-bold text-center dark:text-gray-100">Water Requests</h1>
             </header>
-            <div className="flex border-b border-gray-200 sticky top-[73px] bg-white z-10">
+            <div className="flex border-b border-gray-200 dark:border-gray-700 sticky top-[73px] bg-white dark:bg-gray-900 z-10">
                 <TabButton tabId="my_requests" label="My Requests" count={myRequests.length} />
                 <TabButton tabId="host_dashboard" label="Host Dashboard" count={hostRequests.length} />
             </div>

@@ -22,14 +22,14 @@ const ChatPreviewCard: React.FC<{ request: WaterRequest, allUsers: (User | Host)
     const image = 'image' in otherParty ? otherParty.image : otherParty.profilePicture;
 
     return (
-        <Link to={`/chat/${request.id}`} className="flex items-center gap-4 p-4 border-b border-gray-200 hover:bg-gray-50 transition-colors">
+        <Link to={`/chat/${request.id}`} className="flex items-center gap-4 p-4 border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
             <img src={image} alt={otherParty.name} className="w-14 h-14 rounded-full object-cover"/>
             <div className="flex-1">
                 <div className="flex justify-between items-start">
-                    <h3 className="font-bold text-lg text-gray-800">{otherParty.name}</h3>
-                    <p className="text-xs text-gray-500">{new Date(request.createdAt).toLocaleDateString()}</p>
+                    <h3 className="font-bold text-lg text-gray-800 dark:text-gray-100">{otherParty.name}</h3>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">{new Date(request.createdAt).toLocaleDateString()}</p>
                 </div>
-                <p className="text-sm text-gray-600 truncate">
+                <p className="text-sm text-gray-600 dark:text-gray-300 truncate">
                     {request.status === 'chatting'
                         ? "Message thread"
                         : `Regarding your request for ${request.liters}L of pH ${request.phLevel.toFixed(1)} water.`
@@ -63,8 +63,8 @@ export default function MessagesPage() {
 
     return (
          <div className="flex flex-col h-full">
-            <header className="p-4 border-b border-gray-200 sticky top-0 bg-white z-10">
-                <h1 className="text-2xl font-bold text-center">Messages</h1>
+            <header className="p-4 border-b border-gray-200 dark:border-gray-700 sticky top-0 bg-white dark:bg-gray-900 z-10">
+                <h1 className="text-2xl font-bold text-center dark:text-gray-100">Messages</h1>
             </header>
             <div className="flex-1 overflow-y-auto">
                 {loading ? (
@@ -74,8 +74,8 @@ export default function MessagesPage() {
                 ) : conversations.length > 0 ? (
                     conversations.map(req => <ChatPreviewCard key={req.id} request={req} allUsers={allUsers} />)
                 ) : (
-                    <div className="text-center p-8 text-gray-500">
-                        <h3 className="text-lg font-semibold">No active conversations</h3>
+                    <div className="text-center p-8 text-gray-500 dark:text-gray-400">
+                        <h3 className="text-lg font-semibold dark:text-gray-200">No active conversations</h3>
                         <p>When a host accepts your request, your chat will appear here.</p>
                     </div>
                 )}

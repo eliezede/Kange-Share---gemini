@@ -1,5 +1,6 @@
 
 
+
 import React, { useState, useContext, createContext, useCallback, useEffect } from 'react';
 import { HashRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import LoginModal from './pages/LoginPage';
@@ -16,6 +17,59 @@ import BottomNav from './components/BottomNav';
 import MessagesPage from './pages/MessagesPage';
 import FollowListPage from './pages/FollowListPage';
 import AdminPage from './pages/AdminPage';
+import SignUpPage from './pages/SignUpPage';
+import VerifyEmailPage from './pages/VerifyEmailPage';
+import OnboardingPage from './pages/OnboardingPage';
+
+type Theme = 'light' | 'dark';
+
+interface ThemeContextType {
+  theme: Theme;
+  toggleTheme: () => void;
+}
+
+const ThemeContext = createContext<ThemeContextType | null>(null);
+
+export const useTheme = () => {
+    const context = useContext(ThemeContext);
+    if (!context) {
+        throw new Error('useTheme must be used within a ThemeProvider');
+    }
+    return context;
+};
+
+const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+    const [theme, setTheme] = useState<Theme>(() => {
+        if (typeof window !== 'undefined' && window.localStorage) {
+            const storedTheme = localStorage.getItem('theme');
+            if (storedTheme) {
+                return storedTheme as Theme;
+            }
+            return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        }
+        return 'light';
+    });
+
+    useEffect(() => {
+        const root = window.document.documentElement;
+        if (theme === 'dark') {
+            root.classList.add('dark');
+        } else {
+            root.classList.remove('dark');
+        }
+        localStorage.setItem('theme', theme);
+    }, [theme]);
+
+    const toggleTheme = useCallback(() => {
+        setTheme(prevTheme => prevTheme === 'light' ? 'dark' : 'light');
+    }, []);
+
+    return (
+        <ThemeContext.Provider value={{ theme, toggleTheme }}>
+            {children}
+        </ThemeContext.Provider>
+    );
+};
 
 interface AuthContextType {
   isAuthenticated: boolean;
@@ -72,7 +126,7 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
 
     if (!isAuthenticated) {
       // Render a blank page while the modal is active
-      return <div className="w-full h-screen bg-gray-50" />;
+      return <div className="w-full h-screen bg-gray-50 dark:bg-gray-950" />;
     }
     return <>{children}</>;
 };
@@ -87,21 +141,29 @@ const MainLayout: React.FC = () => (
 );
 
 
-const AppWithContainer = () => {
-  const { isLoginModalOpen, closeLoginModal } = useAuth();
+const AppRoutes = () => {
+  const { isAuthenticated } = useAuth();
   return (
-    <div className="max-w-4xl mx-auto bg-white min-h-screen shadow-2xl shadow-gray-300/20">
-      <LoginModal isOpen={isLoginModalOpen} onClose={closeLoginModal} />
-      <Routes>
-        {/* Routes with Bottom Nav */}
-        <Route element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
-          <Route path="/map" element={<MapPage />} />
-          <Route path="/requests" element={<RequestsPage />} />
-          <Route path="/messages" element={<MessagesPage />} />
-          <Route path="/profile" element={<UserProfilePage />} />
+    <Routes>
+        <Route path="/" element={!isAuthenticated ? <LandingPage /> : <Navigate to="/map" />} />
+        <Route path="/signup" element={<SignUpPage />} />
+        <Route path="/verify-email" element={<VerifyEmailPage />} />
+        <Route path="/onboarding" element={<OnboardingPage />} />
+        
+        {/* Protected Routes */}
+        <Route path="/map" element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
+          <Route index element={<MapPage />} />
+        </Route>
+         <Route path="/requests" element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
+          <Route index element={<RequestsPage />} />
+        </Route>
+         <Route path="/messages" element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
+          <Route index element={<MessagesPage />} />
+        </Route>
+         <Route path="/profile" element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
+          <Route index element={<UserProfilePage />} />
         </Route>
         
-        {/* Routes without Bottom Nav */}
         <Route path="/host/:id" element={<ProtectedRoute><HostProfilePage /></ProtectedRoute>} />
         <Route path="/profile/:userId/:followType" element={<ProtectedRoute><FollowListPage /></ProtectedRoute>} />
         <Route path="/request/:hostId" element={<ProtectedRoute><RequestWaterPage /></ProtectedRoute>} />
@@ -110,21 +172,24 @@ const AppWithContainer = () => {
         <Route path="/rate/:requestId" element={<ProtectedRoute><RateHostPage /></ProtectedRoute>} />
         <Route path="/admin" element={<ProtectedRoute><AdminPage /></ProtectedRoute>} />
         
-        <Route path="/*" element={<Navigate to="/" replace />} />
+        <Route path="/*" element={<Navigate to={isAuthenticated ? "/map" : "/"} replace />} />
       </Routes>
-    </div>
   );
 };
 
 export default function App() {
+  const [isLoginModalOpen, setLoginModalOpen] = useState(false);
+
   return (
-    <AuthProvider>
-      <HashRouter>
-        <Routes>
-          <Route path="/" element={<LandingPage />} />
-          <Route path="/*" element={<AppWithContainer />} />
-        </Routes>
-      </HashRouter>
-    </AuthProvider>
+    <ThemeProvider>
+        <AuthProvider>
+            <HashRouter>
+                 <div className="max-w-4xl mx-auto bg-white dark:bg-gray-900 min-h-screen shadow-2xl shadow-gray-300/20 dark:shadow-black/20">
+                    <LoginModal isOpen={isLoginModalOpen} onClose={() => setLoginModalOpen(false)} />
+                    <AppRoutes />
+                 </div>
+            </HashRouter>
+        </AuthProvider>
+    </ThemeProvider>
   );
 }

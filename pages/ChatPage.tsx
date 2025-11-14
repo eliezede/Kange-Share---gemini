@@ -84,7 +84,7 @@ export default function ChatPage() {
   }
 
   if (!request || !otherParty || !currentUser) {
-    return <div className="p-4 text-center">Chat not found.</div>;
+    return <div className="p-4 text-center dark:text-gray-300">Chat not found.</div>;
   }
   
   const isUserHost = request.hostId === currentUser.id;
@@ -93,19 +93,19 @@ export default function ChatPage() {
 
   return (
     <div className="flex flex-col h-screen">
-      <header className="flex items-center p-3 border-b border-gray-200 bg-white/80 backdrop-blur-sm sticky top-0 z-10">
+      <header className="flex items-center p-3 border-b border-gray-200 dark:border-gray-700 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm sticky top-0 z-10">
         <button onClick={() => {
           if (request.status === 'chatting') {
             navigate(-1);
           } else {
             navigate(`/request-detail/${requestId}`);
           }
-        }} className="p-1 rounded-full hover:bg-gray-100">
-          <ChevronLeftIcon className="w-6 h-6 text-gray-800" />
+        }} className="p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800">
+          <ChevronLeftIcon className="w-6 h-6 text-gray-800 dark:text-gray-200" />
         </button>
         <div className="flex items-center mx-auto">
           <img src={otherPartyImage} alt={otherPartyName} className="w-9 h-9 rounded-full object-cover" />
-          <span className="ml-3 font-bold text-lg">{otherPartyName}</span>
+          <span className="ml-3 font-bold text-lg dark:text-gray-100">{otherPartyName}</span>
         </div>
         <div className="w-6"></div>
       </header>
@@ -114,7 +114,7 @@ export default function ChatPage() {
         {messages.map((msg) => (
           <div key={msg.id} className={`flex items-end gap-2 ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
             {msg.sender === 'host' && <img src={otherPartyImage} alt={otherPartyName} className="w-6 h-6 rounded-full" />}
-            <div className={`max-w-xs md:max-w-md px-4 py-2 rounded-2xl ${msg.sender === 'user' ? 'bg-brand-blue text-white rounded-br-lg' : 'bg-gray-200 text-gray-800 rounded-bl-lg'}`}>
+            <div className={`max-w-xs md:max-w-md px-4 py-2 rounded-2xl ${msg.sender === 'user' ? 'bg-brand-blue text-white rounded-br-lg' : 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-bl-lg'}`}>
               <p>{msg.text}</p>
             </div>
           </div>
@@ -122,7 +122,7 @@ export default function ChatPage() {
         <div ref={messagesEndRef} />
       </div>
 
-       <div className="p-4 border-t border-gray-200 bg-white flex items-center gap-2">
+       <div className="p-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 flex items-center gap-2">
             {!isUserHost && request.status === 'accepted' && (
                 <button 
                     onClick={handleComplete}
@@ -137,9 +137,9 @@ export default function ChatPage() {
                 onChange={(e) => setNewMessage(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleSend()}
                 placeholder="Type a message..."
-                className="flex-1 px-4 py-2.5 bg-gray-100 border-transparent rounded-full focus:ring-2 focus:ring-brand-blue outline-none"
+                className="flex-1 px-4 py-2.5 bg-gray-100 dark:bg-gray-800 dark:text-gray-200 border-transparent rounded-full focus:ring-2 focus:ring-brand-blue outline-none"
             />
-            <button onClick={handleSend} className="p-3 bg-brand-blue text-white rounded-full hover:bg-blue-600 transition disabled:bg-gray-300" disabled={!newMessage.trim()}>
+            <button onClick={handleSend} className="p-3 bg-brand-blue text-white rounded-full hover:bg-blue-600 transition disabled:bg-gray-300 dark:disabled:bg-gray-600" disabled={!newMessage.trim()}>
                 <PaperAirplaneIcon className="w-5 h-5"/>
             </button>
         </div>

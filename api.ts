@@ -44,6 +44,20 @@ export const getUserById = (id: string): Promise<User | Host | undefined> => {
     return simulateNetwork(host);
 };
 
+export const updateUser = (userId: string, updates: Partial<Host>): Promise<Host | undefined> => {
+    return new Promise(resolve => {
+        setTimeout(() => {
+            const userIndex = MOCK_HOSTS.findIndex(u => u.id === userId);
+            if (userIndex > -1) {
+                MOCK_HOSTS[userIndex] = { ...MOCK_HOSTS[userIndex], ...updates };
+                resolve(MOCK_HOSTS[userIndex]);
+            } else {
+                resolve(undefined);
+            }
+        }, NETWORK_LATENCY);
+    });
+};
+
 export const updateCurrentUser = (updatedUser: User): Promise<User> => {
     // FIX: Cannot assign to MOCK_CURRENT_USER because it is an import.
     // Mutate the object in place using Object.assign instead of reassigning.
@@ -73,6 +87,49 @@ export const toggleFollowHost = (hostId: string): Promise<boolean> => {
         }, NETWORK_LATENCY);
     });
 }
+
+export const createUser = (): Promise<Host> => {
+    return new Promise(resolve => {
+        setTimeout(() => {
+            const newId = `user_${Date.now()}`;
+            const newUser: Host = {
+                id: newId,
+                name: '', // Will be set during onboarding
+                city: '',
+                rating: 0,
+                reviews: 0,
+                image: `https://picsum.photos/seed/${newId}/200/200`,
+                phLevels: [],
+                availability: {
+                  'Monday': { enabled: false, startTime: '09:00', endTime: '17:00' },
+                  'Tuesday': { enabled: false, startTime: '09:00', endTime: '17:00' },
+                  'Wednesday': { enabled: false, startTime: '09:00', endTime: '17:00' },
+                  'Thursday': { enabled: false, startTime: '09:00', endTime: '17:00' },
+                  'Friday': { enabled: false, startTime: '09:00', endTime: '17:00' },
+                  'Saturday': { enabled: false, startTime: '10:00', endTime: '14:00' },
+                  'Sunday': { enabled: false, startTime: '10:00', endTime: '14:00' },
+                },
+                maintenance: {
+                    lastFilterChange: '',
+                    lastECleaning: '',
+                },
+                isVerified: false,
+                address: {
+                    street: '',
+                    number: '',
+                    postalCode: '',
+                    city: '',
+                    country: '',
+                },
+                fullReviews: [],
+                followers: [],
+                following: [],
+            };
+            MOCK_HOSTS.push(newUser);
+            resolve(newUser);
+        }, NETWORK_LATENCY);
+    });
+};
 
 
 // --- REQUESTS API ---

@@ -2,8 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import * as api from '../api';
 import { User } from '../types';
-import { ChevronLeftIcon, CameraIcon, ArrowLeftOnRectangleIcon, TrashIcon, ShieldCheckIcon, SpinnerIcon } from '../components/Icons';
-import { useAuth } from '../App';
+import { ChevronLeftIcon, CameraIcon, ArrowLeftOnRectangleIcon, TrashIcon, ShieldCheckIcon, SpinnerIcon, SunIcon, MoonIcon } from '../components/Icons';
+import { useAuth, useTheme } from '../App';
 
 const ImageCropperModal: React.FC<{
   imageSrc: string;
@@ -92,8 +92,8 @@ const ImageCropperModal: React.FC<{
 
   return (
     <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center animate-fade-in-up transition-opacity" onClick={onClose}>
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm m-4 p-6" onClick={e => e.stopPropagation()}>
-        <h2 className="text-2xl font-bold text-center mb-4">Crop Your Photo</h2>
+      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-sm m-4 p-6" onClick={e => e.stopPropagation()}>
+        <h2 className="text-2xl font-bold text-center mb-4 dark:text-white">Crop Your Photo</h2>
         <div
           ref={containerRef}
           className="relative w-full aspect-square bg-gray-900 rounded-lg overflow-hidden cursor-move"
@@ -119,7 +119,7 @@ const ImageCropperModal: React.FC<{
           </div>
         </div>
         <div className="flex items-center gap-3 mt-4">
-          <span className="text-sm font-medium text-gray-700">Zoom:</span>
+          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Zoom:</span>
           <input
             type="range"
             min="1"
@@ -127,11 +127,11 @@ const ImageCropperModal: React.FC<{
             step="0.01"
             value={zoom}
             onChange={e => setZoom(parseFloat(e.target.value))}
-            className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+            className="w-full h-2 bg-gray-200 dark:bg-gray-600 rounded-lg appearance-none cursor-pointer"
           />
         </div>
         <div className="flex justify-end gap-3 mt-6">
-          <button onClick={onClose} className="px-5 py-2.5 rounded-xl font-semibold bg-gray-200 hover:bg-gray-300 transition">Cancel</button>
+          <button onClick={onClose} className="px-5 py-2.5 rounded-xl font-semibold bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-white transition">Cancel</button>
           <button onClick={handleCrop} className="px-5 py-2.5 rounded-xl font-semibold bg-brand-blue text-white hover:bg-blue-600 transition">Crop & Save</button>
         </div>
       </div>
@@ -140,8 +140,8 @@ const ImageCropperModal: React.FC<{
 };
 
 const FormSection: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
-  <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-    <h2 className="text-xl font-semibold mb-4 text-gray-800 border-b pb-2">{title}</h2>
+  <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
+    <h2 className="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-100 border-b pb-2 dark:border-gray-700">{title}</h2>
     <div className="space-y-4">
       {children}
     </div>
@@ -150,11 +150,11 @@ const FormSection: React.FC<{ title: string; children: React.ReactNode }> = ({ t
 
 const InputField: React.FC<React.InputHTMLAttributes<HTMLInputElement> & { label: string }> = ({ label, id, ...props }) => (
   <div>
-    <label htmlFor={id} className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
+    <label htmlFor={id} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{label}</label>
     <input
       id={id}
       {...props}
-      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-blue focus:border-transparent outline-none transition"
+      className="w-full p-3 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-brand-blue focus:border-transparent outline-none transition"
     />
   </div>
 );
@@ -165,7 +165,7 @@ const Toggle: React.FC<{ checked: boolean; onChange: (checked: boolean) => void 
     role="switch"
     aria-checked={checked}
     onClick={() => onChange(!checked)}
-    className={`relative inline-flex items-center h-6 rounded-full w-11 transition-colors ${checked ? 'bg-brand-blue' : 'bg-gray-300'}`}
+    className={`relative inline-flex items-center h-6 rounded-full w-11 transition-colors ${checked ? 'bg-brand-blue' : 'bg-gray-300 dark:bg-gray-600'}`}
   >
     <span className={`inline-block w-4 h-4 transform bg-white rounded-full transition-transform ${checked ? 'translate-x-6' : 'translate-x-1'}`} />
   </button>
@@ -205,6 +205,7 @@ const parsePhoneNumber = (phone: string, countryName: string): { countryCode: st
 export default function UserProfilePage() {
   const navigate = useNavigate();
   const { logout } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const [user, setUser] = useState<User | null>(null);
   const [originalUser, setOriginalUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -331,24 +332,24 @@ export default function UserProfilePage() {
   
   if (loading || !user) {
     return (
-        <div className="flex justify-center items-center h-screen">
+        <div className="flex justify-center items-center h-screen bg-gray-50 dark:bg-gray-900">
             <SpinnerIcon className="w-10 h-10 text-brand-blue animate-spin" />
         </div>
     );
   }
 
   return (
-    <div className="pb-6 bg-gray-50 min-h-screen">
-      <header className="p-4 flex items-center border-b border-gray-200 sticky top-0 bg-white/80 backdrop-blur-sm z-10">
-        <button onClick={() => navigate(-1)} className="p-1 rounded-full hover:bg-gray-100">
-          <ChevronLeftIcon className="w-6 h-6 text-gray-800" />
+    <div className="pb-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+      <header className="p-4 flex items-center border-b border-gray-200 dark:border-gray-700 sticky top-0 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm z-10">
+        <button onClick={() => navigate(-1)} className="p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800">
+          <ChevronLeftIcon className="w-6 h-6 text-gray-800 dark:text-gray-200" />
         </button>
-        <h1 className="text-xl font-bold flex-1 text-center">Edit Profile</h1>
+        <h1 className="text-xl font-bold flex-1 text-center dark:text-gray-100">Edit Profile</h1>
         <button 
           type="submit"
           form="user-profile-form"
           disabled={!isDirty || isSaving}
-          className="font-semibold text-brand-blue disabled:text-gray-400 transition-colors px-4 w-16"
+          className="font-semibold text-brand-blue disabled:text-gray-400 dark:disabled:text-gray-500 transition-colors px-4 w-16"
         >
           {isSaving ? <SpinnerIcon className="w-5 h-5 animate-spin mx-auto" /> : "Save"}
         </button>
@@ -358,20 +359,20 @@ export default function UserProfilePage() {
         <form id="user-profile-form" onSubmit={handleSave} className="space-y-6">
             <div className="flex flex-col items-center">
                 <div className="relative w-32 h-32 mb-2">
-                    <img src={previewImage || 'https://via.placeholder.com/128'} alt="Profile" className="w-full h-full rounded-full object-cover shadow-md border-4 border-white" />
-                    <label htmlFor="photo-upload" className="absolute bottom-1 right-1 bg-white p-2 rounded-full shadow-md cursor-pointer hover:bg-gray-100 transition">
-                    <CameraIcon className="w-6 h-6 text-gray-700" />
+                    <img src={previewImage || 'https://via.placeholder.com/128'} alt="Profile" className="w-full h-full rounded-full object-cover shadow-md border-4 border-white dark:border-gray-800" />
+                    <label htmlFor="photo-upload" className="absolute bottom-1 right-1 bg-white dark:bg-gray-600 p-2 rounded-full shadow-md cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-500 transition">
+                    <CameraIcon className="w-6 h-6 text-gray-700 dark:text-gray-200" />
                     <input id="photo-upload" type="file" accept="image/*" className="hidden" onChange={handlePhotoChange} />
                     </label>
                 </div>
                  <div className="flex items-center gap-8 mt-4">
-                    <Link to={`/profile/${user.id}/followers`} className="text-center text-gray-700 hover:text-black">
+                    <Link to={`/profile/${user.id}/followers`} className="text-center text-gray-700 dark:text-gray-300 hover:text-black dark:hover:text-white">
                         <p className="font-bold text-xl">{user.followers.length}</p>
-                        <p className="text-sm text-gray-500">Followers</p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">Followers</p>
                     </Link>
-                    <Link to={`/profile/${user.id}/following`} className="text-center text-gray-700 hover:text-black">
+                    <Link to={`/profile/${user.id}/following`} className="text-center text-gray-700 dark:text-gray-300 hover:text-black dark:hover:text-white">
                         <p className="font-bold text-xl">{user.following.length}</p>
-                        <p className="text-sm text-gray-500">Following</p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">Following</p>
                     </Link>
                 </div>
             </div>
@@ -379,13 +380,13 @@ export default function UserProfilePage() {
             <FormSection title="Personal Info">
                 <InputField label="Name" id="name" name="name" value={user.name} onChange={handleInputChange} />
                 <div>
-                <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                <label htmlFor="phone" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Phone</label>
                 <div className="flex items-center gap-2">
                     <select 
                         name="countryCode"
                         value={phoneParts.countryCode}
                         onChange={(e) => handlePhoneChange('countryCode', e.target.value)}
-                        className="p-3 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-brand-blue focus:border-transparent outline-none transition"
+                        className="p-3 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 rounded-lg focus:ring-2 focus:ring-brand-blue focus:border-transparent outline-none transition"
                     >
                         {COUNTRIES.map((country) => (
                             <option key={country.name} value={country.code}>
@@ -399,31 +400,31 @@ export default function UserProfilePage() {
                         value={phoneParts.number}
                         onChange={(e) => handlePhoneChange('number', e.target.value)}
                         placeholder="(555) 123-4567"
-                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-blue focus:border-transparent outline-none transition flex-1"
+                        className="w-full p-3 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-lg focus:ring-2 focus:ring-brand-blue focus:border-transparent outline-none transition flex-1"
                     />
                 </div>
-                <p className="text-xs text-gray-500 mt-1">Shared only after you accept a water request.</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Shared only after you accept a water request.</p>
                 </div>
             </FormSection>
 
             <FormSection title="Host Settings">
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Water Available (pH)</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Water Available (pH)</label>
                     <div className="flex flex-wrap gap-2">
                         {ALL_PH_LEVELS.map(ph => (
-                            <button key={ph} type="button" onClick={() => togglePh(ph)} className={`px-4 py-2 rounded-full font-semibold transition text-sm ${user.phLevels.includes(ph) ? 'bg-brand-blue text-white' : 'bg-gray-200 hover:bg-gray-300'}`}>
+                            <button key={ph} type="button" onClick={() => togglePh(ph)} className={`px-4 py-2 rounded-full font-semibold transition text-sm ${user.phLevels.includes(ph) ? 'bg-brand-blue text-white' : 'bg-gray-200 dark:bg-gray-600 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-500'}`}>
                                 {ph.toFixed(1)}
                             </button>
                         ))}
                     </div>
                 </div>
                 <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Pickup Availability</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Pickup Availability</label>
                 <div className="space-y-3">
                     {DAYS_OF_WEEK.map(day => (
                     <div key={day} className="space-y-2">
                         <div className="flex items-center justify-between">
-                        <span className="font-semibold text-gray-800">{day}</span>
+                        <span className="font-semibold text-gray-800 dark:text-gray-200">{day}</span>
                         <Toggle 
                             checked={user.availability[day]?.enabled || false}
                             onChange={(checked) => handleAvailabilityChange(day, 'enabled', checked)}
@@ -432,12 +433,12 @@ export default function UserProfilePage() {
                         {user.availability[day]?.enabled && (
                         <div className="grid grid-cols-2 gap-3 pl-4">
                             <div>
-                            <label className="text-xs text-gray-500">From</label>
-                            <input type="time" value={user.availability[day].startTime} onChange={(e) => handleAvailabilityChange(day, 'startTime', e.target.value)} className="w-full p-2 border border-gray-300 rounded-md text-sm focus:ring-1 focus:ring-brand-blue focus:border-transparent outline-none"/>
+                            <label className="text-xs text-gray-500 dark:text-gray-400">From</label>
+                            <input type="time" value={user.availability[day].startTime} onChange={(e) => handleAvailabilityChange(day, 'startTime', e.target.value)} className="w-full p-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-md text-sm focus:ring-1 focus:ring-brand-blue focus:border-transparent outline-none"/>
                             </div>
                             <div>
-                            <label className="text-xs text-gray-500">To</label>
-                            <input type="time" value={user.availability[day].endTime} onChange={(e) => handleAvailabilityChange(day, 'endTime', e.target.value)} className="w-full p-2 border border-gray-300 rounded-md text-sm focus:ring-1 focus:ring-brand-blue focus:border-transparent outline-none"/>
+                            <label className="text-xs text-gray-500 dark:text-gray-400">To</label>
+                            <input type="time" value={user.availability[day].endTime} onChange={(e) => handleAvailabilityChange(day, 'endTime', e.target.value)} className="w-full p-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-md text-sm focus:ring-1 focus:ring-brand-blue focus:border-transparent outline-none"/>
                             </div>
                         </div>
                         )}
@@ -455,30 +456,49 @@ export default function UserProfilePage() {
                 <InputField label="Postal Code" id="address.postalCode" name="address.postalCode" value={user.address.postalCode} onChange={handleInputChange} />
                 <InputField label="City" id="address.city" name="address.city" value={user.address.city} onChange={handleInputChange} />
                 <InputField label="Country" id="address.country" name="address.country" value={user.address.country} onChange={handleInputChange} />
-                <p className="text-xs text-gray-500 !mt-2">Your street and number will only be visible to users with an accepted request. Other address details are public.</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 !mt-2">Your street and number will only be visible to users with an accepted request. Other address details are public.</p>
             </FormSection>
         </form>
         
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-            <h2 className="text-xl font-semibold mb-4 text-gray-800 border-b pb-2">Account Actions</h2>
+        <FormSection title="Appearance">
+            <div className="flex justify-between items-center">
+                <label htmlFor="dark-mode-toggle" className="font-medium text-gray-700 dark:text-gray-300">Dark Mode</label>
+                <button
+                    id="dark-mode-toggle"
+                    type="button"
+                    role="switch"
+                    aria-checked={theme === 'dark'}
+                    onClick={toggleTheme}
+                    className={`relative inline-flex items-center h-8 w-14 rounded-full transition-colors bg-gray-200 dark:bg-gray-700`}
+                >
+                    <span className="sr-only">Toggle Dark Mode</span>
+                    <span className={`inline-flex items-center justify-center w-6 h-6 transform bg-white rounded-full transition-transform ${theme === 'dark' ? 'translate-x-7' : 'translate-x-1'}`}>
+                        {theme === 'dark' ? <MoonIcon className="w-4 h-4 text-gray-800" /> : <SunIcon className="w-4 h-4 text-gray-800" />}
+                    </span>
+                </button>
+            </div>
+        </FormSection>
+        
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
+            <h2 className="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-100 border-b pb-2 dark:border-gray-700">Account Actions</h2>
             <div className="space-y-3">
                 <Link 
                     to="/admin"
-                    className="w-full flex items-center justify-center gap-2 text-left p-3 bg-brand-light hover:bg-blue-100 rounded-lg font-semibold text-brand-blue transition-colors"
+                    className="w-full flex items-center justify-center gap-2 text-left p-3 bg-brand-light dark:bg-blue-900/40 hover:bg-blue-100 dark:hover:bg-blue-900/60 rounded-lg font-semibold text-brand-blue dark:text-blue-300 transition-colors"
                 >
                     <ShieldCheckIcon className="w-5 h-5" />
                     <span>Admin Dashboard</span>
                 </Link>
                 <button 
                     onClick={handleLogout}
-                    className="w-full flex items-center justify-center gap-2 text-left p-3 bg-gray-100 hover:bg-gray-200 rounded-lg font-semibold text-gray-700 transition-colors"
+                    className="w-full flex items-center justify-center gap-2 text-left p-3 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 rounded-lg font-semibold text-gray-700 dark:text-gray-200 transition-colors"
                 >
                     <ArrowLeftOnRectangleIcon className="w-5 h-5" />
                     <span>Logout</span>
                 </button>
                  <button 
                     onClick={handleDeleteAccount}
-                    className="w-full flex items-center justify-center gap-2 text-left p-3 bg-red-50 hover:bg-red-100 rounded-lg font-semibold text-red-600 transition-colors"
+                    className="w-full flex items-center justify-center gap-2 text-left p-3 bg-red-50 hover:bg-red-100 dark:bg-red-900/40 dark:hover:bg-red-900/60 rounded-lg font-semibold text-red-600 dark:text-red-300 transition-colors"
                 >
                     <TrashIcon className="w-5 h-5" />
                     <span>Delete Account</span>
