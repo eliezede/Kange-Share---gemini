@@ -1,7 +1,8 @@
 
+
 import React, { useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { MOCK_HOSTS, MOCK_USER, dataStore } from '../data';
+import { dataStore } from '../data';
 import { ChevronLeftIcon } from '../components/Icons';
 import { WaterRequest } from '../types';
 
@@ -23,7 +24,7 @@ const generateTimeSlots = (start: string, end: string, intervalMinutes: number):
 export default function RequestWaterPage() {
   const { hostId } = useParams<{ hostId: string }>();
   const navigate = useNavigate();
-  const host = MOCK_HOSTS.find(h => h.id === hostId);
+  const host = dataStore.hosts.find(h => h.id === hostId);
 
   const today = new Date().toISOString().split('T')[0];
   const [selectedDate, setSelectedDate] = useState(today);
@@ -50,7 +51,7 @@ export default function RequestWaterPage() {
     
     const newRequest: WaterRequest = {
         id: `req_${Date.now()}`,
-        requesterId: MOCK_USER.id,
+        requesterId: dataStore.currentUser.id,
         hostId: hostId,
         status: 'pending',
         phLevel: selectedPh,

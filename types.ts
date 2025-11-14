@@ -29,6 +29,8 @@ export interface Host {
     country: string;
   };
   fullReviews: Review[];
+  followers: string[];
+  following: string[];
 }
 
 export interface Message {
@@ -57,9 +59,11 @@ export interface User {
     city: string;
     country: string;
   };
+  followers: string[];
+  following: string[];
 }
 
-export type RequestStatus = 'pending' | 'accepted' | 'completed' | 'cancelled' | 'declined';
+export type RequestStatus = 'pending' | 'accepted' | 'completed' | 'cancelled' | 'declined' | 'chatting';
 
 export interface WaterRequest {
   id: string;

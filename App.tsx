@@ -13,6 +13,7 @@ import RequestsPage from './pages/RequestsPage';
 import RequestDetailPage from './pages/RequestDetailPage';
 import BottomNav from './components/BottomNav';
 import MessagesPage from './pages/MessagesPage';
+import FollowListPage from './pages/FollowListPage';
 
 interface AuthContextType {
   isAuthenticated: boolean;
@@ -100,6 +101,7 @@ const AppWithContainer = () => {
         
         {/* Routes without Bottom Nav */}
         <Route path="/host/:id" element={<ProtectedRoute><HostProfilePage /></ProtectedRoute>} />
+        <Route path="/profile/:userId/:followType" element={<ProtectedRoute><FollowListPage /></ProtectedRoute>} />
         <Route path="/request/:hostId" element={<ProtectedRoute><RequestWaterPage /></ProtectedRoute>} />
         <Route path="/request-detail/:requestId" element={<ProtectedRoute><RequestDetailPage /></ProtectedRoute>} />
         <Route path="/chat/:requestId" element={<ProtectedRoute><ChatPage /></ProtectedRoute>} />

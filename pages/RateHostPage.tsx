@@ -1,8 +1,9 @@
 
 
+
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { MOCK_HOSTS, dataStore } from '../data';
+import { dataStore } from '../data';
 import { StarIcon } from '../components/Icons';
 
 export default function RateHostPage() {
@@ -10,7 +11,7 @@ export default function RateHostPage() {
   const navigate = useNavigate();
   
   const request = dataStore.requests.find(r => r.id === requestId);
-  const host = MOCK_HOSTS.find(h => h.id === request?.hostId);
+  const host = dataStore.hosts.find(h => h.id === request?.hostId);
   
   const [rating, setRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);

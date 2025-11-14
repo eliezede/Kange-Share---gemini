@@ -21,158 +21,171 @@ const MOCK_REVIEWS_BEN: Review[] = [
     { id: 'r5', reviewerName: 'Tom H.', reviewerImage: 'https://picsum.photos/seed/tom/100/100', rating: 5, comment: 'Excellent communication and very reliable.', date: '2024-06-22' },
 ];
 
-export const MOCK_HOSTS: Host[] = [
-  {
-    id: '1',
-    name: 'Sarah Chen',
-    city: 'San Francisco',
-    rating: 4.9,
-    reviews: 12,
-    image: 'https://picsum.photos/seed/sarah/200/200',
-    phLevels: [8.5, 9.0, 9.5, 11.5],
-    availability: defaultAvailability,
-    maintenance: {
-      lastFilterChange: '2024-06-15',
-      lastECleaning: '2024-07-01',
-    },
-    isVerified: true,
-    address: {
-        street: '456 Market St',
-        number: '',
-        postalCode: '94105',
-        city: 'San Francisco',
-        country: 'USA',
-    },
-    fullReviews: MOCK_REVIEWS_SARAH,
-  },
-  {
-    id: '2',
-    name: 'Ben Miller',
-    city: 'New York',
-    rating: 5.0,
-    reviews: 25,
-    image: 'https://picsum.photos/seed/ben/200/200',
-    phLevels: [9.5, 11.5],
-    availability: {
-      ...defaultAvailability,
-      'Monday': { enabled: false, startTime: '09:00', endTime: '17:00' },
-      'Tuesday': { enabled: false, startTime: '09:00', endTime: '17:00' },
-      'Wednesday': { enabled: false, startTime: '09:00', endTime: '17:00' },
-      'Thursday': { enabled: false, startTime: '09:00', endTime: '17:00' },
-      'Friday': { enabled: false, startTime: '09:00', endTime: '17:00' },
-      'Saturday': { enabled: true, startTime: '10:00', endTime: '14:00' },
-      'Sunday': { enabled: true, startTime: '10:00', endTime: '14:00' },
-    },
-    maintenance: {
-      lastFilterChange: '2024-07-01',
-      lastECleaning: '2024-07-10',
-    },
-    isVerified: true,
-    address: {
-        street: '123 Broadway',
-        number: 'Suite 200',
-        postalCode: '10007',
-        city: 'New York',
-        country: 'USA',
-    },
-    fullReviews: MOCK_REVIEWS_BEN,
-  },
-  {
-    id: '3',
-    name: 'Maria Garcia',
-    city: 'Miami',
-    rating: 4.8,
-    reviews: 8,
-    image: 'https://picsum.photos/seed/maria/200/200',
-    phLevels: [8.5, 9.5],
-    availability: {
-        'Monday': { enabled: true, startTime: '10:00', endTime: '18:00' },
-        'Tuesday': { enabled: true, startTime: '10:00', endTime: '18:00' },
-        'Wednesday': { enabled: true, startTime: '10:00', endTime: '18:00' },
-        'Thursday': { enabled: true, startTime: '10:00', endTime: '18:00' },
-        'Friday': { enabled: true, startTime: '10:00', endTime: '18:00' },
-        'Saturday': { enabled: true, startTime: '10:00', endTime: '18:00' },
-        'Sunday': { enabled: true, startTime: '10:00', endTime: '18:00' },
-    },
-    maintenance: {
-      lastFilterChange: '2024-05-20',
-      lastECleaning: '2024-06-25',
-    },
-    isVerified: false,
-    address: {
-        street: '789 Ocean Drive',
-        number: '',
-        postalCode: '33139',
-        city: 'Miami',
-        country: 'USA',
-    },
-    fullReviews: [],
-  },
-  {
-    id: '4',
-    name: 'Kenji Tanaka',
-    city: 'Los Angeles',
-    rating: 4.9,
-    reviews: 18,
-    image: 'https://picsum.photos/seed/kenji/200/200',
-    phLevels: [9.0, 9.5, 11.5],
-    availability: {
-      ...defaultAvailability,
-      'Tuesday': { enabled: false, startTime: '09:00', endTime: '17:00' },
-      'Thursday': { enabled: false, startTime: '09:00', endTime: '17:00' },
-       'Friday': { enabled: true, startTime: '16:00', endTime: '19:00' },
-    },
-    maintenance: {
-      lastFilterChange: '2024-06-28',
-      lastECleaning: '2024-07-05',
-    },
-    isVerified: true,
-    address: {
-        street: '101 Hollywood Blvd',
-        number: '',
-        postalCode: '90028',
-        city: 'Los Angeles',
-        country: 'USA',
-    },
-    fullReviews: [
-        { id: 'r6', reviewerName: 'Chloe K.', reviewerImage: 'https://picsum.photos/seed/chloe/100/100', rating: 5, comment: 'Kenji is a fantastic host!', date: '2024-07-15' },
-    ],
-  },
-];
-
-export const MOCK_MESSAGES: Message[] = [
-    { id: 1, text: 'Hi Sarah, I just submitted a request for 5L of 9.5pH water tomorrow at 2 PM. Is that okay?', sender: 'user', timestamp: '10:30 AM' },
-    { id: 2, text: 'Hi! Yes, that works perfectly. See you tomorrow!', sender: 'host', timestamp: '10:32 AM' },
-    { id: 3, text: 'Great, thanks!', sender: 'user', timestamp: '10:33 AM' },
-];
-
-export const MOCK_USER: User = {
-  id: 'user_alex_123',
-  name: 'Alex Johnson',
-  phone: '+1 (555) 123-4567',
-  profilePicture: 'https://picsum.photos/seed/alex/200/200',
-  preferredCities: ['San Francisco', 'Tokyo', 'Bali'],
-  phLevels: [9.5, 11.5],
-  availability: defaultAvailability,
-  maintenance: {
-    lastFilterChange: '2024-07-01',
-    lastECleaning: '2024-07-15',
-  },
-  address: {
-    street: '123 Wellness Way',
-    number: 'Apt 4B',
-    postalCode: '94102',
-    city: 'San Francisco',
-    country: 'USA',
-  },
-};
-
 // Use a singleton pattern for mock data to persist state across components
 class DataStore {
     private static instance: DataStore;
+    public hosts: Host[];
+    public currentUser: User;
     public requests: WaterRequest[];
+    public conversations: Record<string, Message[]> = {
+        'req2': [
+            { id: 1, text: 'Hi Sarah, I just submitted a request for 5L of 9.5pH water tomorrow at 2 PM. Is that okay?', sender: 'user', timestamp: '10:30 AM' },
+            { id: 2, text: 'Hi! Yes, that works perfectly. See you tomorrow!', sender: 'host', timestamp: '10:32 AM' },
+            { id: 3, text: 'Great, thanks!', sender: 'user', timestamp: '10:33 AM' },
+        ]
+    };
 
     private constructor() {
+        this.hosts = [
+          {
+            id: '1',
+            name: 'Sarah Chen',
+            city: 'San Francisco',
+            rating: 4.9,
+            reviews: 12,
+            image: 'https://picsum.photos/seed/sarah/200/200',
+            phLevels: [8.5, 9.0, 9.5, 11.5],
+            availability: defaultAvailability,
+            maintenance: {
+              lastFilterChange: '2024-06-15',
+              lastECleaning: '2024-07-01',
+            },
+            isVerified: true,
+            address: {
+                street: '456 Market St',
+                number: '',
+                postalCode: '94105',
+                city: 'San Francisco',
+                country: 'USA',
+            },
+            fullReviews: MOCK_REVIEWS_SARAH,
+            followers: ['user_alex_123'],
+            following: ['2'],
+          },
+          {
+            id: '2',
+            name: 'Ben Miller',
+            city: 'New York',
+            rating: 5.0,
+            reviews: 25,
+            image: 'https://picsum.photos/seed/ben/200/200',
+            phLevels: [9.5, 11.5],
+            availability: {
+              ...defaultAvailability,
+              'Monday': { enabled: false, startTime: '09:00', endTime: '17:00' },
+              'Tuesday': { enabled: false, startTime: '09:00', endTime: '17:00' },
+              'Wednesday': { enabled: false, startTime: '09:00', endTime: '17:00' },
+              'Thursday': { enabled: false, startTime: '09:00', endTime: '17:00' },
+              'Friday': { enabled: false, startTime: '09:00', endTime: '17:00' },
+              'Saturday': { enabled: true, startTime: '10:00', endTime: '14:00' },
+              'Sunday': { enabled: true, startTime: '10:00', endTime: '14:00' },
+            },
+            maintenance: {
+              lastFilterChange: '2024-07-01',
+              lastECleaning: '2024-07-10',
+            },
+            isVerified: true,
+            address: {
+                street: '123 Broadway',
+                number: 'Suite 200',
+                postalCode: '10007',
+                city: 'New York',
+                country: 'USA',
+            },
+            fullReviews: MOCK_REVIEWS_BEN,
+            followers: ['1'],
+            following: [],
+          },
+          {
+            id: '3',
+            name: 'Maria Garcia',
+            city: 'Miami',
+            rating: 4.8,
+            reviews: 8,
+            image: 'https://picsum.photos/seed/maria/200/200',
+            phLevels: [8.5, 9.5],
+            availability: {
+                'Monday': { enabled: true, startTime: '10:00', endTime: '18:00' },
+                'Tuesday': { enabled: true, startTime: '10:00', endTime: '18:00' },
+                'Wednesday': { enabled: true, startTime: '10:00', endTime: '18:00' },
+                'Thursday': { enabled: true, startTime: '10:00', endTime: '18:00' },
+                'Friday': { enabled: true, startTime: '10:00', endTime: '18:00' },
+                'Saturday': { enabled: true, startTime: '10:00', endTime: '18:00' },
+                'Sunday': { enabled: true, startTime: '10:00', endTime: '18:00' },
+            },
+            maintenance: {
+              lastFilterChange: '2024-05-20',
+              lastECleaning: '2024-06-25',
+            },
+            isVerified: false,
+            address: {
+                street: '789 Ocean Drive',
+                number: '',
+                postalCode: '33139',
+                city: 'Miami',
+                country: 'USA',
+            },
+            fullReviews: [],
+            followers: [],
+            following: [],
+          },
+          {
+            id: '4',
+            name: 'Kenji Tanaka',
+            city: 'Los Angeles',
+            rating: 4.9,
+            reviews: 18,
+            image: 'https://picsum.photos/seed/kenji/200/200',
+            phLevels: [9.0, 9.5, 11.5],
+            availability: {
+              ...defaultAvailability,
+              'Tuesday': { enabled: false, startTime: '09:00', endTime: '17:00' },
+              'Thursday': { enabled: false, startTime: '09:00', endTime: '17:00' },
+               'Friday': { enabled: true, startTime: '16:00', endTime: '19:00' },
+            },
+            maintenance: {
+              lastFilterChange: '2024-06-28',
+              lastECleaning: '2024-07-05',
+            },
+            isVerified: true,
+            address: {
+                street: '101 Hollywood Blvd',
+                number: '',
+                postalCode: '90028',
+                city: 'Los Angeles',
+                country: 'USA',
+            },
+            fullReviews: [
+                { id: 'r6', reviewerName: 'Chloe K.', reviewerImage: 'https://picsum.photos/seed/chloe/100/100', rating: 5, comment: 'Kenji is a fantastic host!', date: '2024-07-15' },
+            ],
+            followers: [],
+            following: [],
+          },
+        ];
+
+        this.currentUser = {
+          id: 'user_alex_123',
+          name: 'Alex Johnson',
+          phone: '+1 (555) 123-4567',
+          profilePicture: 'https://picsum.photos/seed/alex/200/200',
+          preferredCities: ['San Francisco', 'Tokyo', 'Bali'],
+          phLevels: [9.5, 11.5],
+          availability: defaultAvailability,
+          maintenance: {
+            lastFilterChange: '2024-07-01',
+            lastECleaning: '2024-07-15',
+          },
+          address: {
+            street: '123 Wellness Way',
+            number: 'Apt 4B',
+            postalCode: '94102',
+            city: 'San Francisco',
+            country: 'USA',
+          },
+          followers: [],
+          following: ['1'],
+        };
+
         const today = new Date();
         const tomorrow = new Date(today);
         tomorrow.setDate(tomorrow.getDate() + 1);
@@ -201,6 +214,13 @@ class DataStore {
             DataStore.instance = new DataStore();
         }
         return DataStore.instance;
+    }
+
+    public findUserById(id: string): User | Host | undefined {
+        if (id === this.currentUser.id) {
+            return this.currentUser;
+        }
+        return this.hosts.find(h => h.id === id);
     }
 }
 

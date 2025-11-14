@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { MOCK_HOSTS, MOCK_USER, dataStore } from '../data';
-import { WaterRequest, Host, User, RequestStatus } from '../types';
+import { dataStore } from '../data';
+import { WaterRequest, RequestStatus, Host, User } from '../types';
 
 const StatusBadge: React.FC<{ status: RequestStatus }> = ({ status }) => {
     const statusStyles: Record<RequestStatus, string> = {
@@ -10,17 +10,18 @@ const StatusBadge: React.FC<{ status: RequestStatus }> = ({ status }) => {
         completed: 'bg-blue-100 text-blue-800',
         cancelled: 'bg-gray-100 text-gray-800',
         declined: 'bg-red-100 text-red-800',
+        chatting: 'bg-gray-100 text-gray-800',
     };
     return (
         <span className={`px-2.5 py-0.5 text-xs font-semibold rounded-full capitalize ${statusStyles[status]}`}>
-            {status}
+            {status === 'chatting' ? 'Chat' : status}
         </span>
     );
 };
 
 const RequestCard: React.FC<{ request: WaterRequest; perspective: 'requester' | 'host' }> = ({ request, perspective }) => {
     const otherPartyId = perspective === 'requester' ? request.hostId : request.requesterId;
-    const otherParty = MOCK_HOSTS.find(h => h.id === otherPartyId);
+    const otherParty = dataStore.findUserById(otherPartyId);
 
     if (!otherParty) return null; // Or some fallback UI
 
@@ -28,10 +29,12 @@ const RequestCard: React.FC<{ request: WaterRequest; perspective: 'requester' | 
         month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC'
     });
     
+    const image = 'image' in otherParty ? otherParty.image : otherParty.profilePicture;
+
     return (
         <Link to={`/request-detail/${request.id}`} className="block p-4 border-b border-gray-200 hover:bg-gray-50 transition-colors">
             <div className="flex items-center gap-4">
-                <img src={otherParty.image} alt={otherParty.name} className="w-14 h-14 rounded-full object-cover"/>
+                <img src={image} alt={otherParty.name} className="w-14 h-14 rounded-full object-cover"/>
                 <div className="flex-1">
                     <div className="flex justify-between items-start">
                         <div>
@@ -53,11 +56,11 @@ export default function RequestsPage() {
     const [activeTab, setActiveTab] = useState<'my_requests' | 'host_dashboard'>('my_requests');
 
     const myRequests = useMemo(() => 
-        dataStore.requests.filter(r => r.requesterId === MOCK_USER.id), 
+        dataStore.requests.filter(r => r.requesterId === dataStore.currentUser.id && r.status !== 'chatting'), 
     []);
     
     const hostRequests = useMemo(() =>
-        dataStore.requests.filter(r => r.hostId === MOCK_USER.id),
+        dataStore.requests.filter(r => r.hostId === dataStore.currentUser.id && r.status !== 'chatting'),
     []);
 
     const TabButton: React.FC<{ tabId: 'my_requests' | 'host_dashboard', label: string, count: number }> = ({ tabId, label, count }) => (

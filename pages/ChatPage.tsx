@@ -1,10 +1,8 @@
-
-
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { MOCK_HOSTS, MOCK_MESSAGES, dataStore, MOCK_USER } from '../data';
+import { dataStore } from '../data';
 import { ChevronLeftIcon, PaperAirplaneIcon } from '../components/Icons';
-import { Message, WaterRequest } from '../types';
+import { Message, WaterRequest, Host, User } from '../types';
 
 export default function ChatPage() {
   const { requestId } = useParams<{ requestId: string }>();
@@ -14,11 +12,11 @@ export default function ChatPage() {
     dataStore.requests.find(r => r.id === requestId)
   );
 
-  const isUserHost = request?.hostId === MOCK_USER.id;
+  const isUserHost = request?.hostId === dataStore.currentUser.id;
   const otherPartyId = isUserHost ? request?.requesterId : request?.hostId;
-  const otherParty = MOCK_HOSTS.find(h => h.id === otherPartyId) || MOCK_USER; // simplified: assumes requester is a host too or is the main user
+  const otherParty = dataStore.findUserById(otherPartyId || '');
 
-  const [messages, setMessages] = useState<Message[]>(MOCK_MESSAGES);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
@@ -26,17 +24,27 @@ export default function ChatPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
+  useEffect(() => {
+    if (requestId) {
+        setMessages(dataStore.conversations[requestId] || []);
+    }
+  }, [requestId]);
+
   useEffect(scrollToBottom, [messages]);
 
   const handleSend = () => {
-    if (newMessage.trim()) {
+    if (newMessage.trim() && requestId) {
       const userMessage: Message = {
         id: Date.now(),
         text: newMessage,
         sender: 'user', // Simplified for now
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit'}),
       };
-      setMessages(prev => [...prev, userMessage]);
+      
+      const currentMessages = dataStore.conversations[requestId] || [];
+      dataStore.conversations[requestId] = [...currentMessages, userMessage];
+      setMessages([...dataStore.conversations[requestId]]);
+
       setNewMessage('');
 
       // Mock host reply
@@ -47,7 +55,9 @@ export default function ChatPage() {
             sender: 'host',
             timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit'}),
         };
-        setMessages(prev => [...prev, hostReply]);
+        const currentMessagesWithUser = dataStore.conversations[requestId] || [];
+        dataStore.conversations[requestId] = [...currentMessagesWithUser, hostReply];
+        setMessages([...dataStore.conversations[requestId]]);
       }, 1500);
     }
   };
@@ -64,13 +74,13 @@ export default function ChatPage() {
     return <div className="p-4 text-center">Chat not found.</div>;
   }
   
-  const otherPartyName = 'name' in otherParty ? otherParty.name : 'Requester';
-  const otherPartyImage = 'image' in otherParty ? otherParty.image : ('profilePicture' in otherParty ? otherParty.profilePicture : '');
+  const otherPartyName = otherParty.name;
+  const otherPartyImage = 'image' in otherParty ? otherParty.image : otherParty.profilePicture;
 
   return (
     <div className="flex flex-col h-screen">
       <header className="flex items-center p-3 border-b border-gray-200 bg-white/80 backdrop-blur-sm sticky top-0 z-10">
-        <button onClick={() => navigate(`/request-detail/${requestId}`)} className="p-1 rounded-full hover:bg-gray-100">
+        <button onClick={() => navigate(request?.status === 'chatting' ? -1 : `/request-detail/${requestId}`)} className="p-1 rounded-full hover:bg-gray-100">
           <ChevronLeftIcon className="w-6 h-6 text-gray-800" />
         </button>
         <div className="flex items-center mx-auto">

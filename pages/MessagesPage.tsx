@@ -1,25 +1,30 @@
 import React, { useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { dataStore, MOCK_HOSTS, MOCK_USER } from '../data';
+import { dataStore } from '../data';
 import { WaterRequest } from '../types';
 
 const ChatPreviewCard: React.FC<{ request: WaterRequest }> = ({ request }) => {
-    const isUserHost = request.hostId === MOCK_USER.id;
+    const isUserHost = request.hostId === dataStore.currentUser.id;
     const otherPartyId = isUserHost ? request.requesterId : request.hostId;
-    const otherParty = MOCK_HOSTS.find(h => h.id === otherPartyId);
+    const otherParty = dataStore.findUserById(otherPartyId);
 
     if (!otherParty) return null;
 
+    const image = 'image' in otherParty ? otherParty.image : otherParty.profilePicture;
+
     return (
         <Link to={`/chat/${request.id}`} className="flex items-center gap-4 p-4 border-b border-gray-200 hover:bg-gray-50 transition-colors">
-            <img src={otherParty.image} alt={otherParty.name} className="w-14 h-14 rounded-full object-cover"/>
+            <img src={image} alt={otherParty.name} className="w-14 h-14 rounded-full object-cover"/>
             <div className="flex-1">
                 <div className="flex justify-between items-start">
                     <h3 className="font-bold text-lg text-gray-800">{otherParty.name}</h3>
                     <p className="text-xs text-gray-500">{new Date(request.createdAt).toLocaleDateString()}</p>
                 </div>
-                <p className="text-sm text-gray-600">
-                    Regarding your request for {request.liters}L of pH {request.phLevel.toFixed(1)} water.
+                <p className="text-sm text-gray-600 truncate">
+                    {request.status === 'chatting'
+                        ? "Message thread"
+                        : `Regarding your request for ${request.liters}L of pH ${request.phLevel.toFixed(1)} water.`
+                    }
                 </p>
             </div>
         </Link>
@@ -30,8 +35,8 @@ const ChatPreviewCard: React.FC<{ request: WaterRequest }> = ({ request }) => {
 export default function MessagesPage() {
     const conversations = useMemo(() => 
         dataStore.requests.filter(r => 
-            (r.requesterId === MOCK_USER.id || r.hostId === MOCK_USER.id) && 
-            (r.status === 'accepted' || r.status === 'completed')
+            (r.requesterId === dataStore.currentUser.id || r.hostId === dataStore.currentUser.id) && 
+            ['accepted', 'completed', 'chatting'].includes(r.status)
         ).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
     []);
 

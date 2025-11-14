@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { dataStore, MOCK_USER, MOCK_HOSTS } from '../data';
-import { WaterRequest, Host, RequestStatus } from '../types';
+import { dataStore } from '../data';
+import { WaterRequest, Host, RequestStatus, User } from '../types';
 import { ChevronLeftIcon, DropletIcon, CalendarDaysIcon, ClockIcon, ChatBubbleOvalLeftEllipsisIcon } from '../components/Icons';
 
 const StatusBadge: React.FC<{ status: RequestStatus }> = ({ status }) => {
@@ -11,6 +11,7 @@ const StatusBadge: React.FC<{ status: RequestStatus }> = ({ status }) => {
         completed: { className: 'bg-blue-100 text-blue-800', text: 'Completed' },
         cancelled: { className: 'bg-gray-100 text-gray-800', text: 'Cancelled' },
         declined: { className: 'bg-red-100 text-red-800', text: 'Declined by Host' },
+        chatting: { className: 'bg-gray-100 text-gray-800', text: 'Conversation in progress' },
     };
     const { className, text } = statusInfo[status];
     return (
@@ -43,12 +44,9 @@ export default function RequestDetailPage() {
         return <div className="p-4 text-center">Request not found.</div>;
     }
     
-    const isUserTheHost = request.hostId === MOCK_USER.id;
-    const host = MOCK_HOSTS.find(h => h.id === request.hostId);
-    
-    // For simplicity, find requester in MOCK_HOSTS too, assuming any user can be a host.
-    // In a real app, you'd have a separate users collection.
-    const requester = MOCK_HOSTS.find(h => h.id === request.requesterId) || MOCK_USER;
+    const isUserTheHost = request.hostId === dataStore.currentUser.id;
+    const host = dataStore.findUserById(request.hostId) as Host;
+    const requester = dataStore.findUserById(request.requesterId);
 
     if (!host || !requester) {
         return <div className="p-4 text-center">User data not found.</div>;
@@ -68,6 +66,10 @@ export default function RequestDetailPage() {
     
     const canCancel = request.status === 'pending' || request.status === 'accepted';
 
+    const otherParty = isUserTheHost ? requester : host;
+    const otherPartyImage = 'image' in otherParty ? otherParty.image : otherParty.profilePicture;
+
+
     return (
         <div className="pb-24 bg-gray-50 min-h-screen">
             <header className="p-4 flex items-center border-b border-gray-200 sticky top-0 bg-white/80 backdrop-blur-sm z-10">
@@ -83,21 +85,27 @@ export default function RequestDetailPage() {
 
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 space-y-4">
                     <h2 className="text-lg font-bold">Pickup Details</h2>
-                     <DetailItem 
-                        icon={<DropletIcon />}
-                        label="Water Request"
-                        value={`${request.liters}L of pH ${request.phLevel.toFixed(1)}`}
-                     />
-                     <DetailItem 
-                        icon={<CalendarDaysIcon />}
-                        label="Date"
-                        value={formattedDate}
-                     />
-                      <DetailItem 
-                        icon={<ClockIcon />}
-                        label="Time"
-                        value={request.pickupTime}
-                     />
+                     {request.status !== 'chatting' ? (
+                        <>
+                            <DetailItem 
+                                icon={<DropletIcon />}
+                                label="Water Request"
+                                value={`${request.liters}L of pH ${request.phLevel.toFixed(1)}`}
+                            />
+                            <DetailItem 
+                                icon={<CalendarDaysIcon />}
+                                label="Date"
+                                value={formattedDate}
+                            />
+                            <DetailItem 
+                                icon={<ClockIcon />}
+                                label="Time"
+                                value={request.pickupTime}
+                            />
+                        </>
+                     ) : (
+                        <p className="text-gray-500">This is a pre-request conversation. No pickup details yet.</p>
+                     )}
                 </div>
 
                  <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
@@ -106,12 +114,12 @@ export default function RequestDetailPage() {
                     </h2>
                     <div className="flex items-center gap-4">
                         <img 
-                            src={isUserTheHost ? (requester as Host).image : host.image} 
-                            alt={isUserTheHost ? (requester as Host).name : host.name} 
+                            src={otherPartyImage} 
+                            alt={otherParty.name} 
                             className="w-16 h-16 rounded-full object-cover"
                         />
                         <div>
-                             <p className="font-bold text-xl">{isUserTheHost ? (requester as Host).name : host.name}</p>
+                             <p className="font-bold text-xl">{otherParty.name}</p>
                              <p className="text-gray-600">{isUserTheHost ? 'Requester' : 'Host'}</p>
                         </div>
                     </div>
@@ -134,10 +142,10 @@ export default function RequestDetailPage() {
             </div>
             
             <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-sm border-t border-gray-200 max-w-4xl mx-auto space-y-2">
-                 {request.status === 'accepted' && (
+                 {(request.status === 'accepted' || request.status === 'chatting') && (
                     <Link to={`/chat/${request.id}`} className="w-full flex items-center justify-center gap-2 bg-brand-blue text-white font-bold py-3 px-4 rounded-xl hover:bg-blue-600 transition-colors text-center">
                        <ChatBubbleOvalLeftEllipsisIcon className="w-5 h-5"/>
-                       <span>Chat with {isUserTheHost ? (requester as Host).name.split(' ')[0] : host.name.split(' ')[0]}</span>
+                       <span>Chat with {otherParty.name.split(' ')[0]}</span>
                     </Link>
                  )}
                  {isUserTheHost && request.status === 'pending' && (

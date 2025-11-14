@@ -1,9 +1,143 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { MOCK_USER } from '../data';
+import React, { useState, useEffect, useRef } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { dataStore } from '../data';
 import { User } from '../types';
 import { ChevronLeftIcon, CameraIcon, ArrowLeftOnRectangleIcon, TrashIcon } from '../components/Icons';
 import { useAuth } from '../App';
+
+const ImageCropperModal: React.FC<{
+  imageSrc: string;
+  onCropComplete: (croppedImage: string) => void;
+  onClose: () => void;
+}> = ({ imageSrc, onCropComplete, onClose }) => {
+  const imageRef = useRef<HTMLImageElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const [zoom, setZoom] = useState(1);
+  const [offset, setOffset] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+
+  const getCroppedImg = (): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const image = imageRef.current;
+      if (!image) return reject('Image not loaded');
+
+      const canvas = document.createElement('canvas');
+      const finalSize = 256; // Output size for the profile picture
+      canvas.width = finalSize;
+      canvas.height = finalSize;
+      
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return reject('Canvas context not available');
+
+      const scaleX = image.naturalWidth / image.width;
+      const scaleY = image.naturalHeight / image.height;
+      
+      const sourceSize = (image.width < image.height ? image.width : image.height);
+      const sourceX = (image.naturalWidth - (sourceSize * scaleX)) / 2 - (offset.x * scaleX / zoom);
+      const sourceY = (image.naturalHeight - (sourceSize * scaleY)) / 2 - (offset.y * scaleY / zoom);
+      const sourceWidth = sourceSize * scaleX / zoom;
+      const sourceHeight = sourceSize * scaleY / zoom;
+
+      ctx.beginPath();
+      ctx.arc(finalSize / 2, finalSize / 2, finalSize / 2, 0, Math.PI * 2, true);
+      ctx.closePath();
+      ctx.clip();
+      
+      ctx.drawImage(
+        image,
+        sourceX, sourceY, sourceWidth, sourceHeight,
+        0, 0, finalSize, finalSize
+      );
+
+      canvas.toBlob(
+        (blob) => {
+          if (!blob) return reject('Canvas is empty');
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        },
+        'image/jpeg',
+        0.8 // Compression quality
+      );
+    });
+  };
+
+  const handleCrop = async () => {
+    try {
+      const croppedImage = await getCroppedImg();
+      onCropComplete(croppedImage);
+    } catch (e) {
+      console.error(e);
+      alert("Could not crop image.");
+    }
+  };
+
+  const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(true);
+    setDragStart({ x: e.clientX - offset.x, y: e.clientY - offset.y });
+  };
+  
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!isDragging) return;
+    const x = e.clientX - dragStart.x;
+    const y = e.clientY - dragStart.y;
+    setOffset({ x, y });
+  };
+  
+  const handleMouseUp = () => setIsDragging(false);
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center animate-fade-in-up transition-opacity" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm m-4 p-6" onClick={e => e.stopPropagation()}>
+        <h2 className="text-2xl font-bold text-center mb-4">Crop Your Photo</h2>
+        <div
+          ref={containerRef}
+          className="relative w-full aspect-square bg-gray-900 rounded-lg overflow-hidden cursor-move"
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseUp}
+        >
+          <img
+            ref={imageRef}
+            src={imageSrc}
+            style={{
+              transform: `translate(${offset.x}px, ${offset.y}px) scale(${zoom})`,
+              transition: isDragging ? 'none' : 'transform 0.1s ease-out',
+              minWidth: '100%',
+              minHeight: '100%',
+              objectFit: 'cover'
+            }}
+            draggable={false}
+          />
+          <div className="absolute inset-0 shadow-[0_0_0_9999px_rgba(0,0,0,0.5)] pointer-events-none">
+            <div className="absolute top-1/2 left-1/2 w-[90%] h-[90%] -translate-x-1/2 -translate-y-1/2 rounded-full border-4 border-dashed border-white/80"></div>
+          </div>
+        </div>
+        <div className="flex items-center gap-3 mt-4">
+          <span className="text-sm font-medium text-gray-700">Zoom:</span>
+          <input
+            type="range"
+            min="1"
+            max="3"
+            step="0.01"
+            value={zoom}
+            onChange={e => setZoom(parseFloat(e.target.value))}
+            className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+          />
+        </div>
+        <div className="flex justify-end gap-3 mt-6">
+          <button onClick={onClose} className="px-5 py-2.5 rounded-xl font-semibold bg-gray-200 hover:bg-gray-300 transition">Cancel</button>
+          <button onClick={handleCrop} className="px-5 py-2.5 rounded-xl font-semibold bg-brand-blue text-white hover:bg-blue-600 transition">Crop & Save</button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const FormSection: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
   <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
@@ -49,20 +183,16 @@ const COUNTRIES = [
   { name: 'Portugal', code: '+351', flag: '🇵🇹' },
 ];
 
-const parsePhoneNumber = (phone: string): { countryCode: string; number: string } => {
+const parsePhoneNumber = (phone: string, countryName: string): { countryCode: string; number: string } => {
     for (const country of COUNTRIES) {
         if (phone.startsWith(country.code)) {
             const number = phone.substring(country.code.length).trim();
-            // Handle cases where a country code is a prefix of another (e.g., +1 for US/Canada)
-            const isAmbiguous = COUNTRIES.some(c => c.code.startsWith(country.code) && c.code !== country.code);
-            if (isAmbiguous && MOCK_USER.address.country === 'Canada' && country.code === '+1') {
-                // Heuristic: default to Canada if address matches
+            if (country.code === '+1' && country.name !== countryName) {
                 continue;
             }
             return { countryCode: country.code, number };
         }
     }
-    // Default fallback
     const match = phone.match(/^(\+\d+)\s*(.*)$/);
     if (match) {
         return { countryCode: match[1], number: match[2] };
@@ -75,20 +205,21 @@ const parsePhoneNumber = (phone: string): { countryCode: string; number: string 
 export default function UserProfilePage() {
   const navigate = useNavigate();
   const { logout } = useAuth();
-  const [user, setUser] = useState<User>(MOCK_USER);
+  const [user, setUser] = useState<User>({ ...dataStore.currentUser });
   const [isDirty, setIsDirty] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(user.profilePicture);
-  const [phoneParts, setPhoneParts] = useState(() => parsePhoneNumber(MOCK_USER.phone));
+  const [phoneParts, setPhoneParts] = useState(() => parsePhoneNumber(user.phone, user.address.country));
+  const [imageToCrop, setImageToCrop] = useState<string | null>(null);
 
   const ALL_PH_LEVELS = [2.5, 8.5, 9.0, 9.5, 11.5];
   const DAYS_OF_WEEK = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
 
   useEffect(() => {
-    const isUserChanged = JSON.stringify(user) !== JSON.stringify(MOCK_USER);
-    const isImageChanged = previewImage !== MOCK_USER.profilePicture;
-    setIsDirty(isUserChanged || isImageChanged);
-  }, [user, previewImage]);
+    // Check if user object is different from the one in the store
+    const isUserChanged = JSON.stringify(user) !== JSON.stringify(dataStore.currentUser);
+    setIsDirty(isUserChanged);
+  }, [user]);
   
   const handlePhoneChange = (part: 'countryCode' | 'number', value: string) => {
     const newParts = { ...phoneParts, [part]: value };
@@ -141,21 +272,28 @@ export default function UserProfilePage() {
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
+       if (!file.type.startsWith('image/')) {
+          alert('Please select an image file.');
+          return;
+       }
       const reader = new FileReader();
       reader.onloadend = () => {
-        setPreviewImage(reader.result as string);
+        setImageToCrop(reader.result as string);
       };
       reader.readAsDataURL(file);
     }
   };
 
+  const handleCropComplete = (croppedImage: string) => {
+    setPreviewImage(croppedImage);
+    setUser(prev => ({ ...prev, profilePicture: croppedImage }));
+    setImageToCrop(null); // Close modal
+  };
+
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Saving user data:', { ...user, profilePicture: previewImage });
+    dataStore.currentUser = { ...user };
     alert('Profile saved!');
-    // In a real app, you would also update the MOCK_USER or send to an API
-    // For this example, we just reset the dirty state.
-    // To see persistence, you would need to lift state up.
     setIsDirty(false);
   };
 
@@ -192,13 +330,23 @@ export default function UserProfilePage() {
       <div className="p-4 md:p-6 space-y-6">
         <form id="user-profile-form" onSubmit={handleSave} className="space-y-6">
             <div className="flex flex-col items-center">
-            <div className="relative w-32 h-32 mb-2">
-                <img src={previewImage || 'https://via.placeholder.com/128'} alt="Profile" className="w-full h-full rounded-full object-cover shadow-md border-4 border-white" />
-                <label htmlFor="photo-upload" className="absolute bottom-1 right-1 bg-white p-2 rounded-full shadow-md cursor-pointer hover:bg-gray-100 transition">
-                <CameraIcon className="w-6 h-6 text-gray-700" />
-                <input id="photo-upload" type="file" accept="image/*" className="hidden" onChange={handlePhotoChange} />
-                </label>
-            </div>
+                <div className="relative w-32 h-32 mb-2">
+                    <img src={previewImage || 'https://via.placeholder.com/128'} alt="Profile" className="w-full h-full rounded-full object-cover shadow-md border-4 border-white" />
+                    <label htmlFor="photo-upload" className="absolute bottom-1 right-1 bg-white p-2 rounded-full shadow-md cursor-pointer hover:bg-gray-100 transition">
+                    <CameraIcon className="w-6 h-6 text-gray-700" />
+                    <input id="photo-upload" type="file" accept="image/*" className="hidden" onChange={handlePhotoChange} />
+                    </label>
+                </div>
+                 <div className="flex items-center gap-8 mt-4">
+                    <Link to={`/profile/${user.id}/followers`} className="text-center text-gray-700 hover:text-black">
+                        <p className="font-bold text-xl">{user.followers.length}</p>
+                        <p className="text-sm text-gray-500">Followers</p>
+                    </Link>
+                    <Link to={`/profile/${user.id}/following`} className="text-center text-gray-700 hover:text-black">
+                        <p className="font-bold text-xl">{user.following.length}</p>
+                        <p className="text-sm text-gray-500">Following</p>
+                    </Link>
+                </div>
             </div>
 
             <FormSection title="Personal Info">
@@ -303,8 +451,14 @@ export default function UserProfilePage() {
                 </button>
             </div>
         </div>
-
       </div>
+       {imageToCrop && (
+          <ImageCropperModal
+            imageSrc={imageToCrop}
+            onCropComplete={handleCropComplete}
+            onClose={() => setImageToCrop(null)}
+          />
+        )}
     </div>
   );
 }

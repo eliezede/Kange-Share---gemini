@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { MOCK_HOSTS, dataStore, MOCK_USER } from '../data';
+import { dataStore } from '../data';
 import { StarIcon, SearchIcon, AdjustmentsHorizontalIcon, CheckBadgeIcon, ClipboardDocumentListIcon, ChevronRightIcon } from '../components/Icons';
 import { Host } from '../types';
 
@@ -25,8 +25,8 @@ const HostCard: React.FC<{ host: Host }> = ({ host }) => (
 
 const MyRequestsCard: React.FC = () => {
     const pendingRequestsCount = useMemo(() => 
-        dataStore.requests.filter(r => r.requesterId === MOCK_USER.id && r.status === 'pending').length
-    , [dataStore.requests]);
+        dataStore.requests.filter(r => r.requesterId === dataStore.currentUser.id && r.status === 'pending').length
+    , []);
 
     return (
         <div className="p-4">
@@ -51,7 +51,7 @@ const MyRequestsCard: React.FC = () => {
 };
 
 
-const allPhLevels = Array.from(new Set(MOCK_HOSTS.flatMap(h => h.phLevels))).sort((a,b) => a - b);
+const allPhLevels = Array.from(new Set(dataStore.hosts.flatMap(h => h.phLevels))).sort((a,b) => a - b);
 const AVAILABILITY_OPTIONS = ['Weekdays', 'Weekends'];
 // FIX: Define weekday/weekend constants for availability filtering.
 const WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
@@ -140,7 +140,7 @@ export default function MapPage() {
   const isFilterActive = activeFilters.ph.length > 0 || activeFilters.days.length > 0;
 
   const filteredHosts = useMemo(() => {
-    return MOCK_HOSTS.filter(host => {
+    return dataStore.hosts.filter(host => {
       // Search filter
       const matchesSearch = host.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                             host.city.toLowerCase().includes(searchQuery.toLowerCase());
