@@ -3,14 +3,44 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import * as api from '../api';
 import { User } from '../types';
-import { ChevronLeftIcon, CameraIcon, ArrowLeftOnRectangleIcon, TrashIcon, ShieldCheckIcon, SpinnerIcon, SunIcon, MoonIcon, ProfilePicture } from '../components/Icons';
+import { ChevronLeftIcon, CameraIcon, ArrowLeftOnRectangleIcon, TrashIcon, ShieldCheckIcon, SpinnerIcon, SunIcon, MoonIcon, ProfilePicture, VideoCameraIcon } from '../components/Icons';
 import { useAuth, useTheme } from '../App';
+
+const PhotoSourceModal: React.FC<{
+    isOpen: boolean;
+    onClose: () => void;
+    onFileSelect: (event: React.ChangeEvent<HTMLInputElement>) => void;
+}> = ({ isOpen, onClose, onFileSelect }) => {
+    if (!isOpen) return null;
+
+    return (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center animate-fade-in-up transition-opacity" onClick={onClose}>
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-xs m-4 p-6 text-center" onClick={e => e.stopPropagation()}>
+                <h2 className="text-2xl font-bold mb-6 dark:text-white">Change Photo</h2>
+                <div className="space-y-4">
+                    <label htmlFor="camera-upload" className="w-full flex items-center justify-center gap-3 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 font-semibold py-3 px-4 rounded-xl cursor-pointer transition-colors">
+                        <VideoCameraIcon className="w-6 h-6" />
+                        <span>Take a Photo</span>
+                        <input id="camera-upload" type="file" accept="image/*" capture="user" className="hidden" onChange={onFileSelect} />
+                    </label>
+                    <label htmlFor="gallery-upload" className="w-full flex items-center justify-center gap-3 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 font-semibold py-3 px-4 rounded-xl cursor-pointer transition-colors">
+                        <CameraIcon className="w-6 h-6" />
+                        <span>Choose from Gallery</span>
+                        <input id="gallery-upload" type="file" accept="image/*" className="hidden" onChange={onFileSelect} />
+                    </label>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 
 const ImageCropperModal: React.FC<{
   imageSrc: string;
   onCropComplete: (croppedImage: Blob) => void;
   onClose: () => void;
-}> = ({ imageSrc, onCropComplete, onClose }) => {
+  isSaving: boolean;
+}> = ({ imageSrc, onCropComplete, onClose, isSaving }) => {
   const imageRef = useRef<HTMLImageElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -163,8 +193,10 @@ const ImageCropperModal: React.FC<{
           />
         </div>
         <div className="flex justify-end gap-3 mt-6">
-          <button onClick={onClose} className="px-5 py-2.5 rounded-xl font-semibold bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-white transition">Cancel</button>
-          <button onClick={handleCrop} className="px-5 py-2.5 rounded-xl font-semibold bg-brand-blue text-white hover:bg-blue-600 transition">Crop & Save</button>
+          <button onClick={onClose} disabled={isSaving} className="px-5 py-2.5 rounded-xl font-semibold bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-white transition disabled:opacity-50">Cancel</button>
+          <button onClick={handleCrop} disabled={isSaving} className="px-5 py-2.5 rounded-xl font-semibold bg-brand-blue text-white hover:bg-blue-600 transition flex items-center justify-center w-32 disabled:bg-blue-300">
+            {isSaving ? <SpinnerIcon className="w-5 h-5 animate-spin" /> : 'Crop & Save'}
+          </button>
         </div>
       </div>
     </div>
@@ -231,6 +263,7 @@ export default function UserProfilePage() {
   const [isSaving, setIsSaving] = useState(false);
   const [phoneParts, setPhoneParts] = useState({ countryCode: '+1', number: '' });
   const [imageToCrop, setImageToCrop] = useState<string | null>(null);
+  const [isPhotoSourceModalOpen, setIsPhotoSourceModalOpen] = useState(false);
 
   const ALL_PH_LEVELS = [2.5, 8.5, 9.0, 9.5, 11.5];
   const DAYS_OF_WEEK = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
@@ -315,27 +348,49 @@ export default function UserProfilePage() {
       const reader = new FileReader();
       reader.onloadend = () => { setImageToCrop(reader.result as string); };
       reader.readAsDataURL(file);
+      setIsPhotoSourceModalOpen(false); // Close source selection modal
     }
+     // Reset the input value to allow selecting the same file again
+    e.target.value = '';
   };
 
   const handleCropComplete = async (croppedImageBlob: Blob) => {
     if (!user) return;
     setIsSaving(true);
-    const downloadURL = await api.uploadProfilePicture(user.id, croppedImageBlob);
-    const updatedUser = { ...user, profilePicture: downloadURL };
-    await handleSave(undefined, updatedUser); // Save with new image URL
-    setImageToCrop(null); // Close modal
-    setIsSaving(false);
+    try {
+        const downloadURL = await api.uploadProfilePicture(user.id, croppedImageBlob);
+        
+        // Create an update object with just the picture URL
+        const updates = { profilePicture: downloadURL };
+        
+        // Update the database immediately for just the photo
+        await api.updateUser(user.id, updates);
+        
+        // Create a new user object for local state that includes the new photo
+        // and any other unsaved changes from the form.
+        const updatedUserWithPic = { ...user, profilePicture: downloadURL };
+        
+        // Update all local states to reflect this change
+        setUserData(updatedUserWithPic); // Global context
+        setUser(updatedUserWithPic); // Local form state
+        setOriginalUser(JSON.parse(JSON.stringify(updatedUserWithPic))); // Reset dirty state to this new version
+        
+        setImageToCrop(null); // Close modal on success
+    } catch (error) {
+        console.error("Failed to upload profile picture:", error);
+        alert("Could not upload your photo. Please try again.");
+    } finally {
+        setIsSaving(false);
+    }
   };
 
-  const handleSave = async (e?: React.FormEvent, userToSave?: User) => {
+  const handleSave = async (e?: React.FormEvent) => {
     e?.preventDefault();
-    const finalUser = userToSave || user;
-    if (!finalUser) return;
+    if (!user) return;
     setIsSaving(true);
-    await api.updateUser(finalUser.id, finalUser);
-    setUserData(finalUser); // Update global context
-    setOriginalUser(JSON.parse(JSON.stringify(finalUser)));
+    await api.updateUser(user.id, user);
+    setUserData(user); // Update global context
+    setOriginalUser(JSON.parse(JSON.stringify(user)));
     setIsSaving(false);
     if (e) alert('Profile saved!');
   };
@@ -381,10 +436,9 @@ export default function UserProfilePage() {
             <div className="flex flex-col items-center">
                 <div className="relative w-32 h-32 mb-2">
                     <ProfilePicture src={user.profilePicture} alt="Profile" className="w-full h-full rounded-full object-cover shadow-md border-4 border-white dark:border-gray-800" />
-                    <label htmlFor="photo-upload" className="absolute bottom-1 right-1 bg-white dark:bg-gray-600 p-2 rounded-full shadow-md cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-500 transition">
-                    <CameraIcon className="w-6 h-6 text-gray-700 dark:text-gray-200" />
-                    <input id="photo-upload" type="file" accept="image/*" className="hidden" onChange={handlePhotoChange} />
-                    </label>
+                    <button type="button" onClick={() => setIsPhotoSourceModalOpen(true)} className="absolute bottom-1 right-1 bg-white dark:bg-gray-600 p-2 rounded-full shadow-md cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-500 transition">
+                      <CameraIcon className="w-6 h-6 text-gray-700 dark:text-gray-200" />
+                    </button>
                 </div>
                  <div className="flex items-center gap-8 mt-4">
                     <Link to={`/profile/${user.id}/followers`} className="text-center text-gray-700 dark:text-gray-300 hover:text-black dark:hover:text-white">
@@ -522,11 +576,17 @@ export default function UserProfilePage() {
             </div>
         </div>
       </div>
+      <PhotoSourceModal
+        isOpen={isPhotoSourceModalOpen}
+        onClose={() => setIsPhotoSourceModalOpen(false)}
+        onFileSelect={handlePhotoChange}
+      />
        {imageToCrop && (
           <ImageCropperModal
             imageSrc={imageToCrop}
             onCropComplete={handleCropComplete}
             onClose={() => setImageToCrop(null)}
+            isSaving={isSaving}
           />
         )}
     </div>

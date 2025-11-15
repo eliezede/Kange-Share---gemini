@@ -1,5 +1,7 @@
 {
   "name": "Kangen Share - gemini",
   "description": "An app that connects Kangen K8 owners who want to share alkaline water with other owners traveling to their city.",
-  "requestFramePermissions": []
+  "requestFramePermissions": [
+    "camera"
+  ]
 }

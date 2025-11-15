@@ -96,6 +96,12 @@ export const CameraIcon = (props: React.SVGProps<SVGSVGElement>) => (
     </svg>
 );
 
+export const VideoCameraIcon = (props: React.SVGProps<SVGSVGElement>) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9A2.25 2.25 0 004.5 18.75z" />
+    </svg>
+);
+
 export const MapIcon = (props: React.SVGProps<SVGSVGElement>) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M9 6.75V15m0 0v2.25m0-2.25h1.5m-1.5 0H5.625M15 6.75v2.25m0-2.25h-1.5m1.5 0h.375c.621 0 1.125.504 1.125 1.125v2.25c0 .621-.504 1.125-1.125 1.125h-1.5m-6 3.75h3.75m-3.75 0c.621 0 1.125.504 1.125 1.125v2.25c0 .621-.504 1.125-1.125 1.125h-1.5c-.621 0-1.125-.504-1.125-1.125v-2.25c0-.621.504-1.125 1.125-1.125h.375m10.125-3.75h.375c.621 0 1.125.504 1.125 1.125v2.25c0 .621-.504 1.125-1.125 1.125h-1.5c-.621 0-1.125-.504-1.125-1.125v-2.25c0-.621.504-1.125 1.125-1.125h.375M3.75 21v-6.162c0-1.02.42-1.95 1.121-2.622a4.5 4.5 0 0 1 2.658-1.118l.547-.154a4.5 4.5 0 0 0 2.658-1.118l.547-.154a4.5 4.5 0 0 1 2.658-1.118l.547-.154A4.5 4.5 0 0 0 21 3.868v6.162c0 1.02-.42 1.95-1.121 2.622a4.5 4.5 0 0 1-2.658 1.118l-.547.154a4.5 4.5 0 0 0-2.658 1.118l-.547.154a4.5 4.5 0 0 1-2.658 1.118l-.547.154A4.5 4.5 0 0 0 3.75 21Z" />
