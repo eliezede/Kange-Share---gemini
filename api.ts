@@ -32,7 +32,7 @@ import {
     uploadBytes,
     getDownloadURL
 } from 'firebase/storage';
-import { User, WaterRequest, Message, RequestStatus, Review } from './types';
+import { User, WaterRequest, Message, RequestStatus, Review, Notification, NotificationType } from './types';
 
 // Placed at the top for reuse
 const defaultAvailability = {
@@ -151,7 +151,6 @@ export const toggleFollowHost = async (currentUserId: string, targetHostId: stri
     const targetHostRef = doc(db, 'users', targetHostId);
     
     const currentUserDoc = await getDoc(currentUserRef);
-    // FIX: Cast the document data to User to resolve the type error on 'following'.
     const isFollowing = (currentUserDoc.data() as User)?.following?.includes(targetHostId);
 
     const batch = writeBatch(db);
@@ -161,6 +160,18 @@ export const toggleFollowHost = async (currentUserId: string, targetHostId: stri
     } else {
         batch.update(currentUserRef, { following: arrayUnion(targetHostId) });
         batch.update(targetHostRef, { followers: arrayUnion(currentUserId) });
+        
+        const follower = currentUserDoc.data() as User;
+        if(follower) {
+             createNotification(targetHostId, {
+                type: 'new_follower',
+                relatedId: currentUserId,
+                text: `${follower.name} started following you.`,
+                senderId: currentUserId,
+                senderName: follower.name,
+                senderImage: follower.profilePicture
+            });
+        }
     }
     return batch.commit();
 };
@@ -198,12 +209,57 @@ export const createRequest = async (newRequestData: Omit<WaterRequest, 'id' | 'c
         ...newRequestData,
         createdAt: serverTimestamp(),
     });
+
+    createNotification(newRequestData.hostId, {
+        type: 'new_request',
+        relatedId: docRef.id,
+        text: `${newRequestData.requesterName} sent you a water request.`,
+        senderId: newRequestData.requesterId,
+        senderName: newRequestData.requesterName,
+        senderImage: newRequestData.requesterImage,
+    });
+
     return docRef.id;
 };
 
-export const updateRequestStatus = (requestId: string, newStatus: RequestStatus): Promise<void> => {
+export const updateRequestStatus = async (requestId: string, newStatus: RequestStatus): Promise<void> => {
     const reqDocRef = doc(db, 'requests', requestId);
-    return updateDoc(reqDocRef, { status: newStatus });
+    await updateDoc(reqDocRef, { status: newStatus });
+
+    const request = await getRequestById(requestId);
+    if (!request) return;
+
+    let notifText = '';
+    let notifType: NotificationType | null = null;
+    let recipientId = '';
+
+    if (newStatus === 'accepted') {
+        notifText = `${request.hostName} accepted your water request.`;
+        notifType = 'request_accepted';
+        recipientId = request.requesterId;
+    } else if (newStatus === 'declined') {
+        notifText = `${request.hostName} declined your water request.`;
+        notifType = 'request_declined';
+        recipientId = request.requesterId;
+    } else if (newStatus === 'cancelled') {
+        const currentUser = auth.currentUser;
+        if (currentUser && currentUser.uid === request.requesterId) {
+            notifText = `${request.requesterName} cancelled their water request.`;
+            notifType = 'request_cancelled';
+            recipientId = request.hostId;
+        }
+    }
+    
+    if (notifType && notifText && recipientId) {
+        createNotification(recipientId, {
+            type: notifType,
+            relatedId: requestId,
+            text: notifText,
+            senderId: newStatus === 'cancelled' ? request.requesterId : request.hostId,
+            senderName: newStatus === 'cancelled' ? request.requesterName : request.hostName,
+            senderImage: newStatus === 'cancelled' ? request.requesterImage : request.hostImage,
+        });
+    }
 };
 
 export const createNewChat = async (hostId: string, requesterId: string, host: User, requester: User): Promise<string> => {
@@ -227,20 +283,35 @@ export const createNewChat = async (hostId: string, requesterId: string, host: U
 export const getMessagesStream = (requestId: string, callback: (messages: Message[]) => void): (() => void) => {
     const messagesRef = collection(db, `requests/${requestId}/messages`);
     const q = query(messagesRef, orderBy('timestamp', 'asc'));
-    // FIX: Explicitly type `querySnapshot` as `QuerySnapshot` to correct the type inference error on `querySnapshot.docs`.
     return onSnapshot(q, (querySnapshot: QuerySnapshot) => {
         const messages = querySnapshot.docs.map(d => fromDoc<Message>(d));
         callback(messages);
     });
 };
 
-export const sendMessage = (requestId: string, text: string, senderId: string): Promise<any> => {
+export const sendMessage = async (requestId: string, text: string, senderId: string): Promise<any> => {
     const messagesRef = collection(db, `requests/${requestId}/messages`);
-    return addDoc(messagesRef, {
+    const promise = addDoc(messagesRef, {
         text,
         sender: senderId,
         timestamp: serverTimestamp(),
     });
+
+    const request = await getRequestById(requestId);
+    const sender = await getUserById(senderId);
+    if (request && sender) {
+        const receiverId = senderId === request.hostId ? request.requesterId : request.hostId;
+        createNotification(receiverId, {
+            type: 'new_message',
+            relatedId: requestId,
+            text: `New message from ${sender.name}.`,
+            senderId: senderId,
+            senderName: sender.name,
+            senderImage: sender.profilePicture,
+        });
+    }
+
+    return promise;
 };
 
 export const getConversationsByUserId = async (userId: string): Promise<WaterRequest[]> => {
@@ -282,15 +353,13 @@ export const getReviewsForHost = async (hostId: string): Promise<Review[]> => {
     return querySnapshot.docs.map(d => fromDoc<Review>(d));
 }
 
-export const addReview = async (hostId: string, review: Omit<Review, 'id'>): Promise<void> => {
+export const addReview = (hostId: string, review: Omit<Review, 'id'>): Promise<void> => {
     const hostRef = doc(db, 'users', hostId);
     const reviewCollRef = collection(db, `users/${hostId}/reviews`);
 
     return runTransaction(db, async (transaction) => {
         const hostDoc = await transaction.get(hostRef);
-        if (!hostDoc.exists()) {
-            throw "Host does not exist!";
-        }
+        if (!hostDoc.exists()) throw "Host does not exist!";
         
         const hostData = hostDoc.data() as User;
         const oldRatingTotal = hostData.rating * hostData.reviews;
@@ -303,6 +372,50 @@ export const addReview = async (hostId: string, review: Omit<Review, 'id'>): Pro
         });
         
         transaction.set(doc(reviewCollRef), review);
+    }).then(() => {
+        createNotification(hostId, {
+            type: 'review_left',
+            relatedId: hostId,
+            text: `${review.reviewerName} left you a ${review.rating}-star review.`,
+            senderId: review.reviewerId,
+            senderName: review.reviewerName,
+            senderImage: review.reviewerImage,
+        });
+    });
+};
+
+
+// --- NOTIFICATIONS API ---
+
+export const createNotification = async (userId: string, notificationData: Omit<Notification, 'id' | 'createdAt' | 'read'>) => {
+    if (!userId) return;
+    const notificationsRef = collection(db, `notifications/${userId}/items`);
+    await addDoc(notificationsRef, {
+        ...notificationData,
+        read: false,
+        createdAt: serverTimestamp(),
+    });
+};
+
+export const getNotificationsStream = (userId: string, callback: (notifications: Notification[]) => void): (() => void) => {
+    const notificationsRef = collection(db, `notifications/${userId}/items`);
+    const q = query(notificationsRef, orderBy('createdAt', 'desc'));
+    return onSnapshot(q, (querySnapshot) => {
+        const notifications = querySnapshot.docs.map(d => fromDoc<Notification>(d));
+        callback(notifications);
+    });
+};
+
+export const markNotificationAsRead = (userId: string, notificationId: string): Promise<void> => {
+    const notificationRef = doc(db, `notifications/${userId}/items`, notificationId);
+    return updateDoc(notificationRef, { read: true });
+};
+
+export const getPendingHostRequestsStream = (hostId: string, callback: (count: number) => void): (() => void) => {
+    const requestsRef = collection(db, 'requests');
+    const q = query(requestsRef, where('hostId', '==', hostId), where('status', '==', 'pending'));
+    return onSnapshot(q, (querySnapshot) => {
+        callback(querySnapshot.size);
     });
 };
 

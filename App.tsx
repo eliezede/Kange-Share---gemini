@@ -1,10 +1,10 @@
-import React, { useState, useContext, createContext, useCallback, useEffect } from 'react';
+import React, { useState, useContext, createContext, useCallback, useEffect, useMemo } from 'react';
 // FIX: Corrected import statement for react-router-dom and switched to HashRouter.
 import { HashRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { auth } from './firebase';
 import * as api from './api';
-import { User } from './types';
+import { User, Notification } from './types';
 
 import LoginModal from './pages/LoginPage';
 import MapPage from './pages/MapPage';
@@ -88,6 +88,10 @@ interface AuthContextType {
   openLoginModal: () => void;
   closeLoginModal: () => void;
   setUserData: React.Dispatch<React.SetStateAction<User | null>>;
+  notifications: Notification[];
+  unreadCount: number;
+  pendingHostRequestCount: number;
+  unreadMessagesCount: number;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -151,6 +155,8 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
   const [userData, setUserDataInternal] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [isLoginModalOpen, setLoginModalOpen] = useState(false);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [pendingHostRequestCount, setPendingHostRequestCount] = useState(0);
   
   const setUserData = useCallback((value: React.SetStateAction<User | null>) => {
       if (typeof value === 'function') {
@@ -170,8 +176,6 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
           if (dbUser) {
               setUserData(dbUser);
           } else {
-              // This case might happen if user is created in Auth but not in Firestore yet (e.g., during signup).
-              // The onboarding flow should handle creating the Firestore doc.
               setUserData(null);
           }
         } else {
@@ -180,7 +184,6 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
         }
       } catch (error) {
         console.error("Failed to load user data:", error);
-        // In case of error, ensure user is logged out of the app state
         setUser(null);
         setUserData(null);
       } finally {
@@ -189,6 +192,27 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
     });
     return () => unsubscribe();
   }, [setUserData]);
+
+  useEffect(() => {
+    let notifUnsubscribe: (() => void) | null = null;
+    let requestsUnsubscribe: (() => void) | null = null;
+    
+    if (user) {
+        notifUnsubscribe = api.getNotificationsStream(user.uid, setNotifications);
+        requestsUnsubscribe = api.getPendingHostRequestsStream(user.uid, setPendingHostRequestCount);
+    } else {
+        setNotifications([]);
+        setPendingHostRequestCount(0);
+    }
+    
+    return () => {
+      if (notifUnsubscribe) notifUnsubscribe();
+      if (requestsUnsubscribe) requestsUnsubscribe();
+    };
+  }, [user]);
+
+  const unreadCount = useMemo(() => notifications.filter(n => !n.read).length, [notifications]);
+  const unreadMessagesCount = useMemo(() => notifications.filter(n => n.type === 'new_message' && !n.read).length, [notifications]);
 
   const openLoginModal = useCallback(() => setLoginModalOpen(true), []);
   const closeLoginModal = useCallback(() => setLoginModalOpen(false), []);
@@ -205,6 +229,10 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
     openLoginModal,
     closeLoginModal,
     setUserData,
+    notifications,
+    unreadCount,
+    pendingHostRequestCount,
+    unreadMessagesCount,
   };
   
    if (loading) {

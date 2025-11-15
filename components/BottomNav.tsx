@@ -2,6 +2,7 @@ import React from 'react';
 // FIX: Corrected import statement for react-router-dom.
 import { NavLink } from 'react-router-dom';
 import { MapIcon, ClipboardDocumentListIcon, UserIcon, ChatBubbleOvalLeftEllipsisIcon } from './Icons';
+import { useAuth } from '../App';
 
 const navItems = [
   { path: '/map', label: 'Home', icon: MapIcon },
@@ -11,6 +12,7 @@ const navItems = [
 ];
 
 export default function BottomNav() {
+  const { pendingHostRequestCount, unreadMessagesCount } = useAuth();
   const activeLinkClass = 'text-brand-blue';
   const inactiveLinkClass = 'text-gray-500 dark:text-gray-400 hover:text-brand-blue';
 
@@ -25,7 +27,15 @@ export default function BottomNav() {
                 `flex flex-col items-center justify-center w-full text-xs font-medium transition-colors ${isActive ? activeLinkClass : inactiveLinkClass}`
             }
           >
-            <Icon className="w-6 h-6 mb-0.5" />
+            <div className="relative">
+              <Icon className="w-6 h-6 mb-0.5" />
+              {path === '/requests' && pendingHostRequestCount > 0 && (
+                <span className="absolute -top-1 -right-2 bg-red-500 text-white text-xs font-bold rounded-full h-4 w-4 flex items-center justify-center">{pendingHostRequestCount}</span>
+              )}
+              {path === '/messages' && unreadMessagesCount > 0 && (
+                <span className="absolute -top-1 -right-2 bg-red-500 text-white text-xs font-bold rounded-full h-4 w-4 flex items-center justify-center">{unreadMessagesCount}</span>
+              )}
+            </div>
             <span>{label}</span>
           </NavLink>
         ))}

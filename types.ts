@@ -70,3 +70,17 @@ export interface WaterRequest {
   hostName: string;
   hostImage: string;
 }
+
+export type NotificationType = 'new_request' | 'request_accepted' | 'request_declined' | 'request_cancelled' | 'new_message' | 'new_follower' | 'review_left';
+
+export interface Notification {
+  id: string;
+  type: NotificationType;
+  relatedId: string; // ID of the request, chat, or user
+  text: string;
+  createdAt: string; // ISO String
+  read: boolean;
+  senderId?: string; // Who triggered the notification
+  senderName?: string;
+  senderImage?: string;
+}

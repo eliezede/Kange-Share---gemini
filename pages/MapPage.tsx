@@ -24,43 +24,6 @@ const HostCard: React.FC<{ host: User }> = ({ host }) => (
   </Link>
 );
 
-const MyRequestsCard: React.FC = () => {
-    const { userData } = useAuth();
-    const [pendingCount, setPendingCount] = useState(0);
-
-    useEffect(() => {
-        if (userData) {
-            api.getRequestsByUserId(userData.id).then(requests => {
-                setPendingCount(requests.filter(r => r.status === 'pending').length);
-            });
-        }
-    }, [userData]);
-
-    if (!userData) return null;
-
-    return (
-        <div className="p-4">
-            <Link to="/requests" className="flex items-center justify-between p-4 rounded-xl bg-brand-light dark:bg-blue-900/50 hover:bg-blue-100 dark:hover:bg-blue-900/70 transition-colors duration-200 border border-brand-blue/20 dark:border-brand-blue/40">
-                <div className="flex items-center gap-4">
-                    <div className="p-2 bg-white dark:bg-gray-800 rounded-full">
-                         <ClipboardDocumentListIcon className="w-6 h-6 text-brand-blue" />
-                    </div>
-                    <div>
-                        <h4 className="font-bold text-gray-800 dark:text-gray-100">My Requests</h4>
-                        <p className="text-sm text-gray-600 dark:text-gray-300">
-                            {pendingCount > 0 
-                                ? `You have ${pendingCount} pending request${pendingCount > 1 ? 's' : ''}.` 
-                                : "View your request history."}
-                        </p>
-                    </div>
-                </div>
-                <ChevronRightIcon className="w-5 h-5 text-gray-500 dark:text-gray-400" />
-            </Link>
-        </div>
-    );
-};
-
-
 const allPhLevels = [2.5, 8.5, 9.0, 9.5, 11.5]; // Hardcoded for simplicity
 const AVAILABILITY_OPTIONS = ['Weekdays', 'Weekends'];
 const WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
@@ -148,6 +111,7 @@ export default function MapPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isFilterOpen, setFilterOpen] = useState(false);
   const [activeFilters, setActiveFilters] = useState<{ ph: number[], days: string[] }>({ ph: [], days: [] });
+  const { userData, pendingHostRequestCount } = useAuth();
 
   useEffect(() => {
       api.getHosts().then(data => {
@@ -224,7 +188,24 @@ export default function MapPage() {
           </button>
         </div>
         <div>
-            <MyRequestsCard />
+            {userData?.isHost && pendingHostRequestCount > 0 && (
+              <div className="p-4">
+                  <Link to="/requests" className="flex items-center justify-between p-4 rounded-xl bg-brand-light dark:bg-blue-900/50 hover:bg-blue-100 dark:hover:bg-blue-900/70 transition-colors duration-200 border border-brand-blue/20 dark:border-brand-blue/40">
+                      <div className="flex items-center gap-4">
+                          <div className="p-2 bg-white dark:bg-gray-800 rounded-full">
+                               <ClipboardDocumentListIcon className="w-6 h-6 text-brand-blue" />
+                          </div>
+                          <div>
+                              <h4 className="font-bold text-gray-800 dark:text-gray-100">Pending Host Requests</h4>
+                              <p className="text-sm text-gray-600 dark:text-gray-300">
+                                  You have {pendingHostRequestCount} pending request{pendingHostRequestCount > 1 ? 's' : ''}.
+                              </p>
+                          </div>
+                      </div>
+                      <ChevronRightIcon className="w-5 h-5 text-gray-500 dark:text-gray-400" />
+                  </Link>
+              </div>
+            )}
             <div className="px-4 pt-2 text-sm font-semibold text-gray-500 dark:text-gray-400">NEARBY HOSTS</div>
             {renderContent()}
         </div>
