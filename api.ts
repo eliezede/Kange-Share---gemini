@@ -1,4 +1,3 @@
-import { GoogleGenAI } from "@google/genai";
 import { db, auth, storage, googleProvider } from './firebase';
 import {
     collection,
@@ -152,7 +151,8 @@ export const toggleFollowHost = async (currentUserId: string, targetHostId: stri
     const targetHostRef = doc(db, 'users', targetHostId);
     
     const currentUserDoc = await getDoc(currentUserRef);
-    const isFollowing = currentUserDoc.data()?.following?.includes(targetHostId);
+    // FIX: Cast the document data to User to resolve the type error on 'following'.
+    const isFollowing = (currentUserDoc.data() as User)?.following?.includes(targetHostId);
 
     const batch = writeBatch(db);
     if (isFollowing) {
@@ -227,7 +227,8 @@ export const createNewChat = async (hostId: string, requesterId: string, host: U
 export const getMessagesStream = (requestId: string, callback: (messages: Message[]) => void): (() => void) => {
     const messagesRef = collection(db, `requests/${requestId}/messages`);
     const q = query(messagesRef, orderBy('timestamp', 'asc'));
-    return onSnapshot(q, querySnapshot => {
+    // FIX: Explicitly type `querySnapshot` as `QuerySnapshot` to correct the type inference error on `querySnapshot.docs`.
+    return onSnapshot(q, (querySnapshot: QuerySnapshot) => {
         const messages = querySnapshot.docs.map(d => fromDoc<Message>(d));
         callback(messages);
     });
@@ -320,45 +321,4 @@ export const getAllRequests = async (): Promise<WaterRequest[]> => {
 export const toggleHostVerification = (hostId: string, isVerified: boolean): Promise<void> => {
     const hostRef = doc(db, 'users', hostId);
     return updateDoc(hostRef, { isVerified: !isVerified });
-};
-
-// --- GEMINI API ---
-
-export const generateHostSummary = async (host: User, reviews: Review[]): Promise<string> => {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-    
-    const reviewTexts = reviews.map(r => `- "${r.comment}" (Rating: ${r.rating}/5)`).join('\n');
-    
-    const availableDaysText = Object.entries(host.availability)
-        .filter(([, details]) => details.enabled)
-        .map(([day, details]) => `${day}: ${details.startTime} - ${details.endTime}`)
-        .join(', ');
-
-    const prompt = `
-        Based on the following information about a Kangen water host, generate a warm, friendly, and concise summary (about 2-3 sentences) for a traveler. The summary should be encouraging and highlight the host's best qualities.
-
-        Host Information:
-        - Name: ${host.name}
-        - Location: ${host.address.city}
-        - Average Rating: ${host.rating.toFixed(1)} out of 5 stars
-        - Total Reviews: ${host.reviews}
-        - Available Water pH Levels: ${host.phLevels.join(', ')}
-        - Weekly Availability: ${availableDaysText || 'Not specified'}
-
-        Guest Reviews:
-        ${reviewTexts || 'No reviews yet.'}
-
-        Generate the summary now.
-    `;
-
-    try {
-        const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
-            contents: prompt,
-        });
-        return response.text;
-    } catch (error) {
-        console.error("Error generating AI summary:", error);
-        return "Sorry, I couldn't generate a summary at this time. Please try again later.";
-    }
 };

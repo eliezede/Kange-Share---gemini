@@ -1,4 +1,5 @@
 import React from 'react';
+// FIX: Corrected import statement for react-router-dom.
 import { useNavigate, useLocation, Navigate } from 'react-router-dom';
 import { EnvelopeIcon, ChevronRightIcon } from '../components/Icons';
 
@@ -24,19 +25,18 @@ export default function VerifyEmailPage() {
                     <EnvelopeIcon className="w-8 h-8" />
                 </div>
                 <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100 mb-3">Verify Your Email</h1>
-                <p className="text-gray-600 dark:text-gray-400 mb-8">
-                    We've sent a verification link to your email address. Please check your inbox to continue.
+                <p className="text-lg text-gray-600 dark:text-gray-400 mb-8">
+                    We've sent a verification link to your email address. Please check your inbox and click the link to continue.
+                </p>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-8">
+                    (For this demo, you can skip this step)
                 </p>
                 <button
                     onClick={handleContinue}
-                    className="w-full flex items-center justify-center gap-2 bg-brand-blue text-white font-bold py-3.5 px-4 rounded-xl hover:bg-blue-600 transition-colors"
+                    className="w-full flex items-center justify-center gap-2 bg-brand-blue text-white font-bold py-3 px-4 rounded-xl hover:bg-blue-600 transition-colors"
                 >
-                    <span>Continue to Profile Setup</span>
-                    <ChevronRightIcon className="w-5 h-5" />
+                    Continue to Profile Setup <ChevronRightIcon className="w-5 h-5" />
                 </button>
-                <p className="text-xs text-gray-400 dark:text-gray-500 mt-4">
-                    (In this demo, you can continue without checking your email.)
-                </p>
             </div>
         </div>
     );

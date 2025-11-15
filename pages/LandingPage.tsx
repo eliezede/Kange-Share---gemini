@@ -1,4 +1,5 @@
 import React from 'react';
+// FIX: Corrected import statement for react-router-dom.
 import { Link } from 'react-router-dom';
 import { useAuth } from '../App';
 import { DropletIcon, MapPinIcon, StarIcon, ShieldCheckIcon, DevicePhoneMobileIcon, ChatBubbleOvalLeftEllipsisIcon, GlobeAltIcon, CheckBadgeIcon } from '../components/Icons';

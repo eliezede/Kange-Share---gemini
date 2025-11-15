@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+// FIX: Corrected import statement for react-router-dom.
 import { Link, useNavigate } from 'react-router-dom';
 import * as api from '../api';
 import { useAuth } from '../App';

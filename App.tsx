@@ -1,5 +1,6 @@
 import React, { useState, useContext, createContext, useCallback, useEffect } from 'react';
-import { HashRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
+// FIX: Corrected import statement for react-router-dom and switched to BrowserRouter.
+import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { auth } from './firebase';
 import * as api from './api';
@@ -160,21 +161,29 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       setLoading(true);
-      if (firebaseUser) {
-        setUser(firebaseUser);
-        const dbUser = await api.getUserById(firebaseUser.uid);
-        if (dbUser) {
-            setUserData(dbUser);
+      try {
+        if (firebaseUser) {
+          setUser(firebaseUser);
+          const dbUser = await api.getUserById(firebaseUser.uid);
+          if (dbUser) {
+              setUserData(dbUser);
+          } else {
+              // This case might happen if user is created in Auth but not in Firestore yet (e.g., during signup).
+              // The onboarding flow should handle creating the Firestore doc.
+              setUserData(null);
+          }
         } else {
-            // This case might happen if user is created in Auth but not in Firestore yet (e.g., during signup).
-            // The onboarding flow should handle creating the Firestore doc.
-            setUserData(null);
+          setUser(null);
+          setUserData(null);
         }
-      } else {
+      } catch (error) {
+        console.error("Failed to load user data:", error);
+        // In case of error, ensure user is logged out of the app state
         setUser(null);
         setUserData(null);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     });
     return () => unsubscribe();
   }, [setUserData]);
@@ -271,12 +280,12 @@ const AppRoutes = () => {
 const AppContent = () => {
     const { isLoginModalOpen, closeLoginModal } = useAuth();
     return (
-        <HashRouter>
+        <BrowserRouter>
             <div className="max-w-4xl mx-auto bg-white dark:bg-gray-900 min-h-screen shadow-2xl shadow-gray-300/20 dark:shadow-black/20">
                 <LoginModal isOpen={isLoginModalOpen} onClose={closeLoginModal} />
                 <AppRoutes />
             </div>
-        </HashRouter>
+        </BrowserRouter>
     );
 };
 

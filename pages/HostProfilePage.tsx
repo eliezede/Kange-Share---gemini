@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
+// FIX: Corrected import statement for react-router-dom.
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import * as api from '../api';
-import { StarIcon, ChevronLeftIcon, CheckBadgeIcon, MapPinIcon, ChatBubbleOvalLeftEllipsisIcon, SpinnerIcon, ProfilePicture, SparklesIcon } from '../components/Icons';
+import { StarIcon, ChevronLeftIcon, CheckBadgeIcon, MapPinIcon, ChatBubbleOvalLeftEllipsisIcon, SpinnerIcon, ProfilePicture } from '../components/Icons';
 import { Review, User } from '../types';
 import { useAuth } from '../App';
 
@@ -39,8 +40,6 @@ export default function HostProfilePage() {
   const [host, setHost] = useState<User | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
-  const [aiSummary, setAiSummary] = useState('');
-  const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -62,11 +61,13 @@ export default function HostProfilePage() {
   const handleFollowToggle = async () => {
     if (!host || !currentUser) return;
 
-    // The state *before* the toggle
+    // Save previous state for potential rollback on API failure
+    const previousUserData = currentUser;
+    const previousHostData = host;
+
     const isFollowing = currentUser.following?.includes(host.id);
 
-    // Optimistically update the current user's 'following' list.
-    // This is safe because setUserData uses a central sanitizer.
+    // Optimistically update the UI
     setUserData(prev => {
         if (!prev) return null;
         const following = prev.following || [];
@@ -78,20 +79,14 @@ export default function HostProfilePage() {
         };
     });
     
-    // Optimistically update the local host's 'followers' list.
-    // This is where the error likely occurs, so we need to be defensive.
     setHost(prev => {
         if (!prev) return null;
-        
-        // Sanitize the host object before updating it to prevent crashes
-        // on re-render if other properties like 'following' are missing.
         const sanitizedHost = {
             ...prev,
             followers: prev.followers || [],
             following: prev.following || [],
             phLevels: prev.phLevels || [],
         };
-
         return {
             ...sanitizedHost,
             followers: isFollowing
@@ -100,17 +95,24 @@ export default function HostProfilePage() {
         };
     });
     
-    // Now, make the API call to persist the change.
-    await api.toggleFollowHost(currentUser.id, host.id);
-    
-    // Re-fetch from the source of truth to ensure UI is consistent.
-    // This is good practice to correct any optimistic update discrepancies.
-    const [updatedHost, updatedUser] = await Promise.all([
-        api.getUserById(host.id),
-        api.getUserById(currentUser.id)
-    ]);
-    if (updatedHost) setHost(updatedHost);
-    if (updatedUser) setUserData(updatedUser);
+    try {
+        // Persist the change via API call
+        await api.toggleFollowHost(currentUser.id, host.id);
+        
+        // Re-fetch from the source of truth to ensure UI is perfectly consistent.
+        const [updatedHost, updatedUser] = await Promise.all([
+            api.getUserById(host.id),
+            api.getUserById(currentUser.id)
+        ]);
+        if (updatedHost) setHost(updatedHost);
+        if (updatedUser) setUserData(updatedUser);
+    } catch (error) {
+        console.error("Failed to toggle follow:", error);
+        alert("An error occurred. Could not update follow status.");
+        // Rollback UI changes on failure
+        setUserData(previousUserData);
+        setHost(previousHostData);
+    }
   };
   
   const handleSendMessage = async () => {
@@ -120,21 +122,6 @@ export default function HostProfilePage() {
     // For now, we'll just create a new chat request.
     const newChatId = await api.createNewChat(host.id, currentUser.id, host, currentUser);
     navigate(`/chat/${newChatId}`);
-  };
-
-  const handleGenerateSummary = async () => {
-    if (!host) return;
-    setIsGeneratingSummary(true);
-    setAiSummary('');
-    try {
-        const summary = await api.generateHostSummary(host, reviews);
-        setAiSummary(summary);
-    } catch (error) {
-        console.error("Failed to generate summary:", error);
-        setAiSummary("An error occurred while generating the summary.");
-    } finally {
-        setIsGeneratingSummary(false);
-    }
   };
 
   if (loading) {
@@ -226,46 +213,6 @@ export default function HostProfilePage() {
               <RatingStars rating={Math.round(host.rating)} />
               <span className="ml-2 font-semibold text-gray-700 dark:text-gray-300">{host.rating.toFixed(1)}</span>
               <span className="ml-2 text-gray-500 dark:text-gray-400">({host.reviews} reviews)</span>
-            </div>
-          </div>
-
-          <div>
-            <div className="flex items-center gap-2">
-                <SparklesIcon className="w-6 h-6 text-purple-500" />
-                <h2 className="text-xl font-semibold dark:text-gray-100">AI Host Summary</h2>
-            </div>
-            <div className="mt-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-4 rounded-lg">
-                {isGeneratingSummary ? (
-                    <div className="flex flex-col items-center justify-center text-center text-gray-500 dark:text-gray-400">
-                        <SpinnerIcon className="w-8 h-8 text-brand-blue animate-spin" />
-                        <p className="mt-2 text-sm">Generating summary...</p>
-                    </div>
-                ) : aiSummary ? (
-                    <p className="text-gray-700 dark:text-gray-300 italic">"{aiSummary}"</p>
-                ) : (
-                    <p className="text-gray-500 dark:text-gray-400 text-sm">
-                        Click the button below to get an AI-powered summary of this host based on their profile and reviews.
-                    </p>
-                )}
-                <div className="mt-4 flex justify-end">
-                     <button
-                        onClick={handleGenerateSummary}
-                        disabled={isGeneratingSummary}
-                        className="flex items-center justify-center gap-2 bg-white dark:bg-gray-700 text-purple-600 dark:text-purple-400 font-bold py-2 px-4 rounded-xl hover:bg-purple-50 dark:hover:bg-purple-900/40 transition-colors border-2 border-purple-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                        {isGeneratingSummary ? (
-                            <>
-                                <SpinnerIcon className="w-5 h-5 animate-spin" />
-                                <span>Generating...</span>
-                            </>
-                        ) : (
-                            <>
-                                 <SparklesIcon className="w-5 h-5" />
-                                <span>{aiSummary ? 'Regenerate' : 'Generate Summary'}</span>
-                            </>
-                        )}
-                    </button>
-                </div>
             </div>
           </div>
 

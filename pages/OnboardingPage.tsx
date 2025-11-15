@@ -101,17 +101,22 @@ export default function OnboardingPage() {
         if (!userId || !user) return;
 
         setIsSaving(true);
-        await api.updateUser(userId, {
-            ...user,
-            isHost: showHostSettings
-        });
-        
-        // Log the user in after they complete onboarding
-        if (email && password) {
-            await loginWithEmail(email, password);
+        try {
+            await api.updateUser(userId, {
+                ...user,
+                isHost: showHostSettings
+            });
+            
+            // Log the user in after they complete onboarding
+            if (email && password) {
+                await loginWithEmail(email, password);
+            }
+            // On successful login, the AuthProvider's onAuthStateChanged will trigger a redirect.
+        } catch (error) {
+            console.error("Onboarding failed:", error);
+            alert("There was an error saving your profile. Please try again.");
+            setIsSaving(false); // Reset saving state on error
         }
-        
-        // The auth provider will redirect to /map
     };
 
     if (loading) {
