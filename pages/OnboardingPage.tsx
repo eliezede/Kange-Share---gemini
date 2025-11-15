@@ -59,27 +59,41 @@ export default function OnboardingPage() {
     }, [userId]);
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (!user) return;
         const { name, value } = e.target;
-        if (name.includes('.')) {
-            const [section, key] = name.split('.');
-            setUser(prev => prev ? ({ ...prev, [section]: { ...(prev[section as keyof User] as object), [key]: value } }) : null);
-        } else {
-            setUser(prev => prev ? ({ ...prev, [name]: value }) : null);
-        }
+        setUser(prev => {
+            if (!prev) return null;
+            if (name.includes('.')) {
+                const [section, key] = name.split('.');
+                return {
+                    ...prev,
+                    [section]: {
+                        ...(prev[section as keyof User] as object || {}),
+                        [key]: value
+                    }
+                };
+            }
+            return { ...prev, [name]: value };
+        });
     };
     
     const handleAvailabilityChange = (day: string, field: 'enabled' | 'startTime' | 'endTime', value: boolean | string) => {
-        setUser(prev => prev ? ({
-            ...prev,
-            availability: {
-                ...prev.availability,
-                [day]: {
-                    ...prev.availability?.[day],
-                    [field]: value,
-                }
-            }
-        }) : null);
+        setUser(prev => {
+            if (!prev) return null;
+    
+            const currentAvailability = prev.availability || {};
+            const dayAvailability = currentAvailability[day] || { enabled: false, startTime: '09:00', endTime: '17:00' };
+    
+            return {
+                ...prev,
+                availability: {
+                    ...currentAvailability,
+                    [day]: {
+                        ...dayAvailability,
+                        [field]: value,
+                    },
+                },
+            };
+        });
     };
 
     const handleSave = async (e: React.FormEvent) => {

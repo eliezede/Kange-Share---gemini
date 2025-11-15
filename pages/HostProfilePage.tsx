@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import * as api from '../api';
-import { StarIcon, ChevronLeftIcon, CheckBadgeIcon, MapPinIcon, ChatBubbleOvalLeftEllipsisIcon, SpinnerIcon } from '../components/Icons';
+import { StarIcon, ChevronLeftIcon, CheckBadgeIcon, MapPinIcon, ChatBubbleOvalLeftEllipsisIcon, SpinnerIcon, ProfilePicture, SparklesIcon } from '../components/Icons';
 import { Review, User } from '../types';
 import { useAuth } from '../App';
 
@@ -16,7 +16,7 @@ const RatingStars: React.FC<{ rating: number; className?: string }> = ({ rating,
 const ReviewCard: React.FC<{ review: Review }> = ({ review }) => (
     <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded-lg">
         <div className="flex items-start gap-4">
-            <img src={review.reviewerImage} alt={review.reviewerName} className="w-12 h-12 rounded-full object-cover" />
+            <ProfilePicture src={review.reviewerImage} alt={review.reviewerName} className="w-12 h-12 rounded-full object-cover" />
             <div className="flex-1">
                 <div className="flex justify-between items-center">
                     <div>
@@ -39,6 +39,8 @@ export default function HostProfilePage() {
   const [host, setHost] = useState<User | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
+  const [aiSummary, setAiSummary] = useState('');
+  const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -120,6 +122,21 @@ export default function HostProfilePage() {
     navigate(`/chat/${newChatId}`);
   };
 
+  const handleGenerateSummary = async () => {
+    if (!host) return;
+    setIsGeneratingSummary(true);
+    setAiSummary('');
+    try {
+        const summary = await api.generateHostSummary(host, reviews);
+        setAiSummary(summary);
+    } catch (error) {
+        console.error("Failed to generate summary:", error);
+        setAiSummary("An error occurred while generating the summary.");
+    } finally {
+        setIsGeneratingSummary(false);
+    }
+  };
+
   if (loading) {
     return (
         <div className="flex justify-center items-center h-screen">
@@ -163,7 +180,7 @@ export default function HostProfilePage() {
       
       <div className="p-6">
         <div className="flex items-start mb-4">
-          <img src={host.profilePicture} alt={host.name} className="w-20 h-20 rounded-full object-cover border-4 border-white dark:border-gray-900 -mt-16 shadow-lg" />
+          <ProfilePicture src={host.profilePicture} alt={host.name} className="w-20 h-20 rounded-full object-cover border-4 border-white dark:border-gray-900 -mt-16 shadow-lg" />
           <div className="ml-4 mt-1 flex-1">
             <div className="flex items-center gap-2">
                 <h1 className="text-3xl font-bold dark:text-white">{host.name}</h1>
@@ -209,6 +226,46 @@ export default function HostProfilePage() {
               <RatingStars rating={Math.round(host.rating)} />
               <span className="ml-2 font-semibold text-gray-700 dark:text-gray-300">{host.rating.toFixed(1)}</span>
               <span className="ml-2 text-gray-500 dark:text-gray-400">({host.reviews} reviews)</span>
+            </div>
+          </div>
+
+          <div>
+            <div className="flex items-center gap-2">
+                <SparklesIcon className="w-6 h-6 text-purple-500" />
+                <h2 className="text-xl font-semibold dark:text-gray-100">AI Host Summary</h2>
+            </div>
+            <div className="mt-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-4 rounded-lg">
+                {isGeneratingSummary ? (
+                    <div className="flex flex-col items-center justify-center text-center text-gray-500 dark:text-gray-400">
+                        <SpinnerIcon className="w-8 h-8 text-brand-blue animate-spin" />
+                        <p className="mt-2 text-sm">Generating summary...</p>
+                    </div>
+                ) : aiSummary ? (
+                    <p className="text-gray-700 dark:text-gray-300 italic">"{aiSummary}"</p>
+                ) : (
+                    <p className="text-gray-500 dark:text-gray-400 text-sm">
+                        Click the button below to get an AI-powered summary of this host based on their profile and reviews.
+                    </p>
+                )}
+                <div className="mt-4 flex justify-end">
+                     <button
+                        onClick={handleGenerateSummary}
+                        disabled={isGeneratingSummary}
+                        className="flex items-center justify-center gap-2 bg-white dark:bg-gray-700 text-purple-600 dark:text-purple-400 font-bold py-2 px-4 rounded-xl hover:bg-purple-50 dark:hover:bg-purple-900/40 transition-colors border-2 border-purple-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        {isGeneratingSummary ? (
+                            <>
+                                <SpinnerIcon className="w-5 h-5 animate-spin" />
+                                <span>Generating...</span>
+                            </>
+                        ) : (
+                            <>
+                                 <SparklesIcon className="w-5 h-5" />
+                                <span>{aiSummary ? 'Regenerate' : 'Generate Summary'}</span>
+                            </>
+                        )}
+                    </button>
+                </div>
             </div>
           </div>
 

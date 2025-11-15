@@ -2,12 +2,12 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import * as api from '../api';
 import { User } from '../types';
-import { ChevronLeftIcon, CameraIcon, ArrowLeftOnRectangleIcon, TrashIcon, ShieldCheckIcon, SpinnerIcon, SunIcon, MoonIcon } from '../components/Icons';
+import { ChevronLeftIcon, CameraIcon, ArrowLeftOnRectangleIcon, TrashIcon, ShieldCheckIcon, SpinnerIcon, SunIcon, MoonIcon, ProfilePicture } from '../components/Icons';
 import { useAuth, useTheme } from '../App';
 
 const ImageCropperModal: React.FC<{
   imageSrc: string;
-  onCropComplete: (croppedImage: string) => void;
+  onCropComplete: (croppedImage: Blob) => void;
   onClose: () => void;
 }> = ({ imageSrc, onCropComplete, onClose }) => {
   const imageRef = useRef<HTMLImageElement>(null);
@@ -18,50 +18,80 @@ const ImageCropperModal: React.FC<{
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
 
-  const getCroppedImg = (): Promise<string> => {
+  const getCroppedImg = (): Promise<Blob> => {
     return new Promise((resolve, reject) => {
-      const image = imageRef.current;
-      if (!image) return reject('Image not loaded');
+        const image = imageRef.current;
+        const container = containerRef.current;
 
-      const canvas = document.createElement('canvas');
-      const finalSize = 256; // Output size for the profile picture
-      canvas.width = finalSize;
-      canvas.height = finalSize;
-      
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return reject('Canvas context not available');
+        if (!image || !container || !image.complete || image.naturalWidth === 0) {
+            return reject('Image or container not available');
+        }
 
-      const scaleX = image.naturalWidth / image.width;
-      const scaleY = image.naturalHeight / image.height;
-      
-      const sourceSize = (image.width < image.height ? image.width : image.height);
-      const sourceX = (image.naturalWidth - (sourceSize * scaleX)) / 2 - (offset.x * scaleX / zoom);
-      const sourceY = (image.naturalHeight - (sourceSize * scaleY)) / 2 - (offset.y * scaleY / zoom);
-      const sourceWidth = sourceSize * scaleX / zoom;
-      const sourceHeight = sourceSize * scaleY / zoom;
+        const outputSize = 256;
+        const canvas = document.createElement('canvas');
+        canvas.width = outputSize;
+        canvas.height = outputSize;
+        const ctx = canvas.getContext('2d');
 
-      ctx.beginPath();
-      ctx.arc(finalSize / 2, finalSize / 2, finalSize / 2, 0, Math.PI * 2, true);
-      ctx.closePath();
-      ctx.clip();
-      
-      ctx.drawImage(
-        image,
-        sourceX, sourceY, sourceWidth, sourceHeight,
-        0, 0, finalSize, finalSize
-      );
+        if (!ctx) {
+            return reject('Failed to get canvas 2D context');
+        }
 
-      canvas.toBlob(
-        (blob) => {
-          if (!blob) return reject('Canvas is empty');
-          const reader = new FileReader();
-          reader.onloadend = () => resolve(reader.result as string);
-          reader.onerror = reject;
-          reader.readAsDataURL(blob);
-        },
-        'image/jpeg',
-        0.8 // Compression quality
-      );
+        // The scale of the image to 'cover' the container, before user zoom
+        const coverScale = Math.max(
+            container.clientWidth / image.naturalWidth,
+            container.clientHeight / image.naturalHeight
+        );
+
+        // How many original image pixels correspond to one container pixel
+        const imagePixelPerContainerPixel = 1 / coverScale;
+
+        // The size of the visible area in terms of original image pixels, before user zoom
+        let sourceVisibleWidth = container.clientWidth * imagePixelPerContainerPixel;
+        let sourceVisibleHeight = container.clientHeight * imagePixelPerContainerPixel;
+        
+        // The top-left corner of this visible area on the original image, for centering 'cover'
+        let sourceX = (image.naturalWidth - sourceVisibleWidth) / 2;
+        let sourceY = (image.naturalHeight - sourceVisibleHeight) / 2;
+
+        // Now, account for user zoom. Zooming in means we see a smaller portion of the source image.
+        const zoomedSourceWidth = sourceVisibleWidth / zoom;
+        const zoomedSourceHeight = sourceVisibleHeight / zoom;
+
+        // Adjust the sourceX/Y to keep the zoom centered
+        sourceX += (sourceVisibleWidth - zoomedSourceWidth) / 2;
+        sourceY += (sourceVisibleHeight - zoomedSourceHeight) / 2;
+
+        // Finally, account for user pan. A pan in container pixels needs to be converted to original image pixels.
+        // A pan in a direction on the screen moves the source window in the opposite direction.
+        sourceX -= offset.x * imagePixelPerContainerPixel;
+        sourceY -= offset.y * imagePixelPerContainerPixel;
+
+        // Draw the calculated source area onto the final canvas
+        ctx.beginPath();
+        ctx.arc(outputSize / 2, outputSize / 2, outputSize / 2, 0, Math.PI * 2, true);
+        ctx.clip();
+
+        ctx.drawImage(
+            image,
+            sourceX,
+            sourceY,
+            zoomedSourceWidth,
+            zoomedSourceHeight,
+            0, 0, // Draw at top-left of canvas
+            outputSize, outputSize // Fill the entire canvas
+        );
+
+        canvas.toBlob(
+            (blob) => {
+                if (!blob) {
+                    return reject('Canvas is empty');
+                }
+                resolve(blob);
+            },
+            'image/jpeg',
+            0.9
+        );
     });
   };
 
@@ -105,11 +135,12 @@ const ImageCropperModal: React.FC<{
           <img
             ref={imageRef}
             src={imageSrc}
+            crossOrigin="anonymous"
             style={{
               transform: `translate(${offset.x}px, ${offset.y}px) scale(${zoom})`,
               transition: isDragging ? 'none' : 'transform 0.1s ease-out',
-              minWidth: '100%',
-              minHeight: '100%',
+              width: '100%',
+              height: '100%',
               objectFit: 'cover'
             }}
             draggable={false}
@@ -226,14 +257,21 @@ export default function UserProfilePage() {
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    if (!user) return;
     const { name, value } = e.target;
-    const [section, key] = name.split('.');
-    if (key) {
-      setUser(prevUser => prevUser ? ({ ...prevUser, [section]: { ...(prevUser[section as keyof User] as object), [key]: value } }) : null);
-    } else {
-      setUser(prevUser => prevUser ? ({ ...prevUser, [name]: value }) : null);
-    }
+    setUser(prevUser => {
+      if (!prevUser) return null;
+      if (name.includes('.')) {
+        const [section, key] = name.split('.');
+        return {
+          ...prevUser,
+          [section]: {
+            ...(prevUser[section as keyof User] as object || {}),
+            [key]: value,
+          },
+        };
+      }
+      return { ...prevUser, [name]: value };
+    });
   };
   
   const handleToggleChange = (name: keyof User, value: boolean) => {
@@ -241,7 +279,23 @@ export default function UserProfilePage() {
   };
 
   const handleAvailabilityChange = (day: string, field: 'enabled' | 'startTime' | 'endTime', value: boolean | string) => {
-    setUser(prev => prev ? ({ ...prev, availability: { ...prev.availability, [day]: { ...prev.availability[day], [field]: value } } }) : null);
+    setUser(prev => {
+        if (!prev) return null;
+
+        const currentAvailability = prev.availability || {};
+        const dayAvailability = currentAvailability[day] || { enabled: false, startTime: '09:00', endTime: '17:00' };
+
+        return {
+            ...prev,
+            availability: {
+                ...currentAvailability,
+                [day]: {
+                    ...dayAvailability,
+                    [field]: value
+                }
+            }
+        };
+    });
   };
   
   const togglePh = (ph: number) => {
@@ -263,10 +317,10 @@ export default function UserProfilePage() {
     }
   };
 
-  const handleCropComplete = async (croppedImage: string) => {
+  const handleCropComplete = async (croppedImageBlob: Blob) => {
     if (!user) return;
     setIsSaving(true);
-    const downloadURL = await api.uploadProfilePicture(user.id, croppedImage);
+    const downloadURL = await api.uploadProfilePicture(user.id, croppedImageBlob);
     const updatedUser = { ...user, profilePicture: downloadURL };
     await handleSave(undefined, updatedUser); // Save with new image URL
     setImageToCrop(null); // Close modal
@@ -325,7 +379,7 @@ export default function UserProfilePage() {
         <form id="user-profile-form" onSubmit={handleSave} className="space-y-6">
             <div className="flex flex-col items-center">
                 <div className="relative w-32 h-32 mb-2">
-                    <img src={user.profilePicture || 'https://via.placeholder.com/128'} alt="Profile" className="w-full h-full rounded-full object-cover shadow-md border-4 border-white dark:border-gray-800" />
+                    <ProfilePicture src={user.profilePicture} alt="Profile" className="w-full h-full rounded-full object-cover shadow-md border-4 border-white dark:border-gray-800" />
                     <label htmlFor="photo-upload" className="absolute bottom-1 right-1 bg-white dark:bg-gray-600 p-2 rounded-full shadow-md cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-500 transition">
                     <CameraIcon className="w-6 h-6 text-gray-700 dark:text-gray-200" />
                     <input id="photo-upload" type="file" accept="image/*" className="hidden" onChange={handlePhotoChange} />

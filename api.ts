@@ -1,12 +1,38 @@
-
-
-// FIX: Use firebase v8 compat imports to resolve module errors.
-import firebase from 'firebase/compat/app';
-import 'firebase/compat/auth';
-import 'firebase/compat/firestore';
-import 'firebase/compat/storage';
-
+import { GoogleGenAI } from "@google/genai";
 import { db, auth, storage, googleProvider } from './firebase';
+import {
+    collection,
+    doc,
+    getDoc,
+    getDocs,
+    setDoc,
+    updateDoc,
+    query,
+    where,
+    orderBy,
+    onSnapshot,
+    serverTimestamp,
+    Timestamp,
+    arrayUnion,
+    arrayRemove,
+    runTransaction,
+    addDoc,
+    writeBatch,
+    DocumentSnapshot,
+    QuerySnapshot
+} from 'firebase/firestore';
+import {
+    signInWithEmailAndPassword,
+    signInWithPopup,
+    createUserWithEmailAndPassword,
+    signOut,
+    UserCredential
+} from 'firebase/auth';
+import {
+    ref,
+    uploadBytes,
+    getDownloadURL
+} from 'firebase/storage';
 import { User, WaterRequest, Message, RequestStatus, Review } from './types';
 
 // Placed at the top for reuse
@@ -19,15 +45,6 @@ const defaultAvailability = {
   'Saturday': { enabled: false, startTime: '10:00', endTime: '14:00' },
   'Sunday': { enabled: false, startTime: '10:00', endTime: '14:00' },
 };
-
-// --- TYPES and HELPERS ---
-type DocumentSnapshot = firebase.firestore.DocumentSnapshot;
-const Timestamp = firebase.firestore.Timestamp;
-const serverTimestamp = firebase.firestore.FieldValue.serverTimestamp;
-const arrayUnion = firebase.firestore.FieldValue.arrayUnion;
-const arrayRemove = firebase.firestore.FieldValue.arrayRemove;
-type UserCredential = firebase.auth.UserCredential;
-
 
 // --- DATA TRANSFORMATION UTILS ---
 
@@ -48,15 +65,20 @@ const fromDoc = <T>(docSnap: DocumentSnapshot): T => {
         data.following = data.following || [];
         data.phLevels = data.phLevels || [];
         data.phone = data.phone || '';
-        data.address = data.address || { street: '', number: '', postalCode: '', city: '', country: '' };
-        data.maintenance = data.maintenance || { lastFilterChange: '', lastECleaning: '' };
+
+        const defaultAddress = { street: '', number: '', postalCode: '', city: '', country: '' };
+        data.address = { ...defaultAddress, ...(data.address || {}) };
+
+        const defaultMaintenance = { lastFilterChange: '', lastECleaning: '' };
+        data.maintenance = { ...defaultMaintenance, ...(data.maintenance || {}) };
         
         // Perform a deep merge for availability to ensure all days and their properties exist
         const mergedAvailability = { ...defaultAvailability };
         if (data.availability && typeof data.availability === 'object') {
             for (const day of Object.keys(mergedAvailability)) {
-                if (data.availability[day]) {
-                    mergedAvailability[day] = { ...mergedAvailability[day], ...data.availability[day] };
+                const dayData = data.availability[day];
+                if (dayData && typeof dayData === 'object') {
+                    mergedAvailability[day] = { ...mergedAvailability[day], ...dayData };
                 }
             }
         }
@@ -70,28 +92,29 @@ const fromDoc = <T>(docSnap: DocumentSnapshot): T => {
 // --- AUTH API ---
 
 export const loginWithEmail = (email: string, password: string): Promise<UserCredential> =>
-    auth.signInWithEmailAndPassword(email, password);
+    signInWithEmailAndPassword(auth, email, password);
 
-export const loginWithGoogle = (): Promise<UserCredential> => {
-    return auth.signInWithPopup(googleProvider);
-};
+export const loginWithGoogle = (): Promise<UserCredential> =>
+    signInWithPopup(auth, googleProvider);
 
 export const signUpWithEmail = (email: string, password: string): Promise<UserCredential> =>
-    auth.createUserWithEmailAndPassword(email, password);
+    createUserWithEmailAndPassword(auth, email, password);
 
-export const logout = (): Promise<void> => auth.signOut();
+export const logout = (): Promise<void> => signOut(auth);
 
 
 // --- USER API ---
 
 export const getUserById = async (id: string): Promise<User | null> => {
-    const userDocSnap = await db.collection('users').doc(id).get();
-    return userDocSnap.exists ? fromDoc<User>(userDocSnap) : null;
+    const userDocRef = doc(db, 'users', id);
+    const userDocSnap = await getDoc(userDocRef);
+    return userDocSnap.exists() ? fromDoc<User>(userDocSnap) : null;
 };
 
 export const getHosts = async (): Promise<User[]> => {
-    const q = db.collection('users').where('isHost', '==', true);
-    const querySnapshot = await q.get();
+    const usersRef = collection(db, 'users');
+    const q = query(usersRef, where('isHost', '==', true));
+    const querySnapshot = await getDocs(q);
     return querySnapshot.docs.map(d => fromDoc<User>(d));
 };
 
@@ -103,27 +126,29 @@ export const createInitialUser = (uid: string, email: string, name: string, prof
         maintenance: { lastFilterChange: '', lastECleaning: '' }, isVerified: false,
         followers: [], following: [],
     };
-    return db.collection('users').doc(uid).set(newUser);
+    const userDocRef = doc(db, 'users', uid);
+    return setDoc(userDocRef, newUser);
 };
 
 export const updateUser = async (userId: string, updates: Partial<User>): Promise<void> => {
-    return db.collection('users').doc(userId).update(updates);
+    const userDocRef = doc(db, 'users', userId);
+    return updateDoc(userDocRef, updates);
 };
 
-export const uploadProfilePicture = async (userId: string, base64: string): Promise<string> => {
-    const storageRef = storage.ref(`profilePictures/${userId}`);
-    await storageRef.putString(base64, 'data_url');
-    return storageRef.getDownloadURL();
+export const uploadProfilePicture = async (userId: string, blob: Blob): Promise<string> => {
+    const storageRef = ref(storage, `profilePictures/${userId}`);
+    await uploadBytes(storageRef, blob);
+    return getDownloadURL(storageRef);
 };
 
 export const toggleFollowHost = async (currentUserId: string, targetHostId: string): Promise<void> => {
-    const currentUserRef = db.collection('users').doc(currentUserId);
-    const targetHostRef = db.collection('users').doc(targetHostId);
+    const currentUserRef = doc(db, 'users', currentUserId);
+    const targetHostRef = doc(db, 'users', targetHostId);
     
-    const currentUserDoc = await currentUserRef.get();
+    const currentUserDoc = await getDoc(currentUserRef);
     const isFollowing = currentUserDoc.data()?.following?.includes(targetHostId);
 
-    const batch = db.batch();
+    const batch = writeBatch(db);
     if (isFollowing) {
         batch.update(currentUserRef, { following: arrayRemove(targetHostId) });
         batch.update(targetHostRef, { followers: arrayRemove(currentUserId) });
@@ -138,28 +163,32 @@ export const toggleFollowHost = async (currentUserId: string, targetHostId: stri
 // --- REQUESTS API ---
 
 export const getRequestsByUserId = async (userId: string): Promise<WaterRequest[]> => {
-    const q = db.collection('requests').where('requesterId', '==', userId);
-    const querySnapshot = await q.get();
+    const requestsRef = collection(db, 'requests');
+    const q = query(requestsRef, where('requesterId', '==', userId));
+    const querySnapshot = await getDocs(q);
     const requests = querySnapshot.docs.map(d => fromDoc<WaterRequest>(d));
     // Filter client-side to avoid needing a composite index
     return requests.filter(r => r.status !== 'chatting');
 };
 
 export const getRequestsByHostId = async (hostId: string): Promise<WaterRequest[]> => {
-    const q = db.collection('requests').where('hostId', '==', hostId);
-    const querySnapshot = await q.get();
+    const requestsRef = collection(db, 'requests');
+    const q = query(requestsRef, where('hostId', '==', hostId));
+    const querySnapshot = await getDocs(q);
     const requests = querySnapshot.docs.map(d => fromDoc<WaterRequest>(d));
     // Filter client-side to avoid needing a composite index
     return requests.filter(r => r.status !== 'chatting');
 };
 
 export const getRequestById = async (id: string): Promise<WaterRequest | null> => {
-    const reqDocSnap = await db.collection('requests').doc(id).get();
-    return reqDocSnap.exists ? fromDoc<WaterRequest>(reqDocSnap) : null;
+    const reqDocRef = doc(db, 'requests', id);
+    const reqDocSnap = await getDoc(reqDocRef);
+    return reqDocSnap.exists() ? fromDoc<WaterRequest>(reqDocSnap) : null;
 };
 
 export const createRequest = async (newRequestData: Omit<WaterRequest, 'id' | 'createdAt'>): Promise<string> => {
-    const docRef = await db.collection('requests').add({
+    const requestsRef = collection(db, 'requests');
+    const docRef = await addDoc(requestsRef, {
         ...newRequestData,
         createdAt: serverTimestamp(),
     });
@@ -167,7 +196,8 @@ export const createRequest = async (newRequestData: Omit<WaterRequest, 'id' | 'c
 };
 
 export const updateRequestStatus = (requestId: string, newStatus: RequestStatus): Promise<void> => {
-    return db.collection('requests').doc(requestId).update({ status: newStatus });
+    const reqDocRef = doc(db, 'requests', requestId);
+    return updateDoc(reqDocRef, { status: newStatus });
 };
 
 export const createNewChat = async (hostId: string, requesterId: string, host: User, requester: User): Promise<string> => {
@@ -177,7 +207,8 @@ export const createNewChat = async (hostId: string, requesterId: string, host: U
         requesterName: requester.name, requesterImage: requester.profilePicture,
         hostName: host.name, hostImage: host.profilePicture,
     };
-    const docRef = await db.collection('requests').add({
+    const requestsRef = collection(db, 'requests');
+    const docRef = await addDoc(requestsRef, {
         ...newChatRequest,
         createdAt: serverTimestamp(),
     });
@@ -188,15 +219,17 @@ export const createNewChat = async (hostId: string, requesterId: string, host: U
 // --- MESSAGES API ---
 
 export const getMessagesStream = (requestId: string, callback: (messages: Message[]) => void): (() => void) => {
-    const q = db.collection(`requests/${requestId}/messages`).orderBy('timestamp', 'asc');
-    return q.onSnapshot(querySnapshot => {
+    const messagesRef = collection(db, `requests/${requestId}/messages`);
+    const q = query(messagesRef, orderBy('timestamp', 'asc'));
+    return onSnapshot(q, querySnapshot => {
         const messages = querySnapshot.docs.map(d => fromDoc<Message>(d));
         callback(messages);
     });
 };
 
 export const sendMessage = (requestId: string, text: string, senderId: string): Promise<any> => {
-    return db.collection(`requests/${requestId}/messages`).add({
+    const messagesRef = collection(db, `requests/${requestId}/messages`);
+    return addDoc(messagesRef, {
         text,
         sender: senderId,
         timestamp: serverTimestamp(),
@@ -204,21 +237,20 @@ export const sendMessage = (requestId: string, text: string, senderId: string): 
 };
 
 export const getConversationsByUserId = async (userId: string): Promise<WaterRequest[]> => {
-    // FIX: Composite queries require an index. To avoid this, we fetch all requests for a user
-    // and then perform the filtering on the client-side. This is more flexible and avoids backend configuration.
-    const statusesForConvo = ['accepted', 'completed', 'chatting'];
+    const statusesForConvo = ['accepted', 'completed', 'chatting', 'pending'];
+    const requestsRef = collection(db, 'requests');
 
-    const requesterQuery = db.collection('requests').where('requesterId', '==', userId);
-    const hostQuery = db.collection('requests').where('hostId', '==', userId);
+    const requesterQuery = query(requestsRef, where('requesterId', '==', userId));
+    const hostQuery = query(requestsRef, where('hostId', '==', userId));
 
     const [requesterSnapshot, hostSnapshot] = await Promise.all([
-        requesterQuery.get(),
-        hostQuery.get(),
+        getDocs(requesterQuery),
+        getDocs(hostQuery),
     ]);
 
     const convos: { [id: string]: WaterRequest } = {};
     
-    const processSnapshot = (snapshot: firebase.firestore.QuerySnapshot) => {
+    const processSnapshot = (snapshot: QuerySnapshot) => {
         snapshot.docs.forEach(d => {
             const req = fromDoc<WaterRequest>(d);
             if (statusesForConvo.includes(req.status)) {
@@ -237,18 +269,19 @@ export const getConversationsByUserId = async (userId: string): Promise<WaterReq
 // --- REVIEWS API ---
 
 export const getReviewsForHost = async (hostId: string): Promise<Review[]> => {
-    const q = db.collection(`users/${hostId}/reviews`).orderBy('date', 'desc');
-    const querySnapshot = await q.get();
+    const reviewsRef = collection(db, `users/${hostId}/reviews`);
+    const q = query(reviewsRef, orderBy('date', 'desc'));
+    const querySnapshot = await getDocs(q);
     return querySnapshot.docs.map(d => fromDoc<Review>(d));
 }
 
 export const addReview = async (hostId: string, review: Omit<Review, 'id'>): Promise<void> => {
-    const hostRef = db.collection('users').doc(hostId);
-    const reviewCollRef = db.collection(`users/${hostId}/reviews`);
+    const hostRef = doc(db, 'users', hostId);
+    const reviewCollRef = collection(db, `users/${hostId}/reviews`);
 
-    return db.runTransaction(async (transaction) => {
+    return runTransaction(db, async (transaction) => {
         const hostDoc = await transaction.get(hostRef);
-        if (!hostDoc.exists) {
+        if (!hostDoc.exists()) {
             throw "Host does not exist!";
         }
         
@@ -262,22 +295,64 @@ export const addReview = async (hostId: string, review: Omit<Review, 'id'>): Pro
             rating: newAverageRating
         });
         
-        transaction.set(reviewCollRef.doc(), review);
+        transaction.set(doc(reviewCollRef), review);
     });
 };
 
 // --- ADMIN API ---
 
 export const getAllUsers = async (): Promise<User[]> => {
-    const querySnapshot = await db.collection('users').get();
+    const querySnapshot = await getDocs(collection(db, 'users'));
     return querySnapshot.docs.map(d => fromDoc<User>(d));
 };
 
 export const getAllRequests = async (): Promise<WaterRequest[]> => {
-    const querySnapshot = await db.collection('requests').get();
+    const querySnapshot = await getDocs(collection(db, 'requests'));
     return querySnapshot.docs.map(d => fromDoc<WaterRequest>(d));
 };
 
 export const toggleHostVerification = (hostId: string, isVerified: boolean): Promise<void> => {
-    return db.collection('users').doc(hostId).update({ isVerified: !isVerified });
+    const hostRef = doc(db, 'users', hostId);
+    return updateDoc(hostRef, { isVerified: !isVerified });
+};
+
+// --- GEMINI API ---
+
+export const generateHostSummary = async (host: User, reviews: Review[]): Promise<string> => {
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    
+    const reviewTexts = reviews.map(r => `- "${r.comment}" (Rating: ${r.rating}/5)`).join('\n');
+    
+    const availableDaysText = Object.entries(host.availability)
+        .filter(([, details]) => details.enabled)
+        .map(([day, details]) => `${day}: ${details.startTime} - ${details.endTime}`)
+        .join(', ');
+
+    const prompt = `
+        Based on the following information about a Kangen water host, generate a warm, friendly, and concise summary (about 2-3 sentences) for a traveler. The summary should be encouraging and highlight the host's best qualities.
+
+        Host Information:
+        - Name: ${host.name}
+        - Location: ${host.address.city}
+        - Average Rating: ${host.rating.toFixed(1)} out of 5 stars
+        - Total Reviews: ${host.reviews}
+        - Available Water pH Levels: ${host.phLevels.join(', ')}
+        - Weekly Availability: ${availableDaysText || 'Not specified'}
+
+        Guest Reviews:
+        ${reviewTexts || 'No reviews yet.'}
+
+        Generate the summary now.
+    `;
+
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: prompt,
+        });
+        return response.text;
+    } catch (error) {
+        console.error("Error generating AI summary:", error);
+        return "Sorry, I couldn't generate a summary at this time. Please try again later.";
+    }
 };

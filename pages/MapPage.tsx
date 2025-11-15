@@ -1,13 +1,13 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import * as api from '../api';
-import { StarIcon, SearchIcon, AdjustmentsHorizontalIcon, CheckBadgeIcon, ClipboardDocumentListIcon, ChevronRightIcon, SpinnerIcon } from '../components/Icons';
+import { StarIcon, SearchIcon, AdjustmentsHorizontalIcon, CheckBadgeIcon, ClipboardDocumentListIcon, ChevronRightIcon, SpinnerIcon, ProfilePicture } from '../components/Icons';
 import { User } from '../types';
 import { useAuth } from '../App';
 
 const HostCard: React.FC<{ host: User }> = ({ host }) => (
   <Link to={`/host/${host.id}`} className="flex items-center space-x-4 p-4 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors duration-200 border-b border-gray-100 dark:border-gray-800">
-    <img src={host.profilePicture} alt={host.name} className="w-20 h-20 rounded-lg object-cover" />
+    <ProfilePicture src={host.profilePicture} alt={host.name} className="w-20 h-20 rounded-lg object-cover" />
     <div className="flex-1">
       <div className="flex items-center">
         <h3 className="font-bold text-lg dark:text-gray-100">{host.name}</h3>

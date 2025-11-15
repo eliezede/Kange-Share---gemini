@@ -115,11 +115,15 @@ const sanitizeUser = (user: User | null): User | null => {
     const mergedAvailability = { ...defaultAvailability };
     if (user.availability && typeof user.availability === 'object') {
         for (const day of Object.keys(mergedAvailability)) {
-            if (user.availability[day]) {
-                mergedAvailability[day] = { ...mergedAvailability[day], ...user.availability[day] };
+            const dayData = user.availability[day];
+            if (dayData && typeof dayData === 'object') {
+                mergedAvailability[day] = { ...mergedAvailability[day], ...dayData };
             }
         }
     }
+
+    const defaultAddress = { street: '', number: '', postalCode: '', city: '', country: '' };
+    const defaultMaintenance = { lastFilterChange: '', lastECleaning: '' };
 
     return {
         ...user,
@@ -128,8 +132,8 @@ const sanitizeUser = (user: User | null): User | null => {
         phLevels: user.phLevels || [],
         availability: mergedAvailability,
         phone: user.phone || '',
-        address: user.address || { street: '', number: '', postalCode: '', city: '', country: '' },
-        maintenance: user.maintenance || { lastFilterChange: '', lastECleaning: '' },
+        address: { ...defaultAddress, ...(user.address || {}) },
+        maintenance: { ...defaultMaintenance, ...(user.maintenance || {}) },
     };
 };
 
