@@ -111,15 +111,15 @@ const defaultAvailability = {
 const sanitizeUser = (user: User | null): User | null => {
     if (!user) return null;
 
-    // Perform a deep merge for availability to ensure all days and their properties exist
-    const mergedAvailability = { ...defaultAvailability };
-    if (user.availability && typeof user.availability === 'object') {
-        for (const day of Object.keys(mergedAvailability)) {
-            const dayData = user.availability[day];
-            if (dayData && typeof dayData === 'object') {
-                mergedAvailability[day] = { ...mergedAvailability[day], ...dayData };
-            }
-        }
+    // Perform a true deep merge for availability to ensure all days and their properties exist,
+    // preventing crashes if data is malformed (e.g., a day is `true` instead of an object).
+    const mergedAvailability: Record<string, { enabled: boolean; startTime: string; endTime: string; }> = {};
+    for (const day of Object.keys(defaultAvailability)) {
+        const defaultDayData = defaultAvailability[day];
+        const userDayData = (user.availability && typeof user.availability === 'object' && user.availability[day] && typeof user.availability[day] === 'object')
+            ? user.availability[day]
+            : {};
+        mergedAvailability[day] = { ...defaultDayData, ...userDayData };
     }
 
     const defaultAddress = { street: '', number: '', postalCode: '', city: '', country: '' };
@@ -132,8 +132,14 @@ const sanitizeUser = (user: User | null): User | null => {
         phLevels: user.phLevels || [],
         availability: mergedAvailability,
         phone: user.phone || '',
-        address: { ...defaultAddress, ...(user.address || {}) },
-        maintenance: { ...defaultMaintenance, ...(user.maintenance || {}) },
+        // FIX: More robust merge to prevent crashes if `user.address` is not a valid object.
+        address: (user.address && typeof user.address === 'object')
+            ? { ...defaultAddress, ...user.address }
+            : defaultAddress,
+        // FIX: More robust merge for maintenance.
+        maintenance: (user.maintenance && typeof user.maintenance === 'object')
+            ? { ...defaultMaintenance, ...user.maintenance }
+            : defaultMaintenance,
     };
 };
 

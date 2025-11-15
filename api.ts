@@ -67,20 +67,26 @@ const fromDoc = <T>(docSnap: DocumentSnapshot): T => {
         data.phone = data.phone || '';
 
         const defaultAddress = { street: '', number: '', postalCode: '', city: '', country: '' };
-        data.address = { ...defaultAddress, ...(data.address || {}) };
+        // FIX: More robust merge to prevent crashes if `data.address` is not a valid object.
+        data.address = (data.address && typeof data.address === 'object')
+            ? { ...defaultAddress, ...data.address }
+            : defaultAddress;
 
         const defaultMaintenance = { lastFilterChange: '', lastECleaning: '' };
-        data.maintenance = { ...defaultMaintenance, ...(data.maintenance || {}) };
+        // FIX: More robust merge for maintenance.
+        data.maintenance = (data.maintenance && typeof data.maintenance === 'object')
+            ? { ...defaultMaintenance, ...data.maintenance }
+            : defaultMaintenance;
         
-        // Perform a deep merge for availability to ensure all days and their properties exist
-        const mergedAvailability = { ...defaultAvailability };
-        if (data.availability && typeof data.availability === 'object') {
-            for (const day of Object.keys(mergedAvailability)) {
-                const dayData = data.availability[day];
-                if (dayData && typeof dayData === 'object') {
-                    mergedAvailability[day] = { ...mergedAvailability[day], ...dayData };
-                }
-            }
+        // FIX: Perform a true deep merge for availability to ensure all days and their properties exist,
+        // preventing crashes if data is malformed (e.g., a day is `true` instead of an object).
+        const mergedAvailability: Record<string, { enabled: boolean; startTime: string; endTime: string; }> = {};
+        for (const day of Object.keys(defaultAvailability)) {
+            const defaultDayData = defaultAvailability[day];
+            const userDayData = (data.availability && typeof data.availability === 'object' && data.availability[day] && typeof data.availability[day] === 'object')
+                ? data.availability[day]
+                : {};
+            mergedAvailability[day] = { ...defaultDayData, ...userDayData };
         }
         data.availability = mergedAvailability;
     }
