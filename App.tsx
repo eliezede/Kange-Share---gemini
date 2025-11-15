@@ -1,6 +1,6 @@
 import React, { useState, useContext, createContext, useCallback, useEffect } from 'react';
-// FIX: Corrected import statement for react-router-dom and switched to BrowserRouter.
-import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
+// FIX: Corrected import statement for react-router-dom and switched to HashRouter.
+import { HashRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { auth } from './firebase';
 import * as api from './api';
@@ -280,12 +280,12 @@ const AppRoutes = () => {
 const AppContent = () => {
     const { isLoginModalOpen, closeLoginModal } = useAuth();
     return (
-        <BrowserRouter>
+        <HashRouter>
             <div className="max-w-4xl mx-auto bg-white dark:bg-gray-900 min-h-screen shadow-2xl shadow-gray-300/20 dark:shadow-black/20">
                 <LoginModal isOpen={isLoginModalOpen} onClose={closeLoginModal} />
                 <AppRoutes />
             </div>
-        </BrowserRouter>
+        </HashRouter>
     );
 };
 
