@@ -34,175 +34,6 @@ const PhotoSourceModal: React.FC<{
     );
 };
 
-
-const ImageCropperModal: React.FC<{
-  imageSrc: string;
-  onCropComplete: (croppedImage: Blob) => void;
-  onClose: () => void;
-  isSaving: boolean;
-}> = ({ imageSrc, onCropComplete, onClose, isSaving }) => {
-  const imageRef = useRef<HTMLImageElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  const [zoom, setZoom] = useState(1);
-  const [offset, setOffset] = useState({ x: 0, y: 0 });
-  const [isDragging, setIsDragging] = useState(false);
-  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
-
-  const getCroppedImg = (): Promise<Blob> => {
-    return new Promise((resolve, reject) => {
-        const image = imageRef.current;
-        const container = containerRef.current;
-
-        if (!image || !container || !image.complete || image.naturalWidth === 0) {
-            return reject('Image or container not available');
-        }
-
-        const outputSize = 256;
-        const canvas = document.createElement('canvas');
-        canvas.width = outputSize;
-        canvas.height = outputSize;
-        const ctx = canvas.getContext('2d');
-
-        if (!ctx) {
-            return reject('Failed to get canvas 2D context');
-        }
-
-        // The scale of the image to 'cover' the container, before user zoom
-        const coverScale = Math.max(
-            container.clientWidth / image.naturalWidth,
-            container.clientHeight / image.naturalHeight
-        );
-
-        // How many original image pixels correspond to one container pixel
-        const imagePixelPerContainerPixel = 1 / coverScale;
-
-        // The size of the visible area in terms of original image pixels, before user zoom
-        let sourceVisibleWidth = container.clientWidth * imagePixelPerContainerPixel;
-        let sourceVisibleHeight = container.clientHeight * imagePixelPerContainerPixel;
-        
-        // The top-left corner of this visible area on the original image, for centering 'cover'
-        let sourceX = (image.naturalWidth - sourceVisibleWidth) / 2;
-        let sourceY = (image.naturalHeight - sourceVisibleHeight) / 2;
-
-        // Now, account for user zoom. Zooming in means we see a smaller portion of the source image.
-        const zoomedSourceWidth = sourceVisibleWidth / zoom;
-        const zoomedSourceHeight = sourceVisibleHeight / zoom;
-
-        // Adjust the sourceX/Y to keep the zoom centered
-        sourceX += (sourceVisibleWidth - zoomedSourceWidth) / 2;
-        sourceY += (sourceVisibleHeight - zoomedSourceHeight) / 2;
-
-        // Finally, account for user pan. A pan in container pixels needs to be converted to original image pixels.
-        // A pan in a direction on the screen moves the source window in the opposite direction.
-        sourceX -= offset.x * imagePixelPerContainerPixel;
-        sourceY -= offset.y * imagePixelPerContainerPixel;
-
-        // Draw the calculated source area onto the final canvas
-        ctx.beginPath();
-        ctx.arc(outputSize / 2, outputSize / 2, outputSize / 2, 0, Math.PI * 2, true);
-        ctx.clip();
-
-        ctx.drawImage(
-            image,
-            sourceX,
-            sourceY,
-            zoomedSourceWidth,
-            zoomedSourceHeight,
-            0, 0, // Draw at top-left of canvas
-            outputSize, outputSize // Fill the entire canvas
-        );
-
-        canvas.toBlob(
-            (blob) => {
-                if (!blob) {
-                    return reject('Canvas is empty');
-                }
-                resolve(blob);
-            },
-            'image/jpeg',
-            0.9
-        );
-    });
-  };
-
-  const handleCrop = async () => {
-    try {
-      const croppedImage = await getCroppedImg();
-      onCropComplete(croppedImage);
-    } catch (e) {
-      console.error(e);
-      alert("Could not crop image.");
-    }
-  };
-
-  const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    setIsDragging(true);
-    setDragStart({ x: e.clientX - offset.x, y: e.clientY - offset.y });
-  };
-  
-  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!isDragging) return;
-    const x = e.clientX - dragStart.x;
-    const y = e.clientY - dragStart.y;
-    setOffset({ x, y });
-  };
-  
-  const handleMouseUp = () => setIsDragging(false);
-
-  return (
-    <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center animate-fade-in-up transition-opacity" onClick={onClose}>
-      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-sm m-4 p-6" onClick={e => e.stopPropagation()}>
-        <h2 className="text-2xl font-bold text-center mb-4 dark:text-white">Crop Your Photo</h2>
-        <div
-          ref={containerRef}
-          className="relative w-full aspect-square bg-gray-900 rounded-lg overflow-hidden cursor-move"
-          onMouseDown={handleMouseDown}
-          onMouseMove={handleMouseMove}
-          onMouseUp={handleMouseUp}
-          onMouseLeave={handleMouseUp}
-        >
-          <img
-            ref={imageRef}
-            src={imageSrc}
-            crossOrigin="anonymous"
-            style={{
-              transform: `translate(${offset.x}px, ${offset.y}px) scale(${zoom})`,
-              transition: isDragging ? 'none' : 'transform 0.1s ease-out',
-              width: '100%',
-              height: '100%',
-              objectFit: 'cover'
-            }}
-            draggable={false}
-          />
-          <div className="absolute inset-0 shadow-[0_0_0_9999px_rgba(0,0,0,0.5)] pointer-events-none">
-            <div className="absolute top-1/2 left-1/2 w-[90%] h-[90%] -translate-x-1/2 -translate-y-1/2 rounded-full border-4 border-dashed border-white/80"></div>
-          </div>
-        </div>
-        <div className="flex items-center gap-3 mt-4">
-          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Zoom:</span>
-          <input
-            type="range"
-            min="1"
-            max="3"
-            step="0.01"
-            value={zoom}
-            onChange={e => setZoom(parseFloat(e.target.value))}
-            className="w-full h-2 bg-gray-200 dark:bg-gray-600 rounded-lg appearance-none cursor-pointer"
-          />
-        </div>
-        <div className="flex justify-end gap-3 mt-6">
-          <button onClick={onClose} disabled={isSaving} className="px-5 py-2.5 rounded-xl font-semibold bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-white transition disabled:opacity-50">Cancel</button>
-          <button onClick={handleCrop} disabled={isSaving} className="px-5 py-2.5 rounded-xl font-semibold bg-brand-blue text-white hover:bg-blue-600 transition flex items-center justify-center w-32 disabled:bg-blue-300">
-            {isSaving ? <SpinnerIcon className="w-5 h-5 animate-spin" /> : 'Crop & Save'}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
-
 const FormSection: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
   <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
     <h2 className="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-100 border-b pb-2 dark:border-gray-700">{title}</h2>
@@ -251,6 +82,64 @@ const parsePhoneNumber = (phone: string): { countryCode: string; number: string 
     return { countryCode: '+1', number: phone };
 };
 
+const cropImageToSquare = (file: File): Promise<Blob> => {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = (event) => {
+            const img = new Image();
+            img.src = event.target?.result as string;
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                if (!ctx) return reject('Canvas context not available');
+
+                let sourceX, sourceY, sourceSize;
+                const outputSize = 512; // A good resolution for profile pictures
+
+                if (img.width > img.height) {
+                    sourceSize = img.height;
+                    sourceX = (img.width - img.height) / 2;
+                    sourceY = 0;
+                } else {
+                    sourceSize = img.width;
+                    sourceX = 0;
+                    sourceY = (img.height - img.width) / 2;
+                }
+
+                canvas.width = outputSize;
+                canvas.height = outputSize;
+
+                ctx.drawImage(
+                    img,
+                    sourceX,
+                    sourceY,
+                    sourceSize,
+                    sourceSize,
+                    0,
+                    0,
+                    outputSize,
+                    outputSize
+                );
+
+                canvas.toBlob(
+                    (blob) => {
+                        if (blob) {
+                            resolve(blob);
+                        } else {
+                            reject('Failed to create blob from canvas');
+                        }
+                    },
+                    'image/jpeg',
+                    0.9 // Quality
+                );
+            };
+            img.onerror = (error) => reject(error);
+        };
+        reader.onerror = (error) => reject(error);
+    });
+};
+
 
 export default function UserProfilePage() {
   const navigate = useNavigate();
@@ -261,8 +150,8 @@ export default function UserProfilePage() {
   const [originalUser, setOriginalUser] = useState<User | null>(null);
   const [isDirty, setIsDirty] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [phoneParts, setPhoneParts] = useState({ countryCode: '+1', number: '' });
-  const [imageToCrop, setImageToCrop] = useState<string | null>(null);
   const [isPhotoSourceModalOpen, setIsPhotoSourceModalOpen] = useState(false);
 
   const ALL_PH_LEVELS = [2.5, 8.5, 9.0, 9.5, 11.5];
@@ -341,49 +230,41 @@ export default function UserProfilePage() {
     });
   };
 
-  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      if (!file.type.startsWith('image/')) { alert('Please select an image file.'); return; }
-      const reader = new FileReader();
-      reader.onloadend = () => { setImageToCrop(reader.result as string); };
-      reader.readAsDataURL(file);
-      setIsPhotoSourceModalOpen(false); // Close source selection modal
-    }
-     // Reset the input value to allow selecting the same file again
-    e.target.value = '';
-  };
+  const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) return;
+    const file = e.target.files[0];
+    e.target.value = ''; // Reset input to allow re-selecting the same file
+    setIsPhotoSourceModalOpen(false);
 
-  const handleCropComplete = async (croppedImageBlob: Blob) => {
+    if (!file.type.startsWith('image/')) {
+        alert('Please select an image file.');
+        return;
+    }
+
     if (!user) return;
-    setIsSaving(true);
+
+    setIsUploadingPhoto(true);
     try {
-        const downloadURL = await api.uploadProfilePicture(user.id, croppedImageBlob);
+        const imageBlob = await cropImageToSquare(file);
+        const downloadURL = await api.uploadProfilePicture(user.id, imageBlob);
         
-        // Create an update object with just the picture URL
         const updates = { profilePicture: downloadURL };
-        
-        // Update the database immediately for just the photo
         await api.updateUser(user.id, updates);
-        
-        // Create a new user object for local state that includes the new photo
-        // and any other unsaved changes from the form.
+
         const updatedUserWithPic = { ...user, profilePicture: downloadURL };
         
-        // Update all local states to reflect this change
-        setUserData(updatedUserWithPic); // Global context
-        setUser(updatedUserWithPic); // Local form state
-        setOriginalUser(JSON.parse(JSON.stringify(updatedUserWithPic))); // Reset dirty state to this new version
+        setUserData(updatedUserWithPic);
+        setUser(updatedUserWithPic);
+        setOriginalUser(JSON.parse(JSON.stringify(updatedUserWithPic)));
         
-        setImageToCrop(null); // Close modal on success
     } catch (error) {
         console.error("Failed to upload profile picture:", error);
         alert("Could not upload your photo. Please try again.");
     } finally {
-        setIsSaving(false);
+        setIsUploadingPhoto(false);
     }
   };
-
+  
   const handleSave = async (e?: React.FormEvent) => {
     e?.preventDefault();
     if (!user) return;
@@ -436,9 +317,15 @@ export default function UserProfilePage() {
             <div className="flex flex-col items-center">
                 <div className="relative w-32 h-32 mb-2">
                     <ProfilePicture src={user.profilePicture} alt="Profile" className="w-full h-full rounded-full object-cover shadow-md border-4 border-white dark:border-gray-800" />
-                    <button type="button" onClick={() => setIsPhotoSourceModalOpen(true)} className="absolute bottom-1 right-1 bg-white dark:bg-gray-600 p-2 rounded-full shadow-md cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-500 transition">
-                      <CameraIcon className="w-6 h-6 text-gray-700 dark:text-gray-200" />
-                    </button>
+                     {isUploadingPhoto ? (
+                        <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center">
+                            <SpinnerIcon className="w-8 h-8 text-white animate-spin" />
+                        </div>
+                    ) : (
+                        <button type="button" onClick={() => setIsPhotoSourceModalOpen(true)} className="absolute bottom-1 right-1 bg-white dark:bg-gray-600 p-2 rounded-full shadow-md cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-500 transition">
+                            <CameraIcon className="w-6 h-6 text-gray-700 dark:text-gray-200" />
+                        </button>
+                    )}
                 </div>
                  <div className="flex items-center gap-8 mt-4">
                     <Link to={`/profile/${user.id}/followers`} className="text-center text-gray-700 dark:text-gray-300 hover:text-black dark:hover:text-white">
@@ -581,14 +468,6 @@ export default function UserProfilePage() {
         onClose={() => setIsPhotoSourceModalOpen(false)}
         onFileSelect={handlePhotoChange}
       />
-       {imageToCrop && (
-          <ImageCropperModal
-            imageSrc={imageToCrop}
-            onCropComplete={handleCropComplete}
-            onClose={() => setImageToCrop(null)}
-            isSaving={isSaving}
-          />
-        )}
     </div>
   );
 }
