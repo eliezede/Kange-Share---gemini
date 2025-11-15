@@ -1,4 +1,5 @@
 
+
 // FIX: Use firebase v8 compat imports to resolve module errors.
 import firebase from 'firebase/compat/app';
 import 'firebase/compat/auth';
@@ -137,15 +138,19 @@ export const toggleFollowHost = async (currentUserId: string, targetHostId: stri
 // --- REQUESTS API ---
 
 export const getRequestsByUserId = async (userId: string): Promise<WaterRequest[]> => {
-    const q = db.collection('requests').where('requesterId', '==', userId).where('status', '!=', 'chatting');
+    const q = db.collection('requests').where('requesterId', '==', userId);
     const querySnapshot = await q.get();
-    return querySnapshot.docs.map(d => fromDoc<WaterRequest>(d));
+    const requests = querySnapshot.docs.map(d => fromDoc<WaterRequest>(d));
+    // Filter client-side to avoid needing a composite index
+    return requests.filter(r => r.status !== 'chatting');
 };
 
 export const getRequestsByHostId = async (hostId: string): Promise<WaterRequest[]> => {
-    const q = db.collection('requests').where('hostId', '==', hostId).where('status', '!=', 'chatting');
+    const q = db.collection('requests').where('hostId', '==', hostId);
     const querySnapshot = await q.get();
-    return querySnapshot.docs.map(d => fromDoc<WaterRequest>(d));
+    const requests = querySnapshot.docs.map(d => fromDoc<WaterRequest>(d));
+    // Filter client-side to avoid needing a composite index
+    return requests.filter(r => r.status !== 'chatting');
 };
 
 export const getRequestById = async (id: string): Promise<WaterRequest | null> => {
@@ -199,13 +204,12 @@ export const sendMessage = (requestId: string, text: string, senderId: string): 
 };
 
 export const getConversationsByUserId = async (userId: string): Promise<WaterRequest[]> => {
-    // FIX: Firebase v8 does not support `or` queries. Performing two separate queries and merging the results.
-    const requesterQuery = db.collection('requests')
-        .where('requesterId', '==', userId)
-        .where('status', 'in', ['accepted', 'completed', 'chatting']);
-    const hostQuery = db.collection('requests')
-        .where('hostId', '==', userId)
-        .where('status', 'in', ['accepted', 'completed', 'chatting']);
+    // FIX: Composite queries require an index. To avoid this, we fetch all requests for a user
+    // and then perform the filtering on the client-side. This is more flexible and avoids backend configuration.
+    const statusesForConvo = ['accepted', 'completed', 'chatting'];
+
+    const requesterQuery = db.collection('requests').where('requesterId', '==', userId);
+    const hostQuery = db.collection('requests').where('hostId', '==', userId);
 
     const [requesterSnapshot, hostSnapshot] = await Promise.all([
         requesterQuery.get(),
@@ -213,12 +217,18 @@ export const getConversationsByUserId = async (userId: string): Promise<WaterReq
     ]);
 
     const convos: { [id: string]: WaterRequest } = {};
-    requesterSnapshot.docs.forEach(d => {
-        convos[d.id] = fromDoc<WaterRequest>(d);
-    });
-    hostSnapshot.docs.forEach(d => {
-        convos[d.id] = fromDoc<WaterRequest>(d);
-    });
+    
+    const processSnapshot = (snapshot: firebase.firestore.QuerySnapshot) => {
+        snapshot.docs.forEach(d => {
+            const req = fromDoc<WaterRequest>(d);
+            if (statusesForConvo.includes(req.status)) {
+                convos[d.id] = req;
+            }
+        });
+    };
+
+    processSnapshot(requesterSnapshot);
+    processSnapshot(hostSnapshot);
     
     return Object.values(convos).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 };

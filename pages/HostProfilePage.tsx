@@ -138,9 +138,11 @@ export default function HostProfilePage() {
 
   const isFollowing = currentUser.following?.includes(host.id);
   
-  const availableDays = Object.entries(host.availability)
-    .filter(([, details]) => details.enabled)
-    .map(([day, details]) => ({ day, ...details }));
+  // FIX: Refactored to iterate over keys for better type safety with TypeScript,
+  // resolving issues where `details` was inferred as `unknown`.
+  const availableDays = Object.keys(host.availability)
+    .filter((day) => host.availability[day].enabled)
+    .map((day) => ({ day, ...host.availability[day] }));
     
   const formatTime = (time: string) => {
     const [hour, minute] = time.split(':');
