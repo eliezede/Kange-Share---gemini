@@ -10,6 +10,7 @@ import {
     CheckBadgeIcon,
     ClockIcon,
     SpinnerIcon,
+    SearchIcon,
 } from '../components/Icons';
 
 const MetricCard: React.FC<{ icon: React.ReactNode; label: string; value: number | string }> = ({ icon, label, value }) => (
@@ -46,6 +47,10 @@ export default function AdminPage() {
     const [requests, setRequests] = useState<WaterRequest[]>([]);
     const [loading, setLoading] = useState(true);
     const [verifyingHostId, setVerifyingHostId] = useState<string | null>(null);
+    const [userFilter, setUserFilter] = useState<'all' | 'hosts' | 'non-hosts'>('all');
+    const [userSearchQuery, setUserSearchQuery] = useState('');
+    const [togglingHostId, setTogglingHostId] = useState<string | null>(null);
+
 
     useEffect(() => {
         const fetchData = async () => {
@@ -71,6 +76,19 @@ export default function AdminPage() {
             pendingRequests: requests.filter(r => r.status === 'pending').length,
         };
     }, [hosts, requests]);
+
+    const filteredUsers = useMemo(() => {
+        return users
+            .filter(user => {
+                if (userFilter === 'hosts') return user.isHost;
+                if (userFilter === 'non-hosts') return !user.isHost;
+                return true; // 'all'
+            })
+            .filter(user => {
+                const query = userSearchQuery.toLowerCase();
+                return user.name.toLowerCase().includes(query) || user.email.toLowerCase().includes(query);
+            });
+    }, [users, userFilter, userSearchQuery]);
     
     const handleVerifyToggle = async (host: User) => {
         setVerifyingHostId(host.id);
@@ -78,6 +96,14 @@ export default function AdminPage() {
         const updatedUsers = await api.getAllUsers();
         setUsers(updatedUsers);
         setVerifyingHostId(null);
+    };
+
+    const handleToggleHostStatus = async (user: User) => {
+        setTogglingHostId(user.id);
+        await api.toggleHostStatus(user.id, user.isHost);
+        const updatedUsers = await api.getAllUsers();
+        setUsers(updatedUsers);
+        setTogglingHostId(null);
     };
 
     const recentRequests = useMemo(() => {
@@ -116,7 +142,7 @@ export default function AdminPage() {
                         </div>
                     </section>
                     
-                    {/* Manage Users & Hosts */}
+                    {/* Manage Hosts */}
                     <section>
                         <h2 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-3">Manage Hosts</h2>
                         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
@@ -151,6 +177,71 @@ export default function AdminPage() {
                             </div>
                         </div>
                     </section>
+
+                    {/* Users Management */}
+                    <section>
+                        <h2 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-3">Users Management</h2>
+                        <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 mb-4 flex flex-col md:flex-row gap-4">
+                            <div className="relative flex-1">
+                                <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-gray-500" />
+                                <input
+                                    type="text"
+                                    placeholder="Search by name or email..."
+                                    value={userSearchQuery}
+                                    onChange={(e) => setUserSearchQuery(e.target.value)}
+                                    className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-brand-blue outline-none transition"
+                                />
+                            </div>
+                            <div className="flex items-center gap-2 bg-gray-100 dark:bg-gray-700 p-1 rounded-lg">
+                                {(['all', 'hosts', 'non-hosts'] as const).map(filter => (
+                                    <button
+                                        key={filter}
+                                        onClick={() => setUserFilter(filter)}
+                                        className={`px-3 py-1.5 text-sm font-semibold rounded-md capitalize transition-colors flex-1 md:flex-none ${userFilter === filter ? 'bg-white dark:bg-gray-800 text-brand-blue shadow-sm' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'}`}
+                                    >
+                                        {filter}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
+                            <div className="divide-y divide-gray-100 dark:divide-gray-700">
+                                {filteredUsers.map(user => (
+                                    <div key={user.id} className="p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                                        <div className="flex items-center gap-3 flex-1">
+                                            <img src={user.profilePicture} alt={user.name} className="w-10 h-10 rounded-full object-cover" />
+                                            <div>
+                                                <p className="font-semibold text-gray-800 dark:text-gray-100">{user.name}</p>
+                                                <p className="text-sm text-gray-500 dark:text-gray-400">{user.email}</p>
+                                                <p className="text-sm text-gray-500 dark:text-gray-400">{user.address.city}</p>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-4 w-full md:w-auto">
+                                            <div className="flex flex-col items-start md:items-end gap-1 flex-1">
+                                                {user.isHost ? (
+                                                    <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300">Host</span>
+                                                ) : (
+                                                    <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300">User</span>
+                                                )}
+                                                {user.isVerified && (
+                                                    <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300">Verified</span>
+                                                )}
+                                            </div>
+                                            <button
+                                                onClick={() => handleToggleHostStatus(user)}
+                                                disabled={togglingHostId === user.id}
+                                                className={`px-3 py-1.5 rounded-md font-semibold text-xs transition-colors w-28 text-center ${user.isHost ? 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600' : 'bg-blue-100 text-blue-700 hover:bg-blue-200 dark:bg-blue-900/50 dark:text-blue-300 dark:hover:bg-blue-900/70'}`}
+                                            >
+                                                {togglingHostId === user.id ? <SpinnerIcon className="w-4 h-4 mx-auto animate-spin" /> : (user.isHost ? 'Remove Host' : 'Make Host')}
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </section>
+
 
                     {/* Recent Activity */}
                     <section>

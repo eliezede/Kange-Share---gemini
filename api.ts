@@ -322,3 +322,8 @@ export const toggleHostVerification = (hostId: string, isVerified: boolean): Pro
     const hostRef = doc(db, 'users', hostId);
     return updateDoc(hostRef, { isVerified: !isVerified });
 };
+
+export const toggleHostStatus = (userId: string, isHost: boolean): Promise<void> => {
+    const userRef = doc(db, 'users', userId);
+    return updateDoc(userRef, { isHost: !isHost });
+};
