@@ -24,6 +24,7 @@ import SignUpPage from './pages/SignUpPage';
 import VerifyEmailPage from './pages/VerifyEmailPage';
 import OnboardingPage from './pages/OnboardingPage';
 import { SpinnerIcon } from './components/Icons';
+import Header from './components/Header';
 
 type Theme = 'light' | 'dark';
 
@@ -128,6 +129,7 @@ const sanitizeUser = (user: User | null): User | null => {
 
     return {
         ...user,
+        isAdmin: user.isAdmin || false,
         followers: user.followers || [],
         following: user.following || [],
         phLevels: user.phLevels || [],
@@ -236,17 +238,17 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
 };
 
 const MainLayout: React.FC = () => (
-    <div className="flex flex-col h-screen">
-        <main className="flex-1 overflow-y-auto pb-16">
+    <div>
+        <div className="pb-16">
             <Outlet />
-        </main>
+        </div>
         <BottomNav />
     </div>
 );
 
 
 const AppRoutes = () => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, userData } = useAuth();
   return (
     <Routes>
         <Route path="/" element={!isAuthenticated ? <LandingPage /> : <Navigate to="/map" />} />
@@ -270,7 +272,11 @@ const AppRoutes = () => {
         <Route path="/request-detail/:requestId" element={<ProtectedRoute><RequestDetailPage /></ProtectedRoute>} />
         <Route path="/chat/:requestId" element={<ProtectedRoute><ChatPage /></ProtectedRoute>} />
         <Route path="/rate/:requestId" element={<ProtectedRoute><RateHostPage /></ProtectedRoute>} />
-        <Route path="/admin" element={<ProtectedRoute><AdminPage /></ProtectedRoute>} />
+        <Route path="/admin" element={
+          <ProtectedRoute>
+            {userData?.isAdmin ? <AdminPage /> : <Navigate to="/map" replace />}
+          </ProtectedRoute>
+        } />
         
         <Route path="/*" element={<Navigate to={isAuthenticated ? "/map" : "/"} replace />} />
       </Routes>
@@ -278,12 +284,21 @@ const AppRoutes = () => {
 };
 
 const AppContent = () => {
-    const { isLoginModalOpen, closeLoginModal } = useAuth();
+    const { isAuthenticated, isLoginModalOpen, closeLoginModal } = useAuth();
     return (
         <HashRouter>
             <div className="max-w-4xl mx-auto bg-white dark:bg-gray-900 min-h-screen shadow-2xl shadow-gray-300/20 dark:shadow-black/20">
                 <LoginModal isOpen={isLoginModalOpen} onClose={closeLoginModal} />
-                <AppRoutes />
+                {isAuthenticated ? (
+                    <div className="flex flex-col h-screen">
+                        <Header />
+                        <main className="flex-1 overflow-y-auto">
+                           <AppRoutes />
+                        </main>
+                    </div>
+                ) : (
+                    <AppRoutes />
+                )}
             </div>
         </HashRouter>
     );

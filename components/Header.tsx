@@ -1,0 +1,24 @@
+import React from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../App';
+import { DropletIcon } from './Icons';
+import { ProfilePicture } from './Icons';
+
+export default function Header() {
+    const { userData } = useAuth();
+    const navigate = useNavigate();
+
+    return (
+        <header className="sticky top-0 z-30 flex items-center justify-between px-4 h-16 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
+            <Link to="/map" className="flex items-center gap-2">
+                <DropletIcon className="w-7 h-7 text-brand-blue" />
+                <span className="text-xl font-bold text-gray-800 dark:text-white">Kangen Share</span>
+            </Link>
+            {userData && (
+                <button onClick={() => navigate('/profile')} className="w-10 h-10 rounded-full overflow-hidden border-2 border-gray-200 dark:border-gray-600 hover:border-brand-blue dark:hover:border-brand-blue transition focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-blue">
+                    <ProfilePicture src={userData.profilePicture} alt={userData.name} className="w-full h-full object-cover" />
+                </button>
+            )}
+        </header>
+    );
+}

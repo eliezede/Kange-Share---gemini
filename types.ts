@@ -25,6 +25,7 @@ export interface User {
   };
   
   isHost: boolean;
+  isAdmin?: boolean;
 
   // Host-specific fields
   rating: number;

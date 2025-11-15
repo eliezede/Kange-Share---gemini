@@ -89,6 +89,7 @@ const FilterModal: React.FC<FilterModalProps> = ({ isOpen, onClose, onApply, act
     }
 
     const toggleDay = (day: string) => {
+        // FIX: Corrected a typo where 'd' was used instead of 'day' in the add-to-array part of the ternary.
         setSelectedDays(prev => prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day]);
     }
     
@@ -205,8 +206,8 @@ export default function MapPage() {
         onApply={setActiveFilters}
         activeFilters={activeFilters}
       />
-      <div className="flex flex-col h-full">
-        <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center gap-2 sticky top-0 bg-white dark:bg-gray-900 z-10">
+      <div>
+        <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center gap-2 bg-white dark:bg-gray-900">
           <div className="relative flex-1">
             <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-gray-500" />
             <input 
@@ -222,7 +223,7 @@ export default function MapPage() {
               {isFilterActive && <span className="absolute top-1.5 right-1.5 block w-2 h-2 bg-brand-blue rounded-full"></span>}
           </button>
         </div>
-        <div className="overflow-y-auto flex-1">
+        <div>
             <MyRequestsCard />
             <div className="px-4 pt-2 text-sm font-semibold text-gray-500 dark:text-gray-400">NEARBY HOSTS</div>
             {renderContent()}

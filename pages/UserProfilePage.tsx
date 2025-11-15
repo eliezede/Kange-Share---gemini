@@ -496,13 +496,15 @@ export default function UserProfilePage() {
         <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
             <h2 className="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-100 border-b pb-2 dark:border-gray-700">Account Actions</h2>
             <div className="space-y-3">
-                <Link 
-                    to="/admin"
-                    className="w-full flex items-center justify-center gap-2 text-left p-3 bg-brand-light dark:bg-blue-900/40 hover:bg-blue-100 dark:hover:bg-blue-900/60 rounded-lg font-semibold text-brand-blue dark:text-blue-300 transition-colors"
-                >
-                    <ShieldCheckIcon className="w-5 h-5" />
-                    <span>Admin Dashboard</span>
-                </Link>
+                {user.isAdmin && (
+                  <Link 
+                      to="/admin"
+                      className="w-full flex items-center justify-center gap-2 text-left p-3 bg-brand-light dark:bg-blue-900/40 hover:bg-blue-100 dark:hover:bg-blue-900/60 rounded-lg font-semibold text-brand-blue dark:text-blue-300 transition-colors"
+                  >
+                      <ShieldCheckIcon className="w-5 h-5" />
+                      <span>Admin Dashboard</span>
+                  </Link>
+                )}
                 <button 
                     onClick={handleLogout}
                     className="w-full flex items-center justify-center gap-2 text-left p-3 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 rounded-lg font-semibold text-gray-700 dark:text-gray-200 transition-colors"
