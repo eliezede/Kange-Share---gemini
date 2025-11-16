@@ -56,7 +56,7 @@ export const MapPinIcon = (props: React.SVGProps<SVGSVGElement>) => (
 
 export const DropletIcon = (props: React.SVGProps<SVGSVGElement>) => (
   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.797c0 2.29-1.854 4.144-4.143 4.144-1.368 0-2.58-.662-3.357-1.687L12 13.25l-.001.001-1.29 1.545c-.777 1.025-1.989 1.687-3.356 1.687C5.354 14.94 3.5 13.088 3.5 10.797 3.5 8.508 5.354 6.653 7.643 6.653c1.298 0 2.45.6 3.25 1.549L12 9.5l1.107-1.298c.8-.949 1.952-1.549 3.25-1.549 2.289 0 4.143 1.854 4.143 4.144Z" />
+    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.8c0 2.3-1.85 4.14-4.14 4.14-1.37 0-2.58-.66-3.36-1.69l-1.3 1.54-.001.001-1.29 1.55c-.78 1.02-1.99 1.68-3.36 1.68C5.35 14.94 3.5 13.09 3.5 10.8c0-2.29 1.85-4.15 4.14-4.15 1.3 0 2.45.6 3.25 1.55L12 9.5l1.11-1.3c.8-.95 1.95-1.55 3.25-1.55 2.29 0 4.14 1.86 4.14 4.15Z" />
   </svg>
 );
 
@@ -204,6 +204,19 @@ export const BellIcon = (props: React.SVGProps<SVGSVGElement>) => (
         <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
     </svg>
 );
+
+export const InformationCircleIcon = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
+  </svg>
+);
+
+export const ExclamationTriangleIcon = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+  </svg>
+);
+
 
 interface ProfilePictureProps {
   src?: string | null;

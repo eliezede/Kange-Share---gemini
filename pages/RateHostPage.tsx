@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 // FIX: Corrected import statement for react-router-dom.
 import { useParams, useNavigate } from 'react-router-dom';
@@ -5,11 +6,13 @@ import * as api from '../api';
 import { User, WaterRequest, Review } from '../types';
 import { useAuth } from '../App';
 import { StarIcon, SpinnerIcon } from '../components/Icons';
+import { useToast } from '../hooks/useToast';
 
 export default function RateHostPage() {
   const { requestId } = useParams<{ requestId: string }>();
   const navigate = useNavigate();
   const { userData: currentUser } = useAuth();
+  const { showToast } = useToast();
   
   const [request, setRequest] = useState<WaterRequest | null>(null);
   const [host, setHost] = useState<User | null>(null);
@@ -50,11 +53,11 @@ export default function RateHostPage() {
 
     try {
         await api.addReview(host.id, newReview);
-        alert('Thank you for your feedback!');
+        showToast('Thank you for your feedback!', 'success');
         navigate('/requests');
     } catch (error) {
         console.error("Failed to submit review:", error);
-        alert('Failed to submit review. Please try again.');
+        showToast('Failed to submit review. Please try again.', 'error');
     } finally {
         setIsSubmitting(false);
     }

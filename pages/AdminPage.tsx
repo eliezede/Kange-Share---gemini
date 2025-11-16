@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import * as api from '../api';
@@ -17,6 +18,7 @@ import {
     MapPinIcon,
     ShieldCheckIcon,
 } from '../components/Icons';
+import { useToast } from '../hooks/useToast';
 
 const MetricCard: React.FC<{ icon: React.ReactNode; label: string; value: number | string }> = ({ icon, label, value }) => (
     <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 flex items-center gap-4">
@@ -76,6 +78,7 @@ interface UserDetailModalProps {
 const UserDetailModal: React.FC<UserDetailModalProps> = ({ user, onClose, onUpdate }) => {
     const [editedUser, setEditedUser] = useState<User>(JSON.parse(JSON.stringify(user)));
     const [isSaving, setIsSaving] = useState(false);
+    const { showToast } = useToast();
 
     const isDirty = useMemo(() => JSON.stringify(editedUser) !== JSON.stringify(user), [editedUser, user]);
 
@@ -84,9 +87,10 @@ const UserDetailModal: React.FC<UserDetailModalProps> = ({ user, onClose, onUpda
         try {
             await api.updateUser(editedUser.id, editedUser);
             await onUpdate();
+            showToast('User updated successfully!', 'success');
         } catch (error) {
             console.error("Failed to update user:", error);
-            alert("Failed to save changes. Please try again.");
+            showToast("Failed to save changes. Please try again.", "error");
         } finally {
             setIsSaving(false);
         }

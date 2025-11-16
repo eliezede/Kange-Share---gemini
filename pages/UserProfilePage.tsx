@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 // FIX: Corrected import statement for react-router-dom.
 import { Link, useNavigate } from 'react-router-dom';
@@ -5,6 +6,7 @@ import * as api from '../api';
 import { User } from '../types';
 import { ChevronLeftIcon, CameraIcon, ArrowLeftOnRectangleIcon, TrashIcon, ShieldCheckIcon, SpinnerIcon, SunIcon, MoonIcon, ProfilePicture, VideoCameraIcon } from '../components/Icons';
 import { useAuth, useTheme } from '../App';
+import { useToast } from '../hooks/useToast';
 
 const PhotoSourceModal: React.FC<{
     isOpen: boolean;
@@ -145,6 +147,7 @@ export default function UserProfilePage() {
   const navigate = useNavigate();
   const { logout, userData, setUserData } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const { showToast } = useToast();
   
   const [user, setUser] = useState<User | null>(null);
   const [originalUser, setOriginalUser] = useState<User | null>(null);
@@ -237,7 +240,7 @@ export default function UserProfilePage() {
     setIsPhotoSourceModalOpen(false);
 
     if (!file.type.startsWith('image/')) {
-        alert('Please select an image file.');
+        showToast('Please select an image file.', 'error');
         return;
     }
 
@@ -256,10 +259,11 @@ export default function UserProfilePage() {
         setUserData(updatedUserWithPic);
         setUser(updatedUserWithPic);
         setOriginalUser(JSON.parse(JSON.stringify(updatedUserWithPic)));
+        showToast('Profile picture updated!', 'success');
         
     } catch (error) {
         console.error("Failed to upload profile picture:", error);
-        alert("Could not upload your photo. Please try again.");
+        showToast("Could not upload your photo. Please try again.", 'error');
     } finally {
         setIsUploadingPhoto(false);
     }
@@ -273,7 +277,7 @@ export default function UserProfilePage() {
     setUserData(user); // Update global context
     setOriginalUser(JSON.parse(JSON.stringify(user)));
     setIsSaving(false);
-    if (e) alert('Profile saved!');
+    if (e) showToast('Profile saved!', 'success');
   };
 
   const handleLogout = async () => {
@@ -283,7 +287,7 @@ export default function UserProfilePage() {
 
   const handleDeleteAccount = () => {
     if (window.confirm('Are you sure you want to delete your account? This action cannot be undone.')) {
-        alert('Account deleted.');
+        showToast('Account deleted.', 'info');
         logout();
         navigate('/');
     }

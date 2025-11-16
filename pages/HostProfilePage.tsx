@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 // FIX: Corrected import statement for react-router-dom.
 import { useParams, Link, useNavigate } from 'react-router-dom';
@@ -5,6 +6,7 @@ import * as api from '../api';
 import { StarIcon, ChevronLeftIcon, CheckBadgeIcon, MapPinIcon, ChatBubbleOvalLeftEllipsisIcon, SpinnerIcon, ProfilePicture, UserGroupIcon, CalendarDaysIcon, DropletIcon } from '../components/Icons';
 import { Review, User } from '../types';
 import { useAuth } from '../App';
+import { useToast } from '../hooks/useToast';
 
 const RatingStars: React.FC<{ rating: number; className?: string }> = ({ rating, className = 'w-5 h-5' }) => (
     <div className="flex items-center">
@@ -37,6 +39,7 @@ export default function HostProfilePage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { userData: currentUser, setUserData } = useAuth();
+  const { showToast } = useToast();
   const [host, setHost] = useState<User | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
@@ -81,7 +84,7 @@ export default function HostProfilePage() {
         console.error("Failed to toggle follow:", error);
         setUserData(previousUserData);
         setHost(previousHostData);
-        alert("Could not update follow status. Please try again.");
+        showToast("Could not update follow status. Please try again.", "error");
     }
   };
 

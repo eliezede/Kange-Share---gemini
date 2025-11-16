@@ -1,3 +1,5 @@
+
+
 import React, { useState, useContext, createContext, useCallback, useEffect, useMemo } from 'react';
 // FIX: Corrected import statement for react-router-dom and switched to HashRouter.
 import { HashRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
@@ -25,6 +27,9 @@ import VerifyEmailPage from './pages/VerifyEmailPage';
 import OnboardingPage from './pages/OnboardingPage';
 import { SpinnerIcon } from './components/Icons';
 import Header from './components/Header';
+// FIX: Moved ToastContainer import from hooks/useToast to components/Toast.
+import { ToastProvider } from './hooks/useToast';
+import { ToastContainer } from './components/Toast';
 
 type Theme = 'light' | 'dark';
 
@@ -327,6 +332,7 @@ const AppContent = () => {
                 ) : (
                     <AppRoutes />
                 )}
+                <ToastContainer />
             </div>
         </HashRouter>
     );
@@ -335,9 +341,11 @@ const AppContent = () => {
 export default function App() {
   return (
     <ThemeProvider>
+      <ToastProvider>
         <AuthProvider>
             <AppContent />
         </AuthProvider>
+      </ToastProvider>
     </ThemeProvider>
   );
 }

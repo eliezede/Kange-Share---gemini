@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useEffect } from 'react';
 // FIX: Corrected import statement for react-router-dom.
 import { useParams, useNavigate } from 'react-router-dom';
@@ -5,6 +6,7 @@ import * as api from '../api';
 import { ChevronLeftIcon, SpinnerIcon } from '../components/Icons';
 import { User } from '../types';
 import { useAuth } from '../App';
+import { useToast } from '../hooks/useToast';
 
 const LITER_OPTIONS = [1, 2, 5, 10];
 
@@ -25,6 +27,7 @@ export default function RequestWaterPage() {
   const { hostId } = useParams<{ hostId: string }>();
   const navigate = useNavigate();
   const { userData: currentUser } = useAuth();
+  const { showToast } = useToast();
   const [host, setHost] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -60,7 +63,7 @@ export default function RequestWaterPage() {
   
   const handleConfirm = async () => {
     if (!hostId || !selectedPh || !selectedTime || !currentUser || !host) {
-      alert('Please fill out all fields.');
+      showToast('Please fill out all fields.', 'error');
       return;
     }
     
@@ -82,7 +85,7 @@ export default function RequestWaterPage() {
     });
     
     setIsSubmitting(false);
-    alert('Request sent!');
+    showToast('Request sent!', 'success');
     navigate('/requests');
   };
   
