@@ -83,7 +83,7 @@ export default function NotificationsPanel({ isOpen, onClose, notifications, tog
     return (
         <div
             ref={panelRef} 
-            className="absolute top-16 right-4 w-full max-w-sm bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden flex flex-col max-h-[70vh] z-40"
+            className="fixed top-16 right-4 w-[90vw] sm:w-96 max-w-sm bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden flex flex-col max-h-[70vh] z-40"
         >
             <div className="p-4 border-b border-gray-200 dark:border-gray-700">
                 <h3 className="font-bold text-lg text-gray-800 dark:text-gray-100">Notifications</h3>
