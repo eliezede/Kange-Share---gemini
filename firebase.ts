@@ -8,7 +8,7 @@ const firebaseConfig = {
   apiKey: "AIzaSyB2pogcorcfxBgQPgJ7QDHCVsfGo7Icz_Y",
   authDomain: "kangen-share-app.firebaseapp.com",
   projectId: "kangen-share-app",
-  storageBucket: "kangen-share-app.appspot.com",
+  storageBucket: "kangen-share-app.firebasestorage.app",
   messagingSenderId: "1047550398612",
   appId: "1:1047550398612:web:f92446e948583e271d2481",
 };
