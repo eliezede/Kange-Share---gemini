@@ -1,6 +1,7 @@
 
 
 
+
 import React, { useState, useEffect, useRef } from 'react';
 // FIX: Corrected import statement for react-router-dom.
 import { Link, useNavigate } from 'react-router-dom';
@@ -147,8 +148,7 @@ const cropImageToSquare = (file: File): Promise<Blob> => {
 
 export default function UserProfilePage() {
   const navigate = useNavigate();
-  const { logout, userData, setUserData } = useAuth();
-  const { theme, toggleTheme } = useTheme();
+  const { userData, setUserData } = useAuth();
   const { showToast } = useToast();
   
   const [user, setUser] = useState<User | null>(null);
@@ -291,19 +291,6 @@ export default function UserProfilePage() {
     setOriginalUser(JSON.parse(JSON.stringify(userToSave)));
     setIsSaving(false);
     if (e) showToast('Profile saved!', 'success');
-  };
-
-  const handleLogout = async () => {
-    await logout();
-    navigate('/');
-  };
-
-  const handleDeleteAccount = () => {
-    if (window.confirm('Are you sure you want to delete your account? This action cannot be undone.')) {
-        showToast('Account deleted.', 'info');
-        logout();
-        navigate('/');
-    }
   };
   
   if (!user) {
@@ -458,50 +445,6 @@ export default function UserProfilePage() {
                 <p className="text-xs text-gray-500 dark:text-gray-400 !mt-2">Your street and number will only be visible to users with an accepted request. Other address details are public.</p>
             </FormSection>
         </form>
-        
-        <FormSection title="Appearance">
-            <div className="flex justify-between items-center">
-                <label htmlFor="dark-mode-toggle" className="font-medium text-gray-700 dark:text-gray-300">Dark Mode</label>
-                <button
-                    id="dark-mode-toggle" type="button" role="switch" aria-checked={theme === 'dark'} onClick={toggleTheme}
-                    className={`relative inline-flex items-center h-8 w-14 rounded-full transition-colors bg-gray-200 dark:bg-gray-700`}
-                >
-                    <span className="sr-only">Toggle Dark Mode</span>
-                    <span className={`inline-flex items-center justify-center w-6 h-6 transform bg-white rounded-full transition-transform ${theme === 'dark' ? 'translate-x-7' : 'translate-x-1'}`}>
-                        {theme === 'dark' ? <MoonIcon className="w-4 h-4 text-gray-800" /> : <SunIcon className="w-4 h-4 text-gray-800" />}
-                    </span>
-                </button>
-            </div>
-        </FormSection>
-        
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
-            <h2 className="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-100 border-b pb-2 dark:border-gray-700">Account Actions</h2>
-            <div className="space-y-3">
-                {user.isAdmin && (
-                  <Link 
-                      to="/admin"
-                      className="w-full flex items-center justify-center gap-2 text-left p-3 bg-brand-light dark:bg-blue-900/40 hover:bg-blue-100 dark:hover:bg-blue-900/60 rounded-lg font-semibold text-brand-blue dark:text-blue-300 transition-colors"
-                  >
-                      <ShieldCheckIcon className="w-5 h-5" />
-                      <span>Admin Dashboard</span>
-                  </Link>
-                )}
-                <button 
-                    onClick={handleLogout}
-                    className="w-full flex items-center justify-center gap-2 text-left p-3 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 rounded-lg font-semibold text-gray-700 dark:text-gray-200 transition-colors"
-                >
-                    <ArrowLeftOnRectangleIcon className="w-5 h-5" />
-                    <span>Logout</span>
-                </button>
-                 <button 
-                    onClick={handleDeleteAccount}
-                    className="w-full flex items-center justify-center gap-2 text-left p-3 bg-red-50 hover:bg-red-100 dark:bg-red-900/40 dark:hover:bg-red-900/60 rounded-lg font-semibold text-red-600 dark:text-red-300 transition-colors"
-                >
-                    <TrashIcon className="w-5 h-5" />
-                    <span>Delete Account</span>
-                </button>
-            </div>
-        </div>
       </div>
       <PhotoSourceModal
         isOpen={isPhotoSourceModalOpen}

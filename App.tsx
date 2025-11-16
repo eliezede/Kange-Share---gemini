@@ -1,6 +1,7 @@
 
 
 
+
 import React, { useState, useContext, createContext, useCallback, useEffect, useMemo } from 'react';
 // FIX: Corrected import statement for react-router-dom and switched to HashRouter.
 import { HashRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
@@ -31,6 +32,7 @@ import Header from './components/Header';
 // FIX: Moved ToastContainer import from hooks/useToast to components/Toast.
 import { ToastProvider } from './hooks/useToast';
 import { ToastContainer } from './components/Toast';
+import SettingsPage from './pages/SettingsPage';
 
 type Theme = 'light' | 'dark';
 
@@ -306,6 +308,7 @@ const AppRoutes = () => {
         </Route>
         
         <Route path="/host/:id" element={<ProtectedRoute><HostProfilePage /></ProtectedRoute>} />
+        <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
         <Route path="/profile/:userId/:followType" element={<ProtectedRoute><FollowListPage /></ProtectedRoute>} />
         <Route path="/request/:hostId" element={<ProtectedRoute><RequestWaterPage /></ProtectedRoute>} />
         <Route path="/request-detail/:requestId" element={<ProtectedRoute><RequestDetailPage /></ProtectedRoute>} />

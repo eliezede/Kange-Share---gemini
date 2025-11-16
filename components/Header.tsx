@@ -4,11 +4,13 @@ import { useAuth } from '../App';
 import { DropletIcon, BellIcon } from './Icons';
 import { ProfilePicture } from './Icons';
 import NotificationsPanel from './NotificationsPanel';
+import AccountDropdown from './AccountDropdown';
 
 export default function Header() {
     const { userData, notifications, unreadCount } = useAuth();
     const navigate = useNavigate();
     const [isNotificationsOpen, setNotificationsOpen] = useState(false);
+    const [isAccountDropdownOpen, setAccountDropdownOpen] = useState(false);
 
     return (
         <header className="sticky top-0 z-30 flex items-center justify-between px-4 h-16 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
@@ -35,9 +37,19 @@ export default function Header() {
                             notifications={notifications}
                         />
                     </div>
-                    <button onClick={() => navigate('/profile')} className="w-10 h-10 rounded-full overflow-hidden border-2 border-gray-200 dark:border-gray-600 hover:border-brand-blue dark:hover:border-brand-blue transition focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-blue">
-                        <ProfilePicture src={userData.profilePicture} alt={userData.name} className="w-full h-full object-cover" />
-                    </button>
+                    <div className="relative">
+                        <button 
+                            onClick={() => setAccountDropdownOpen(o => !o)} 
+                            className="w-10 h-10 rounded-full overflow-hidden border-2 border-gray-200 dark:border-gray-600 hover:border-brand-blue dark:hover:border-brand-blue transition focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-blue"
+                            aria-label="Toggle user menu"
+                        >
+                            <ProfilePicture src={userData.profilePicture} alt={userData.name} className="w-full h-full object-cover" />
+                        </button>
+                         <AccountDropdown 
+                            isOpen={isAccountDropdownOpen}
+                            onClose={() => setAccountDropdownOpen(false)}
+                         />
+                    </div>
                 </div>
             )}
         </header>

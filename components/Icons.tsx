@@ -235,6 +235,49 @@ export const LinkedInIcon = (props: React.SVGProps<SVGSVGElement>) => (
     </svg>
 );
 
+export const Cog6ToothIcon = (props: React.SVGProps<SVGSVGElement>) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.26.716.53 1.003l.824.824c.27.27.629.426 1.003.53l1.28.213c.542.09.94.56.94 1.11v2.594c0 .55-.398 1.02-.94 1.11l-1.28.213c-.374.063-.716.26-1.003.53l-.824.824c-.27.27-.426.629-.53 1.003l-.213 1.28c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.063-.374-.26-.716-.53-1.003l-.824-.824c-.27-.27-.629-.426-1.003-.53l-1.28-.213c-.542-.09-.94-.56-.94-1.11v-2.594c0-.55.398-1.02.94-1.11l1.28-.213c.374-.063.716-.26 1.003-.53l.824-.824c.27-.27.426-.629.53-1.003l.213-1.28Z" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 12a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0Z" />
+    </svg>
+);
+
+export const KeyIcon = (props: React.SVGProps<SVGSVGElement>) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 5.25a3 3 0 0 1 3 3m3 0a6 6 0 0 1-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1 1 21.75 8.25Z" />
+    </svg>
+);
+
+export const ShieldExclamationIcon = (props: React.SVGProps<SVGSVGElement>) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m0-10.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.75c0 5.592 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.57-.598-3.75h-.152c-3.196 0-6.1-1.249-8.25-3.286Zm0 13.036h.008v.015h-.008v-.015Z" />
+    </svg>
+);
+
+export const DocumentTextIcon = (props: React.SVGProps<SVGSVGElement>) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+    </svg>
+);
+
+export const QuestionMarkCircleIcon = (props: React.SVGProps<SVGSVGElement>) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 5.25h.008v.008H12v-.008Z" />
+    </svg>
+);
+
+export const LifebuoyIcon = (props: React.SVGProps<SVGSVGElement>) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M13.21 17.34a2.25 2.25 0 0 0-2.42 0l-1.35 1.02a2.25 2.25 0 0 1-2.42 0l-1.35-1.02a2.25 2.25 0 0 0-2.42 0M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 2.25a2.25 2.25 0 0 0-2.42 0l-1.35 1.02a2.25 2.25 0 0 1-2.42 0l-1.35-1.02a2.25 2.25 0 0 0-2.42 0m18.11-6.16a2.25 2.25 0 0 0-2.42 0l-1.35 1.02a2.25 2.25 0 0 1-2.42 0l-1.35-1.02a2.25 2.25 0 0 0-2.42 0m5.77 4.14a2.25 2.25 0 0 0-2.42 0l-1.35 1.02a2.25 2.25 0 0 1-2.42 0l-1.35-1.02a2.25 2.25 0 0 0-2.42 0" />
+    </svg>
+);
+
+export const PresentationChartBarIcon = (props: React.SVGProps<SVGSVGElement>) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M3.375 19.5h17.25m-17.25 0a1.125 1.125 0 0 1-1.125-1.125v-1.5c0-.621.504-1.125 1.125-1.125h17.25c.621 0 1.125.504 1.125 1.125v1.5c0 .621-.504 1.125-1.125 1.125m-17.25 0h.009v.008h-.009v-.008Zm17.25 0h-.009v.008h.009v-.008Zm0-3h.009v.008h-.009v-.008Zm0-4.5h.009v.008h-.009v-.008Zm-5.625-3.75h.009v.008h-.009v-.008Zm-3.75 0h.009v.008h-.009v-.008Zm-3.75 0h.009v.008h-.009v-.008Zm0 9h.009v.008h-.009v-.008Zm3.75 0h.009v.008h-.009v-.008Zm3.75 0h.009v.008h-.009v-.008Zm-3.75-4.5h.009v.008h-.009v-.008Zm0-3.75h.009v.008h-.009v-.008Zm-3.75 0h.009v.008h-.009v-.008Zm0 9h.009v.008h-.009v-.008Zm3.75 0h.009v.008h-.009v-.008Zm-3.75 4.5h.009v.008h-.009v-.008Zm-3.75 0h.009v.008h-.009v-.008Zm17.25 0h.009v.008h-.009v-.008Zm-3.75 0h.009v.008h-.009v-.008Zm-3.75 0h.009v.008h-.009v-.008Zm-3.75 0h.009v.008h-.009v-.008Zm-3.75 0h.009v.008h-.009v-.008Z" />
+    </svg>
+);
+
 
 interface ProfilePictureProps {
   src?: string | null;
