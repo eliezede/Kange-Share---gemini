@@ -64,6 +64,7 @@ const fromDoc = <T>(docSnap: DocumentSnapshot): T => {
         data.following = data.following || [];
         data.phLevels = data.phLevels || [];
         data.phone = data.phone || '';
+        data.bio = data.bio || '';
 
         const defaultAddress = { street: '', number: '', postalCode: '', city: '', country: '' };
         // FIX: More robust merge to prevent crashes if `data.address` is not a valid object.
@@ -126,6 +127,7 @@ export const getHosts = async (): Promise<User[]> => {
 export const createInitialUser = (uid: string, email: string, name: string, profilePicture: string): Promise<void> => {
     const newUser: Omit<User, 'id'> = {
         email, name, profilePicture, isHost: false, phone: '',
+        bio: '',
         address: { street: '', number: '', postalCode: '', city: '', country: '' },
         rating: 0, reviews: 0, phLevels: [], availability: defaultAvailability,
         maintenance: { lastFilterChange: '', lastECleaning: '' }, isVerified: false,

@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect } from 'react';
 // FIX: Corrected import statement for react-router-dom.
 import { useParams, Link, useNavigate } from 'react-router-dom';
@@ -122,6 +123,9 @@ export default function HostProfilePage() {
                 {host.isVerified && <CheckBadgeIcon className="w-7 h-7 text-brand-blue" />}
             </div>
             <p className="text-gray-600 dark:text-gray-400 mt-1">{host.address.city}, {host.address.country}</p>
+            <p className="mt-4 text-gray-700 dark:text-gray-300 max-w-2xl mx-auto text-center whitespace-pre-wrap">
+              {host.bio || 'No bio provided yet.'}
+            </p>
         </div>
         
         <div className="flex items-center justify-center gap-4 mt-4 text-gray-700 dark:text-gray-300">

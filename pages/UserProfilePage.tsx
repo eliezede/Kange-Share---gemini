@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, useRef } from 'react';
 // FIX: Corrected import statement for react-router-dom.
 import { Link, useNavigate } from 'react-router-dom';
@@ -345,6 +346,22 @@ export default function UserProfilePage() {
 
             <FormSection title="Personal Info">
                 <InputField label="Name" id="name" name="name" value={user.name} onChange={handleInputChange} />
+                <div>
+                  <label htmlFor="bio" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Bio</label>
+                  <textarea
+                    id="bio"
+                    name="bio"
+                    rows={4}
+                    maxLength={300}
+                    value={user.bio || ''}
+                    onChange={handleInputChange}
+                    className="w-full p-3 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-brand-blue focus:border-transparent outline-none transition"
+                    placeholder="Tell us a little about yourself..."
+                  />
+                  <p className="text-right text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      {user.bio?.length || 0} / 300
+                  </p>
+                </div>
                 <div>
                 <label htmlFor="phone" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Phone</label>
                 <div className="flex items-center gap-2">

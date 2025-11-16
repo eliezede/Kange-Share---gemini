@@ -138,6 +138,7 @@ const sanitizeUser = (user: User | null): User | null => {
 
     return {
         ...user,
+        bio: user.bio || '',
         isAdmin: user.isAdmin || false,
         followers: user.followers || [],
         following: user.following || [],
