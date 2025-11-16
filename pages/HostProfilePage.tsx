@@ -1,6 +1,3 @@
-
-
-
 import React, { useState, useEffect } from 'react';
 // FIX: Corrected import statement for react-router-dom.
 import { useParams, Link, useNavigate } from 'react-router-dom';
@@ -112,46 +109,51 @@ export default function HostProfilePage() {
   const isCurrentUserProfile = currentUser.id === host.id;
 
   return (
-    <div className="pb-24">
-      <div className="relative h-40 bg-gray-200 dark:bg-gray-700">
-        <ProfilePicture src={host.profilePicture} alt={host.name} className="absolute bottom-[-48px] left-1/2 -translate-x-1/2 w-24 h-24 rounded-full object-cover border-4 border-white dark:border-gray-900" />
+    <div className="pb-24 bg-gray-50 dark:bg-gray-900 min-h-screen">
+      {/* New Unified Header */}
+      <div className="bg-white dark:bg-gray-800 pt-6 pb-4">
+        <div className="flex flex-col items-center text-center px-6">
+          <ProfilePicture src={host.profilePicture} alt={host.name} className="w-28 h-28 rounded-full object-cover border-4 border-gray-100 dark:border-gray-700 shadow-lg" />
+          
+          <div className="flex items-center justify-center gap-2 mt-4">
+              <h1 className="text-3xl font-bold dark:text-gray-100">{host.name}</h1>
+              {host.isVerified && <CheckBadgeIcon className="w-7 h-7 text-brand-blue" />}
+          </div>
+
+          <p className="text-gray-600 dark:text-gray-400 mt-1">{host.address.city}, {host.address.country}</p>
+
+          <p className="mt-4 text-gray-700 dark:text-gray-300 max-w-xl mx-auto text-center whitespace-pre-wrap">
+              {host.bio || 'No bio provided yet.'}
+          </p>
+
+          <div className="flex items-center justify-center gap-6 mt-4">
+              {host.instagram && <a href={host.instagram} target="_blank" rel="noopener noreferrer" className="text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 transition"><InstagramIcon className="w-6 h-6" /></a>}
+              {host.facebook && <a href={host.facebook} target="_blank" rel="noopener noreferrer" className="text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 transition"><FacebookIcon className="w-6 h-6" /></a>}
+              {host.linkedin && <a href={host.linkedin} target="_blank" rel="noopener noreferrer" className="text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 transition"><LinkedInIcon className="w-6 h-6" /></a>}
+              {host.website && <a href={host.website} target="_blank" rel="noopener noreferrer" className="text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 transition"><GlobeAltIcon className="w-6 h-6" /></a>}
+          </div>
+        </div>
       </div>
 
-      <div className="pt-16 px-6">
-        <div className="text-center">
-            <div className="flex items-center justify-center gap-2">
-                <h1 className="text-3xl font-bold dark:text-gray-100">{host.name}</h1>
-                {host.isVerified && <CheckBadgeIcon className="w-7 h-7 text-brand-blue" />}
-            </div>
-            <p className="text-gray-600 dark:text-gray-400 mt-1">{host.address.city}, {host.address.country}</p>
-            <p className="mt-4 text-gray-700 dark:text-gray-300 max-w-2xl mx-auto text-center whitespace-pre-wrap">
-              {host.bio || 'No bio provided yet.'}
-            </p>
-        </div>
+      {/* New Stats Bar */}
+      <div className="grid grid-cols-2 divide-x dark:divide-gray-700 border-y dark:border-gray-700 bg-white dark:bg-gray-800">
+          <div className="p-4 text-center">
+              <div className="flex items-center justify-center gap-1 text-gray-800 dark:text-gray-200">
+                  <StarIcon className="w-5 h-5 text-yellow-400" />
+                  <span className="font-bold text-lg">{host.rating.toFixed(1)}</span>
+              </div>
+              <p className="text-sm text-gray-500 dark:text-gray-400">({host.reviews} reviews)</p>
+          </div>
+          <Link to={`/profile/${host.id}/followers`} className="p-4 text-center hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+               <p className="font-bold text-lg text-gray-800 dark:text-gray-200">{host.followers.length}</p>
+               <p className="text-sm text-gray-500 dark:text-gray-400">followers</p>
+          </Link>
+      </div>
 
-        <div className="flex items-center justify-center gap-6 mt-4">
-            {host.instagram && <a href={host.instagram} target="_blank" rel="noopener noreferrer" className="text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 transition"><InstagramIcon className="w-6 h-6" /></a>}
-            {host.facebook && <a href={host.facebook} target="_blank" rel="noopener noreferrer" className="text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 transition"><FacebookIcon className="w-6 h-6" /></a>}
-            {host.linkedin && <a href={host.linkedin} target="_blank" rel="noopener noreferrer" className="text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 transition"><LinkedInIcon className="w-6 h-6" /></a>}
-            {host.website && <a href={host.website} target="_blank" rel="noopener noreferrer" className="text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 transition"><GlobeAltIcon className="w-6 h-6" /></a>}
-        </div>
-        
-        <div className="flex items-center justify-center gap-4 mt-4 text-gray-700 dark:text-gray-300">
-            <div className="flex items-center gap-1">
-                <StarIcon className="w-5 h-5 text-yellow-400" />
-                <span className="font-semibold">{host.rating.toFixed(1)}</span>
-                <span className="text-sm text-gray-500">({host.reviews} reviews)</span>
-            </div>
-            <span className="text-gray-300 dark:text-gray-600">|</span>
-            <Link to={`/profile/${host.id}/followers`} className="flex items-center gap-1">
-                <UserGroupIcon className="w-5 h-5" />
-                <span className="font-semibold">{host.followers.length}</span>
-                <span className="text-sm text-gray-500">followers</span>
-            </Link>
-        </div>
-
+      {/* Main Content Area */}
+      <div className="p-6 space-y-6">
         {!isCurrentUserProfile && (
-            <div className="mt-6 flex gap-3">
+            <div className="flex gap-3">
                 <button
                     onClick={handleFollowToggle}
                     className={`flex-1 font-semibold px-4 py-2.5 rounded-xl text-sm transition-colors ${
@@ -168,7 +170,7 @@ export default function HostProfilePage() {
             </div>
         )}
 
-        <div className="mt-8 space-y-6">
+        <div className="space-y-6">
             <div className="bg-white dark:bg-gray-800 p-5 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
                 <h3 className="text-lg font-bold mb-3 dark:text-gray-100">Host Information</h3>
                 <div className="space-y-3 text-gray-700 dark:text-gray-300">
