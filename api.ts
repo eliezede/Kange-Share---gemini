@@ -30,9 +30,10 @@ import {
 import {
     ref,
     uploadBytes,
-    getDownloadURL
+    getDownloadURL,
+    deleteObject
 } from 'firebase/storage';
-import { User, WaterRequest, Message, RequestStatus, Review, Notification, NotificationType } from './types';
+import { User, WaterRequest, Message, RequestStatus, Review, Notification, NotificationType, HostVerificationStatus, HostVerificationDocument } from './types';
 
 // Placed at the top for reuse
 const defaultAvailability = {
@@ -69,6 +70,11 @@ const fromDoc = <T>(docSnap: DocumentSnapshot): T => {
         data.facebook = data.facebook || '';
         data.linkedin = data.linkedin || '';
         data.website = data.website || '';
+
+        // Add defaults for new verification fields
+        data.hostVerificationStatus = data.hostVerificationStatus || 'unverified';
+        data.hostVerificationDocuments = data.hostVerificationDocuments || [];
+        data.hostVerificationNote = data.hostVerificationNote || '';
 
         const defaultAddress = { street: '', number: '', postalCode: '', city: '', country: '' };
         // FIX: More robust merge to prevent crashes if `data.address` is not a valid object.
@@ -136,6 +142,9 @@ export const createInitialUser = (uid: string, email: string, name: string, prof
         address: { street: '', number: '', postalCode: '', city: '', country: '' },
         rating: 0, reviews: 0, phLevels: [], availability: defaultAvailability,
         maintenance: { lastFilterChange: '', lastECleaning: '' }, isVerified: false,
+        // New verification fields with defaults
+        hostVerificationStatus: 'unverified',
+        hostVerificationDocuments: [],
         followers: [], following: [],
     };
     const userDocRef = doc(db, 'users', uid);
@@ -181,6 +190,45 @@ export const toggleFollowHost = async (currentUserId: string, targetHostId: stri
         }
     }
     return batch.commit();
+};
+
+export const uploadVerificationDocument = async (userId: string, file: File): Promise<HostVerificationDocument> => {
+    const documentId = `${Date.now()}-${file.name.replace(/\s/g, '_')}`;
+    const storageRef = ref(storage, `verificationDocuments/${userId}/${documentId}`);
+    
+    await uploadBytes(storageRef, file);
+    const downloadURL = await getDownloadURL(storageRef);
+
+    const newDocument: HostVerificationDocument = {
+        id: documentId,
+        fileName: file.name,
+        url: downloadURL,
+        uploadedAt: new Date().toISOString(),
+    };
+
+    const userDocRef = doc(db, 'users', userId);
+    await updateDoc(userDocRef, {
+        hostVerificationDocuments: arrayUnion(newDocument),
+    });
+
+    return newDocument;
+};
+
+export const deleteVerificationDocument = async (userId: string, documentToDelete: HostVerificationDocument): Promise<void> => {
+    const storageRef = ref(storage, `verificationDocuments/${userId}/${documentToDelete.id}`);
+    try {
+        await deleteObject(storageRef);
+    } catch (error: any) {
+        if (error.code !== 'storage/object-not-found') {
+            console.error("Failed to delete from storage:", error);
+            throw error;
+        }
+    }
+    
+    const userDocRef = doc(db, 'users', userId);
+    await updateDoc(userDocRef, {
+        hostVerificationDocuments: arrayRemove(documentToDelete),
+    });
 };
 
 
@@ -436,6 +484,31 @@ export const getAllUsers = async (): Promise<User[]> => {
 export const getAllRequests = async (): Promise<WaterRequest[]> => {
     const querySnapshot = await getDocs(collection(db, 'requests'));
     return querySnapshot.docs.map(d => fromDoc<WaterRequest>(d));
+};
+
+export const getPendingVerificationUsers = async (): Promise<User[]> => {
+    const usersRef = collection(db, 'users');
+    const q = query(usersRef, where('hostVerificationStatus', '==', 'pending'));
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(d => fromDoc<User>(d));
+};
+
+export const approveHostVerification = (userId: string): Promise<void> => {
+    const userDocRef = doc(db, 'users', userId);
+    return updateDoc(userDocRef, {
+        hostVerificationStatus: 'approved',
+        isHost: true,
+        isVerified: true, // Also mark them as a generally verified user
+        hostVerificationNote: '', // Clear any previous rejection notes
+    });
+};
+
+export const rejectHostVerification = (userId: string, note: string): Promise<void> => {
+    const userDocRef = doc(db, 'users', userId);
+    return updateDoc(userDocRef, {
+        hostVerificationStatus: 'rejected',
+        hostVerificationNote: note,
+    });
 };
 
 export const toggleHostVerification = (hostId: string, isVerified: boolean): Promise<void> => {

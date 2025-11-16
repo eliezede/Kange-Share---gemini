@@ -2,13 +2,15 @@
 
 
 
+
+
 import React, { useState, useContext, createContext, useCallback, useEffect, useMemo } from 'react';
 // FIX: Corrected import statement for react-router-dom and switched to HashRouter.
 import { HashRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { auth } from './firebase';
 import * as api from './api';
-import { User, Notification } from './types';
+import { User, Notification, HostVerificationStatus } from './types';
 
 import LoginModal from './pages/LoginPage';
 import MapPage from './pages/MapPage';
@@ -33,6 +35,7 @@ import Header from './components/Header';
 import { ToastProvider } from './hooks/useToast';
 import { ToastContainer } from './components/Toast';
 import SettingsPage from './pages/SettingsPage';
+import AdminHostVerificationsPage from './pages/AdminHostVerificationsPage';
 
 type Theme = 'light' | 'dark';
 
@@ -160,6 +163,10 @@ const sanitizeUser = (user: User | null): User | null => {
         maintenance: (user.maintenance && typeof user.maintenance === 'object')
             ? { ...defaultMaintenance, ...user.maintenance }
             : defaultMaintenance,
+        // Add defaults for new verification fields
+        hostVerificationStatus: user.hostVerificationStatus || 'unverified',
+        hostVerificationNote: user.hostVerificationNote || '',
+        hostVerificationDocuments: user.hostVerificationDocuments || [],
     };
 };
 
@@ -317,6 +324,11 @@ const AppRoutes = () => {
         <Route path="/admin" element={
           <ProtectedRoute>
             {userData?.isAdmin ? <AdminPage /> : <Navigate to="/map" replace />}
+          </ProtectedRoute>
+        } />
+        <Route path="/admin/host-verifications" element={
+          <ProtectedRoute>
+            {userData?.isAdmin ? <AdminHostVerificationsPage /> : <Navigate to="/map" replace />}
           </ProtectedRoute>
         } />
         

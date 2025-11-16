@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth, useTheme } from '../App';
 import { 
@@ -11,31 +11,21 @@ import {
     PresentationChartBarIcon, 
     ShieldCheckIcon 
 } from './Icons';
+import { useClickOutside } from '../hooks/useClickOutside';
 
 interface AccountDropdownProps {
   isOpen: boolean;
   onClose: () => void;
+  toggleRef: React.RefObject<HTMLButtonElement>;
 }
 
-const AccountDropdown: React.FC<AccountDropdownProps> = ({ isOpen, onClose }) => {
+const AccountDropdown: React.FC<AccountDropdownProps> = ({ isOpen, onClose, toggleRef }) => {
   const { userData, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        onClose();
-      }
-    };
-    if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [isOpen, onClose]);
+  useClickOutside(dropdownRef, toggleRef, onClose, isOpen);
 
   if (!isOpen || !userData) return null;
 

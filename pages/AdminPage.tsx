@@ -1,4 +1,5 @@
 
+
 import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import * as api from '../api';
@@ -16,7 +17,7 @@ import {
     EnvelopeIcon,
     DevicePhoneMobileIcon,
     MapPinIcon,
-    ShieldCheckIcon,
+    ShieldExclamationIcon,
 } from '../components/Icons';
 import { useToast } from '../hooks/useToast';
 
@@ -216,8 +217,9 @@ export default function AdminPage() {
             totalRequests: requests.filter(r => r.status !== 'chatting').length,
             verifiedHosts: hosts.filter(h => h.isVerified).length,
             pendingRequests: requests.filter(r => r.status === 'pending').length,
+            pendingVerifications: users.filter(u => u.hostVerificationStatus === 'pending').length,
         };
-    }, [hosts, requests]);
+    }, [hosts, requests, users]);
 
     const filteredUsers = useMemo(() => {
         return users
@@ -275,11 +277,22 @@ export default function AdminPage() {
                     {/* Key Metrics */}
                     <section>
                         <h2 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-3">Key Metrics</h2>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-4">
                             <MetricCard icon={<UserGroupIcon className="w-6 h-6 text-brand-blue" />} label="Total Users" value={users.length} />
                             <MetricCard icon={<ClipboardDocumentListIcon className="w-6 h-6 text-brand-blue" />} label="Total Requests" value={metrics.totalRequests} />
                             <MetricCard icon={<CheckBadgeIcon className="w-6 h-6 text-green-500" />} label="Verified Hosts" value={metrics.verifiedHosts} />
                             <MetricCard icon={<ClockIcon className="w-6 h-6 text-yellow-500" />} label="Pending Requests" value={metrics.pendingRequests} />
+                            <Link to="/admin/host-verifications" className="block col-span-2 lg:col-span-1">
+                                <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 flex items-center gap-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors h-full">
+                                    <div className="p-3 bg-orange-100 dark:bg-orange-900/50 rounded-full">
+                                        <ShieldExclamationIcon className="w-6 h-6 text-orange-500" />
+                                    </div>
+                                    <div>
+                                        <p className="text-2xl font-bold text-gray-800 dark:text-gray-100">{metrics.pendingVerifications}</p>
+                                        <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Pending Verifications</p>
+                                    </div>
+                                </div>
+                            </Link>
                         </div>
                     </section>
                     

@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect } from 'react';
 
 export const StarIcon = (props: React.SVGProps<SVGSVGElement>) => (
@@ -237,7 +238,7 @@ export const LinkedInIcon = (props: React.SVGProps<SVGSVGElement>) => (
 
 export const Cog6ToothIcon = (props: React.SVGProps<SVGSVGElement>) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.26.716.53 1.003l.824.824c.27.27.629.426 1.003.53l1.28.213c.542.09.94.56.94 1.11v2.594c0 .55-.398 1.02-.94 1.11l-1.28.213c-.374.063-.716.26-1.003.53l-.824.824c-.27.27-.426.629-.53 1.003l-.213 1.28c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.063-.374-.26-.716-.53-1.003l-.824-.824c-.27-.27-.629-.426-1.003-.53l-1.28-.213c-.542-.09-.94-.56-.94-1.11v-2.594c0-.55.398-1.02.94-1.11l1.28-.213c.374-.063.716-.26 1.003-.53l.824-.824c.27-.27.426-.629.53-1.003l.213-1.28Z" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.26.716.53 1.003l.824.824c.27.27.629.426 1.003.53l1.28.213c.542.09.94.56.94 1.11v2.594c0 .55-.398 1.02-.94 1.11l-1.28.213c-.374.063-.716.26-1.003.53l-.824.824c-.27.27-.426.629-.53 1.003l-.213 1.28c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.063-.374-.26-.716-.53-1.003l-.824-.824c-.27-.27-.629-.426-1.003-.53l-1.28-.213c-.542-.09-.94-.56-.94-1.11v-2.594c0-.55.398-1.02.94-1.11l1.28-.213c.374-.063.716-.26 1.003-.53l.824-.824c.27-.27.426.629.53-1.003l.213-1.28Z" />
         <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 12a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0Z" />
     </svg>
 );
@@ -278,6 +279,11 @@ export const PresentationChartBarIcon = (props: React.SVGProps<SVGSVGElement>) =
     </svg>
 );
 
+export const ArrowUpTrayIcon = (props: React.SVGProps<SVGSVGElement>) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
+    </svg>
+);
 
 interface ProfilePictureProps {
   src?: string | null;

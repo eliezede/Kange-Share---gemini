@@ -1,3 +1,4 @@
+
 export interface Review {
   id: string; // Firestore doc ID
   reviewerId: string;
@@ -7,6 +8,15 @@ export interface Review {
   comment: string;
   date: string; // ISO String
 }
+
+export interface HostVerificationDocument {
+  id: string;
+  fileName: string;
+  url: string;
+  uploadedAt: string; // ISO String
+}
+
+export type HostVerificationStatus = 'unverified' | 'pending' | 'approved' | 'rejected';
 
 // A unified type for all users. Any user can become a host.
 export interface User {
@@ -42,6 +52,11 @@ export interface User {
     lastECleaning: string;
   };
   isVerified: boolean;
+
+  // New host verification fields
+  hostVerificationStatus: HostVerificationStatus;
+  hostVerificationNote?: string;
+  hostVerificationDocuments: HostVerificationDocument[];
   
   // Social fields
   followers: string[]; // array of user UIDs

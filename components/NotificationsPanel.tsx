@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../App';
 import * as api from '../api';
 import { Notification, NotificationType } from '../types';
 import { UserGroupIcon, ClipboardDocumentListIcon, ChatBubbleOvalLeftEllipsisIcon, StarIcon, BellIcon, ProfilePicture, CheckCircleIcon, XCircleIcon } from './Icons';
+import { useClickOutside } from '../hooks/useClickOutside';
 
 const TimeAgo: React.FC<{ dateString: string }> = ({ dateString }) => {
     const date = new Date(dateString);
@@ -40,11 +41,15 @@ interface NotificationsPanelProps {
     isOpen: boolean;
     onClose: () => void;
     notifications: Notification[];
+    toggleRef: React.RefObject<HTMLButtonElement>;
 }
 
-export default function NotificationsPanel({ isOpen, onClose, notifications }: NotificationsPanelProps) {
+export default function NotificationsPanel({ isOpen, onClose, notifications, toggleRef }: NotificationsPanelProps) {
     const navigate = useNavigate();
     const { user } = useAuth();
+    const panelRef = useRef<HTMLDivElement>(null);
+
+    useClickOutside(panelRef, toggleRef, onClose, isOpen);
 
     const handleNotificationClick = async (notification: Notification) => {
         if (!user) return;
@@ -76,44 +81,39 @@ export default function NotificationsPanel({ isOpen, onClose, notifications }: N
     if (!isOpen) return null;
 
     return (
-        <div 
-            className="fixed inset-0 z-40"
-            onClick={onClose}
+        <div
+            ref={panelRef} 
+            className="absolute top-16 right-4 w-full max-w-sm bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden flex flex-col max-h-[70vh] z-40"
         >
-            <div 
-                className="absolute top-16 right-4 w-full max-w-sm bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden flex flex-col max-h-[70vh]"
-                onClick={e => e.stopPropagation()}
-            >
-                <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-                    <h3 className="font-bold text-lg text-gray-800 dark:text-gray-100">Notifications</h3>
-                </div>
-                {notifications.length > 0 ? (
-                    <div className="overflow-y-auto">
-                        {notifications.map(n => (
-                            <div
-                                key={n.id}
-                                onClick={() => handleNotificationClick(n)}
-                                className={`flex items-start gap-4 p-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors ${!n.read ? 'bg-brand-light dark:bg-blue-900/30' : ''}`}
-                            >
-                                <NotificationIcon type={n.type} />
-                                <div className="flex-1">
-                                    <p className="text-sm text-gray-800 dark:text-gray-200">{n.text}</p>
-                                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                        <TimeAgo dateString={n.createdAt} /> ago
-                                    </p>
-                                </div>
-                                {!n.read && <div className="w-2.5 h-2.5 bg-brand-blue rounded-full mt-1.5 flex-shrink-0"></div>}
-                            </div>
-                        ))}
-                    </div>
-                ) : (
-                    <div className="p-8 text-center text-gray-500 dark:text-gray-400">
-                        <BellIcon className="w-12 h-12 mx-auto mb-4 text-gray-400 dark:text-gray-500" />
-                        <h4 className="font-semibold dark:text-gray-300">No notifications yet</h4>
-                        <p className="text-sm">We'll let you know when something happens.</p>
-                    </div>
-                )}
+            <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+                <h3 className="font-bold text-lg text-gray-800 dark:text-gray-100">Notifications</h3>
             </div>
+            {notifications.length > 0 ? (
+                <div className="overflow-y-auto">
+                    {notifications.map(n => (
+                        <div
+                            key={n.id}
+                            onClick={() => handleNotificationClick(n)}
+                            className={`flex items-start gap-4 p-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors ${!n.read ? 'bg-brand-light dark:bg-blue-900/30' : ''}`}
+                        >
+                            <NotificationIcon type={n.type} />
+                            <div className="flex-1">
+                                <p className="text-sm text-gray-800 dark:text-gray-200">{n.text}</p>
+                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                    <TimeAgo dateString={n.createdAt} /> ago
+                                </p>
+                            </div>
+                            {!n.read && <div className="w-2.5 h-2.5 bg-brand-blue rounded-full mt-1.5 flex-shrink-0"></div>}
+                        </div>
+                    ))}
+                </div>
+            ) : (
+                <div className="p-8 text-center text-gray-500 dark:text-gray-400">
+                    <BellIcon className="w-12 h-12 mx-auto mb-4 text-gray-400 dark:text-gray-500" />
+                    <h4 className="font-semibold dark:text-gray-300">No notifications yet</h4>
+                    <p className="text-sm">We'll let you know when something happens.</p>
+                </div>
+            )}
         </div>
     );
 }

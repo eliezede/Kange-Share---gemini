@@ -1,13 +1,10 @@
 
-
-
-
 import React, { useState, useEffect, useRef } from 'react';
 // FIX: Corrected import statement for react-router-dom.
 import { Link, useNavigate } from 'react-router-dom';
 import * as api from '../api';
-import { User } from '../types';
-import { ChevronLeftIcon, CameraIcon, ArrowLeftOnRectangleIcon, TrashIcon, ShieldCheckIcon, SpinnerIcon, SunIcon, MoonIcon, ProfilePicture, VideoCameraIcon } from '../components/Icons';
+import { User, HostVerificationStatus, HostVerificationDocument } from '../types';
+import { ChevronLeftIcon, CameraIcon, ArrowLeftOnRectangleIcon, TrashIcon, ShieldCheckIcon, SpinnerIcon, SunIcon, MoonIcon, ProfilePicture, VideoCameraIcon, ArrowUpTrayIcon, DocumentTextIcon } from '../components/Icons';
 import { useAuth, useTheme } from '../App';
 import { useToast } from '../hooks/useToast';
 
@@ -145,6 +142,18 @@ const cropImageToSquare = (file: File): Promise<Blob> => {
     });
 };
 
+const VerificationStatusBadge: React.FC<{ status: HostVerificationStatus }> = ({ status }) => {
+    const statusInfo: Record<HostVerificationStatus, { text: string; className: string }> = {
+        unverified: { text: 'Not Verified', className: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300' },
+        pending: { text: 'Pending Review', className: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300' },
+        approved: { text: 'Verified Host', className: 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300' },
+        rejected: { text: 'Verification Rejected', className: 'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300' },
+    };
+
+    const { text, className } = statusInfo[status];
+    return <span className={`px-3 py-1 text-sm font-semibold rounded-full ${className}`}>{text}</span>;
+};
+
 
 export default function UserProfilePage() {
   const navigate = useNavigate();
@@ -158,6 +167,8 @@ export default function UserProfilePage() {
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [phoneParts, setPhoneParts] = useState({ countryCode: '+1', number: '' });
   const [isPhotoSourceModalOpen, setIsPhotoSourceModalOpen] = useState(false);
+  const [isUploadingDocument, setIsUploadingDocument] = useState(false);
+  const [deletingDocId, setDeletingDocId] = useState<string | null>(null);
 
   const ALL_PH_LEVELS = [2.5, 8.5, 9.0, 9.5, 11.5];
   const DAYS_OF_WEEK = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
@@ -291,6 +302,70 @@ export default function UserProfilePage() {
     setOriginalUser(JSON.parse(JSON.stringify(userToSave)));
     setIsSaving(false);
     if (e) showToast('Profile saved!', 'success');
+  };
+  
+  const handleDocumentUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0 || !user) return;
+    const files = Array.from(e.target.files);
+    e.target.value = ''; // Reset input
+
+    setIsUploadingDocument(true);
+    try {
+        // FIX: Explicitly type 'file' as File to resolve type inference issue.
+        const uploadPromises = files.map((file: File) => api.uploadVerificationDocument(user.id, file));
+        const newDocuments = await Promise.all(uploadPromises);
+        
+        const updatedUserData: Partial<User> = {};
+        if (user.hostVerificationStatus === 'unverified' || user.hostVerificationStatus === 'rejected') {
+            updatedUserData.hostVerificationStatus = 'pending';
+        }
+        
+        if (Object.keys(updatedUserData).length > 0) {
+            await api.updateUser(user.id, updatedUserData);
+        }
+
+        setUser(prevUser => {
+            if (!prevUser) return null;
+            return {
+                ...prevUser,
+                hostVerificationDocuments: [...(prevUser.hostVerificationDocuments || []), ...newDocuments],
+                ...updatedUserData
+            };
+        });
+        
+        showToast(`${files.length} document(s) uploaded successfully!`, 'success');
+    } catch (error) {
+        console.error("Failed to upload document:", error);
+        showToast("Could not upload document. Please try again.", 'error');
+    } finally {
+        setIsUploadingDocument(false);
+    }
+  };
+
+  const handleDocumentDelete = async (documentToDelete: HostVerificationDocument) => {
+    if (!user) return;
+    
+    setDeletingDocId(documentToDelete.id);
+    try {
+        await api.deleteVerificationDocument(user.id, documentToDelete);
+
+        setUser(prevUser => {
+            if (!prevUser) return null;
+            return {
+                ...prevUser,
+                hostVerificationDocuments: prevUser.hostVerificationDocuments.filter(
+                    doc => doc.id !== documentToDelete.id
+                ),
+            };
+        });
+
+        showToast('Document deleted successfully.', 'success');
+    } catch (error) {
+        console.error("Failed to delete document:", error);
+        showToast("Could not delete document. Please try again.", 'error');
+    } finally {
+        setDeletingDocId(null);
+    }
   };
   
   if (!user) {
@@ -434,6 +509,82 @@ export default function UserProfilePage() {
                   <InputField label="Last Filter Change" id="maintenance.lastFilterChange" name="maintenance.lastFilterChange" type="date" value={user.maintenance.lastFilterChange} onChange={handleInputChange} />
                   <InputField label="Last E-Cleaning" id="maintenance.lastECleaning" name="maintenance.lastECleaning" type="date" value={user.maintenance.lastECleaning} onChange={handleInputChange} />
                 </>)}
+            </FormSection>
+
+            <FormSection title="Host Verification">
+                <div className="flex items-center justify-between">
+                    <span className="font-semibold text-gray-800 dark:text-gray-200">Verification Status</span>
+                    <VerificationStatusBadge status={user.hostVerificationStatus} />
+                </div>
+
+                {user.hostVerificationStatus === 'rejected' && user.hostVerificationNote && (
+                    <div className="p-3 bg-red-50 dark:bg-red-900/40 border border-red-200 dark:border-red-700/60 rounded-lg text-red-800 dark:text-red-200 text-sm">
+                        <p className="font-semibold mb-1">Admin Note:</p>
+                        <p>{user.hostVerificationNote}</p>
+                    </div>
+                )}
+
+                <div className="p-3 bg-blue-50 dark:bg-blue-900/40 border border-blue-200 dark:border-blue-700/60 rounded-lg text-blue-800 dark:text-blue-200 text-sm">
+                    <p>To become a verified host, please upload your official Enagic distributor documentation. Uploaded documents are confidential and only visible to administrators for verification purposes.</p>
+                </div>
+                
+                <div>
+                    <label htmlFor="document-upload" className="w-full flex items-center justify-center gap-3 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 font-semibold py-3 px-4 rounded-xl cursor-pointer transition-colors">
+                        {isUploadingDocument ? (
+                            <>
+                                <SpinnerIcon className="w-5 h-5 animate-spin" />
+                                <span>Uploading...</span>
+                            </>
+                        ) : (
+                            <>
+                                <ArrowUpTrayIcon className="w-5 h-5" />
+                                <span>Upload Document(s)</span>
+                            </>
+                        )}
+                        <input 
+                            id="document-upload" 
+                            type="file" 
+                            multiple 
+                            className="hidden" 
+                            onChange={handleDocumentUpload} 
+                            disabled={isUploadingDocument} 
+                        />
+                    </label>
+                </div>
+
+                {user.hostVerificationDocuments && user.hostVerificationDocuments.length > 0 && (
+                    <div>
+                        <h3 className="text-md font-semibold text-gray-700 dark:text-gray-300 mb-2">Uploaded Documents</h3>
+                        <ul className="space-y-2">
+                            {user.hostVerificationDocuments.map(doc => (
+                                <li key={doc.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                                    <div className="flex items-center gap-3 min-w-0">
+                                        <DocumentTextIcon className="w-6 h-6 text-gray-500 dark:text-gray-400 flex-shrink-0" />
+                                        <div className="min-w-0">
+                                            <p className="font-medium text-gray-800 dark:text-gray-200 truncate">{doc.fileName}</p>
+                                            <p className="text-xs text-gray-500 dark:text-gray-400">
+                                                Uploaded on {new Date(doc.uploadedAt).toLocaleDateString()}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <button 
+                                        type="button" 
+                                        onClick={() => handleDocumentDelete(doc)}
+                                        disabled={deletingDocId === doc.id}
+                                        className="p-1.5 rounded-full hover:bg-red-100 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400 ml-2"
+                                        aria-label={`Delete ${doc.fileName}`}
+                                    >
+                                        {deletingDocId === doc.id ? (
+                                            <SpinnerIcon className="w-5 h-5 animate-spin" />
+                                        ) : (
+                                            <TrashIcon className="w-5 h-5" />
+                                        )}
+                                    </button>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+                )}
             </FormSection>
 
             <FormSection title="Address">
