@@ -1,10 +1,11 @@
 
 
+
 import React, { useState, useEffect } from 'react';
 // FIX: Corrected import statement for react-router-dom.
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import * as api from '../api';
-import { StarIcon, ChevronLeftIcon, CheckBadgeIcon, MapPinIcon, ChatBubbleOvalLeftEllipsisIcon, SpinnerIcon, ProfilePicture, UserGroupIcon, CalendarDaysIcon, DropletIcon } from '../components/Icons';
+import { StarIcon, ChevronLeftIcon, CheckBadgeIcon, MapPinIcon, ChatBubbleOvalLeftEllipsisIcon, SpinnerIcon, ProfilePicture, UserGroupIcon, CalendarDaysIcon, DropletIcon, InstagramIcon, FacebookIcon, LinkedInIcon, GlobeAltIcon } from '../components/Icons';
 import { Review, User } from '../types';
 import { useAuth } from '../App';
 import { useToast } from '../hooks/useToast';
@@ -126,6 +127,13 @@ export default function HostProfilePage() {
             <p className="mt-4 text-gray-700 dark:text-gray-300 max-w-2xl mx-auto text-center whitespace-pre-wrap">
               {host.bio || 'No bio provided yet.'}
             </p>
+        </div>
+
+        <div className="flex items-center justify-center gap-6 mt-4">
+            {host.instagram && <a href={host.instagram} target="_blank" rel="noopener noreferrer" className="text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 transition"><InstagramIcon className="w-6 h-6" /></a>}
+            {host.facebook && <a href={host.facebook} target="_blank" rel="noopener noreferrer" className="text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 transition"><FacebookIcon className="w-6 h-6" /></a>}
+            {host.linkedin && <a href={host.linkedin} target="_blank" rel="noopener noreferrer" className="text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 transition"><LinkedInIcon className="w-6 h-6" /></a>}
+            {host.website && <a href={host.website} target="_blank" rel="noopener noreferrer" className="text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 transition"><GlobeAltIcon className="w-6 h-6" /></a>}
         </div>
         
         <div className="flex items-center justify-center gap-4 mt-4 text-gray-700 dark:text-gray-300">

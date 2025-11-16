@@ -1,5 +1,6 @@
 
 
+
 import React, { useState, useContext, createContext, useCallback, useEffect, useMemo } from 'react';
 // FIX: Corrected import statement for react-router-dom and switched to HashRouter.
 import { HashRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
@@ -139,6 +140,10 @@ const sanitizeUser = (user: User | null): User | null => {
     return {
         ...user,
         bio: user.bio || '',
+        instagram: user.instagram || '',
+        facebook: user.facebook || '',
+        linkedin: user.linkedin || '',
+        website: user.website || '',
         isAdmin: user.isAdmin || false,
         followers: user.followers || [],
         following: user.following || [],

@@ -65,6 +65,10 @@ const fromDoc = <T>(docSnap: DocumentSnapshot): T => {
         data.phLevels = data.phLevels || [];
         data.phone = data.phone || '';
         data.bio = data.bio || '';
+        data.instagram = data.instagram || '';
+        data.facebook = data.facebook || '';
+        data.linkedin = data.linkedin || '';
+        data.website = data.website || '';
 
         const defaultAddress = { street: '', number: '', postalCode: '', city: '', country: '' };
         // FIX: More robust merge to prevent crashes if `data.address` is not a valid object.
@@ -128,6 +132,7 @@ export const createInitialUser = (uid: string, email: string, name: string, prof
     const newUser: Omit<User, 'id'> = {
         email, name, profilePicture, isHost: false, phone: '',
         bio: '',
+        instagram: '', facebook: '', linkedin: '', website: '',
         address: { street: '', number: '', postalCode: '', city: '', country: '' },
         rating: 0, reviews: 0, phLevels: [], availability: defaultAvailability,
         maintenance: { lastFilterChange: '', lastECleaning: '' }, isVerified: false,

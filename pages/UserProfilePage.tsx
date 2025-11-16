@@ -1,5 +1,6 @@
 
 
+
 import React, { useState, useEffect, useRef } from 'react';
 // FIX: Corrected import statement for react-router-dom.
 import { Link, useNavigate } from 'react-router-dom';
@@ -274,9 +275,20 @@ export default function UserProfilePage() {
     e?.preventDefault();
     if (!user) return;
     setIsSaving(true);
-    await api.updateUser(user.id, user);
-    setUserData(user); // Update global context
-    setOriginalUser(JSON.parse(JSON.stringify(user)));
+    
+    // Create a mutable copy for URL validation
+    const userToSave = { ...user };
+    const socialFields = ['instagram', 'facebook', 'linkedin', 'website'] as const;
+    socialFields.forEach(field => {
+      const url = userToSave[field];
+      if (url && !url.startsWith('http://') && !url.startsWith('https://')) {
+        userToSave[field] = `https://${url}`;
+      }
+    });
+
+    await api.updateUser(user.id, userToSave);
+    setUserData(userToSave); // Update global context with validated URLs
+    setOriginalUser(JSON.parse(JSON.stringify(userToSave)));
     setIsSaving(false);
     if (e) showToast('Profile saved!', 'success');
   };
@@ -379,6 +391,13 @@ export default function UserProfilePage() {
                 </div>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Shared only after you accept a water request.</p>
                 </div>
+            </FormSection>
+
+            <FormSection title="Social Links">
+                <InputField label="Instagram URL" id="instagram" name="instagram" value={user.instagram || ''} onChange={handleInputChange} placeholder="instagram.com/yourprofile" />
+                <InputField label="Facebook URL" id="facebook" name="facebook" value={user.facebook || ''} onChange={handleInputChange} placeholder="facebook.com/yourprofile" />
+                <InputField label="LinkedIn URL" id="linkedin" name="linkedin" value={user.linkedin || ''} onChange={handleInputChange} placeholder="linkedin.com/in/yourprofile" />
+                <InputField label="Website" id="website" name="website" value={user.website || ''} onChange={handleInputChange} placeholder="yourwebsite.com" />
             </FormSection>
 
             <FormSection title="Host Settings">

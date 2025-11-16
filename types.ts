@@ -16,6 +16,10 @@ export interface User {
   profilePicture: string; // URL from Firebase Storage
   phone: string;
   bio?: string;
+  instagram?: string;
+  facebook?: string;
+  linkedin?: string;
+  website?: string;
 
   address: {
     street: string;
