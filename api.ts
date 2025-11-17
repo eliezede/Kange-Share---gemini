@@ -176,7 +176,27 @@ export const createInitialUser = (uid: string, email: string, firstName: string,
 
 export const updateUser = async (userId: string, updates: Partial<User>): Promise<void> => {
     const userDocRef = doc(db, 'users', userId);
-    return updateDoc(userDocRef, updates);
+    
+    // Prevent client-side updates to protected fields
+    const protectedFields: (keyof User)[] = [
+        'isHost', 'isAdmin', 'distributorVerificationStatus', 'isBlocked', 'deletedAt',
+        'verificationReviewedAt', 'verificationReviewedByAdminId', 'rating', 'reviews'
+    ];
+    
+    const safeUpdates: Partial<User> = { ...updates };
+    
+    protectedFields.forEach(field => {
+        if (field in safeUpdates) {
+            delete safeUpdates[field];
+        }
+    });
+
+    // If there are any updates left after sanitizing, perform the update.
+    if (Object.keys(safeUpdates).length > 0) {
+        return updateDoc(userDocRef, safeUpdates);
+    }
+    // If only protected fields were passed, do nothing.
+    return Promise.resolve();
 };
 
 export const uploadProfilePicture = async (userId: string, blob: Blob): Promise<string> => {
@@ -537,6 +557,7 @@ export const approveDistributorVerification = async (userId: string, adminId: st
     await updateDoc(userDocRef, {
         distributorVerificationStatus: 'approved',
         isHost: true,
+        isAcceptingRequests: false, // User must opt-in to start hosting
         distributorRejectionReason: '',
         verificationReviewedAt: serverTimestamp(),
         verificationReviewedByAdminId: adminId,

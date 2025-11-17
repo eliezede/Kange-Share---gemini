@@ -1,6 +1,3 @@
-
-
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import * as api from '../api';
@@ -391,6 +388,8 @@ export default function UserProfilePage() {
     );
   }
 
+  const isDistributorApproved = user.distributorVerificationStatus === 'approved';
+
   return (
     <div className="pb-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
       <header className="p-4 flex items-center border-b border-gray-200 dark:border-gray-700 sticky top-0 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm z-10">
@@ -489,59 +488,65 @@ export default function UserProfilePage() {
                 </FormSection>
 
                 <FormSection title="Host Settings">
-                    {user.isHost ? (<>
-                    <div className="flex justify-between items-center">
-                        <div>
-                        <span className="font-semibold text-gray-800 dark:text-gray-200">Available to share water</span>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Control whether you appear in host searches.</p>
-                        </div>
-                        <Toggle checked={user.isAcceptingRequests} onChange={(checked) => handleToggleChange('isAcceptingRequests', checked)} />
-                    </div>
-                    <div className="h-px bg-gray-200 dark:bg-gray-700"></div>
+                    {isDistributorApproved ? (
+                        <>
+                            <div className="flex justify-between items-center">
+                                <div>
+                                <span className="font-semibold text-gray-800 dark:text-gray-200">Available to share water</span>
+                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Control whether you appear in host searches.</p>
+                                </div>
+                                <Toggle checked={user.isAcceptingRequests} onChange={(checked) => handleToggleChange('isAcceptingRequests', checked)} />
+                            </div>
+                            <div className="h-px bg-gray-200 dark:bg-gray-700"></div>
 
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Water Available (pH)</label>
-                        <div className="flex flex-wrap gap-2">
-                            {ALL_PH_LEVELS.map(ph => (
-                                <button key={ph} type="button" onClick={() => togglePh(ph)} className={`px-4 py-2 rounded-full font-semibold transition text-sm ${user.phLevels.includes(ph) ? 'bg-brand-blue text-white' : 'bg-gray-200 dark:bg-gray-600 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-500'}`}>
-                                    {ph.toFixed(1)}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-                    <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Pickup Availability</label>
-                    <div className="space-y-3">
-                        {DAYS_OF_WEEK.map(day => (
-                        <div key={day} className="space-y-2">
-                            <div className="flex items-center justify-between">
-                            <span className="font-semibold text-gray-800 dark:text-gray-200">{day}</span>
-                            <Toggle 
-                                checked={user.availability[day]?.enabled || false}
-                                onChange={(checked) => handleAvailabilityChange(day, 'enabled', checked)}
-                            />
-                            </div>
-                            {user.availability[day]?.enabled && (
-                            <div className="grid grid-cols-2 gap-3 pl-4">
-                                <div>
-                                <label className="text-xs text-gray-500 dark:text-gray-400">From</label>
-                                <input type="time" value={user.availability[day].startTime} onChange={(e) => handleAvailabilityChange(day, 'startTime', e.target.value)} className="w-full p-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-md text-sm focus:ring-1 focus:ring-brand-blue focus:border-transparent outline-none"/>
-                                </div>
-                                <div>
-                                <label className="text-xs text-gray-500 dark:text-gray-400">To</label>
-                                <input type="time" value={user.availability[day].endTime} onChange={(e) => handleAvailabilityChange(day, 'endTime', e.target.value)} className="w-full p-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-md text-sm focus:ring-1 focus:ring-brand-blue focus:border-transparent outline-none"/>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Water Available (pH)</label>
+                                <div className="flex flex-wrap gap-2">
+                                    {ALL_PH_LEVELS.map(ph => (
+                                        <button key={ph} type="button" onClick={() => togglePh(ph)} className={`px-4 py-2 rounded-full font-semibold transition text-sm ${user.phLevels.includes(ph) ? 'bg-brand-blue text-white' : 'bg-gray-200 dark:bg-gray-600 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-500'}`}>
+                                            {ph.toFixed(1)}
+                                        </button>
+                                    ))}
                                 </div>
                             </div>
-                            )}
-                        </div>
-                        ))}
-                    </div>
-                    </div>
-                    <InputField label="Last Filter Change" id="maintenance.lastFilterChange" name="maintenance.lastFilterChange" type="date" value={user.maintenance.lastFilterChange} onChange={handleInputChange} />
-                    <InputField label="Last E-Cleaning" id="maintenance.lastECleaning" name="maintenance.lastECleaning" type="date" value={user.maintenance.lastECleaning} onChange={handleInputChange} />
-                    </>) : (
+                            <div>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Pickup Availability</label>
+                            <div className="space-y-3">
+                                {DAYS_OF_WEEK.map(day => (
+                                <div key={day} className="space-y-2">
+                                    <div className="flex items-center justify-between">
+                                    <span className="font-semibold text-gray-800 dark:text-gray-200">{day}</span>
+                                    <Toggle 
+                                        checked={user.availability[day]?.enabled || false}
+                                        onChange={(checked) => handleAvailabilityChange(day, 'enabled', checked)}
+                                    />
+                                    </div>
+                                    {user.availability[day]?.enabled && (
+                                    <div className="grid grid-cols-2 gap-3 pl-4">
+                                        <div>
+                                        <label className="text-xs text-gray-500 dark:text-gray-400">From</label>
+                                        <input type="time" value={user.availability[day].startTime} onChange={(e) => handleAvailabilityChange(day, 'startTime', e.target.value)} className="w-full p-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-md text-sm focus:ring-1 focus:ring-brand-blue focus:border-transparent outline-none"/>
+                                        </div>
+                                        <div>
+                                        <label className="text-xs text-gray-500 dark:text-gray-400">To</label>
+                                        <input type="time" value={user.availability[day].endTime} onChange={(e) => handleAvailabilityChange(day, 'endTime', e.target.value)} className="w-full p-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-md text-sm focus:ring-1 focus:ring-brand-blue focus:border-transparent outline-none"/>
+                                        </div>
+                                    </div>
+                                    )}
+                                </div>
+                                ))}
+                            </div>
+                            </div>
+                            <InputField label="Last Filter Change" id="maintenance.lastFilterChange" name="maintenance.lastFilterChange" type="date" value={user.maintenance.lastFilterChange} onChange={handleInputChange} />
+                            <InputField label="Last E-Cleaning" id="maintenance.lastECleaning" name="maintenance.lastECleaning" type="date" value={user.maintenance.lastECleaning} onChange={handleInputChange} />
+                        </>
+                    ) : (
                         <div className="text-center text-gray-500 dark:text-gray-400">
-                            <p>To share water as a host you must first be an officially verified Enagic distributor.</p>
+                            {user.distributorVerificationStatus === 'pending' ? (
+                                <p>Your verification is under review. Host settings will be available once you are approved.</p>
+                            ) : (
+                                <p>To share water, you must be an officially verified Enagic® distributor. Please complete the "Distributor Verification" section below.</p>
+                            )}
                         </div>
                     )}
                 </FormSection>
