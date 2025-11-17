@@ -1,5 +1,4 @@
 import React from 'react';
-// FIX: Corrected import statement for react-router-dom.
 import { NavLink } from 'react-router-dom';
 import { MapIcon, ClipboardDocumentListIcon, UserIcon, ChatBubbleOvalLeftEllipsisIcon } from './Icons';
 import { useAuth } from '../App';

@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-// FIX: Corrected import statement for react-router-dom.
 import { Link, useNavigate } from 'react-router-dom';
 import * as api from '../api';
 import { useAuth } from '../App';
@@ -24,7 +23,6 @@ export default function SignUpPage() {
             // Check if user document already exists
             const existingUser = await api.getUserById(user.uid);
             if (!existingUser) {
-                // FIX: Added missing firstName and lastName arguments derived from displayName.
                 const nameParts = (user.displayName || 'Google User').split(' ');
                 const firstName = nameParts[0] || '';
                 const lastName = nameParts.slice(1).join(' ') || '';
@@ -49,9 +47,10 @@ export default function SignUpPage() {
         try {
             const userCredential = await api.signUpWithEmail(email, password);
             const user = userCredential.user;
-            // FIX: Added missing firstName, lastName, displayName, and profilePicture arguments.
+            // The display name will be set during onboarding, create with a default.
             await api.createInitialUser(user.uid, email, '', '', 'New User', '');
-            navigate('/onboarding', { state: { userId: user.uid } });
+            // Navigation is now handled by the AuthProvider after the auth state changes.
+            // No need for an explicit navigate() call here, which caused a race condition.
         } catch (err: any) {
              setError(err.message);
         } finally {

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useLocation, useNavigate, Navigate } from 'react-router-dom';
+import { useNavigate, Navigate } from 'react-router-dom';
 import * as api from '../api';
 import { User } from '../types';
 import { useAuth } from '../App';
@@ -34,10 +34,8 @@ const Toggle: React.FC<{ checked: boolean; onChange: (checked: boolean) => void 
 
 export default function OnboardingPage() {
     const navigate = useNavigate();
-    const location = useLocation();
-    const { loginWithEmail } = useAuth();
+    const { userData, setUserData } = useAuth();
     
-    const { userId, email, password } = location.state || {};
     const [user, setUser] = useState<Partial<User> | null>(null);
     const [loading, setLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
@@ -46,17 +44,11 @@ export default function OnboardingPage() {
     const DAYS_OF_WEEK = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
     useEffect(() => {
-        if (userId) {
-            api.getUserById(userId).then(userData => {
-                if (userData) {
-                    setUser(userData);
-                }
-                setLoading(false);
-            });
-        } else {
+        if (userData) {
+            setUser(userData);
             setLoading(false);
         }
-    }, [userId]);
+    }, [userData]);
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
@@ -98,24 +90,29 @@ export default function OnboardingPage() {
 
     const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!userId || !user) return;
+        if (!user || !userData) return;
 
         setIsSaving(true);
         try {
-            await api.updateUser(userId, {
+            const updates: Partial<User> = {
                 ...user,
-                isHost: showHostSettings
-            });
+                firstName: user.firstName || '',
+                lastName: user.lastName || '',
+                displayName: `${user.firstName || ''} ${user.lastName || ''}`.trim(),
+                isHost: showHostSettings,
+                onboardingCompleted: true,
+                onboardingStep: 'completed'
+            };
+
+            await api.updateUser(userData.id, updates);
             
-            // Log the user in after they complete onboarding
-            if (email && password) {
-                await loginWithEmail(email, password);
-            }
-            // On successful login, the AuthProvider's onAuthStateChanged will trigger a redirect.
+            // Update the global state, which will trigger navigation via AppRoutes
+            setUserData(prev => ({ ...prev, ...updates } as User));
+
         } catch (error) {
             console.error("Onboarding failed:", error);
             alert("There was an error saving your profile. Please try again.");
-            setIsSaving(false); // Reset saving state on error
+            setIsSaving(false);
         }
     };
 
@@ -123,7 +120,8 @@ export default function OnboardingPage() {
         return <div className="flex justify-center items-center h-screen"><SpinnerIcon className="w-10 h-10 text-brand-blue animate-spin" /></div>;
     }
     
-    if (!userId) {
+    if (!userData) {
+        // This is a safeguard; AppRoutes should prevent this page from being rendered without a user.
         return <Navigate to="/signup" replace />;
     }
 
@@ -142,7 +140,10 @@ export default function OnboardingPage() {
                  <p className="text-center text-gray-600 dark:text-gray-400">Welcome! Let's get your account ready.</p>
                 <form id="onboarding-form" onSubmit={handleSave} className="space-y-6">
                     <FormSection title="Personal Info">
-                        <InputField label="Full Name" id="name" name="name" value={user.name || ''} onChange={handleInputChange} required />
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <InputField label="First Name" id="firstName" name="firstName" value={user.firstName || ''} onChange={handleInputChange} required />
+                            <InputField label="Last Name" id="lastName" name="lastName" value={user.lastName || ''} onChange={handleInputChange} required />
+                        </div>
                         <InputField label="Phone" id="phone" name="phone" type="tel" value={user.phone || ''} onChange={handleInputChange} required />
                     </FormSection>
                     

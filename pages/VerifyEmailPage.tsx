@@ -1,5 +1,4 @@
 import React from 'react';
-// FIX: Corrected import statement for react-router-dom.
 import { useNavigate, useLocation, Navigate } from 'react-router-dom';
 import { EnvelopeIcon, ChevronRightIcon } from '../components/Icons';
 

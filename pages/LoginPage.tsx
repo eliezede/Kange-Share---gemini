@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-// FIX: Corrected import statement for react-router-dom.
 import { Link } from 'react-router-dom';
 import { useAuth } from '../App';
 import { GoogleIcon, EnvelopeIcon, XMarkIcon, SpinnerIcon } from '../components/Icons';
