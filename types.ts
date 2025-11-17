@@ -9,14 +9,14 @@ export interface Review {
   date: string; // ISO String
 }
 
-export interface HostVerificationDocument {
+export interface DistributorProofDocument {
   id: string;
   fileName: string;
   url: string;
   uploadedAt: string; // ISO String
 }
 
-export type HostVerificationStatus = 'unverified' | 'pending' | 'approved' | 'rejected';
+export type DistributorStatus = 'none' | 'pending' | 'approved' | 'rejected';
 
 // A unified type for all users. Any user can become a host.
 export interface User {
@@ -53,10 +53,11 @@ export interface User {
   };
   isVerified: boolean;
 
-  // New host verification fields
-  hostVerificationStatus: HostVerificationStatus;
-  hostVerificationNote?: string;
-  hostVerificationDocuments: HostVerificationDocument[];
+  // New distributor verification fields
+  distributorId: string;
+  distributorStatus: DistributorStatus;
+  distributorRejectionReason?: string;
+  distributorProofDocuments: DistributorProofDocument[];
   
   // Social fields
   followers: string[]; // array of user UIDs
@@ -91,7 +92,7 @@ export interface WaterRequest {
   hostImage: string;
 }
 
-export type NotificationType = 'new_request' | 'request_accepted' | 'request_declined' | 'request_cancelled' | 'new_message' | 'new_follower' | 'review_left';
+export type NotificationType = 'new_request' | 'request_accepted' | 'request_declined' | 'request_cancelled' | 'new_message' | 'new_follower' | 'review_left' | 'distributor_submitted' | 'distributor_approved' | 'distributor_rejected';
 
 export interface Notification {
   id: string;

@@ -46,10 +46,14 @@ const VerificationCard: React.FC<{
             {isExpanded && (
                 <div className="p-4 border-t border-gray-200 dark:border-gray-700 space-y-4">
                     <div>
+                        <h4 className="font-semibold mb-1 text-gray-700 dark:text-gray-300">Distributor ID</h4>
+                        <p className="text-sm text-gray-600 dark:text-gray-400 p-2 bg-gray-100 dark:bg-gray-700 rounded-md">{user.distributorId || 'Not provided'}</p>
+                    </div>
+                    <div>
                         <h4 className="font-semibold mb-2 text-gray-700 dark:text-gray-300">Uploaded Documents</h4>
-                        {user.hostVerificationDocuments.length > 0 ? (
+                        {user.distributorProofDocuments.length > 0 ? (
                             <ul className="space-y-2">
-                                {user.hostVerificationDocuments.map(doc => (
+                                {user.distributorProofDocuments.map(doc => (
                                     <li key={doc.id}>
                                         <a href={doc.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-brand-blue hover:underline">
                                             <DocumentTextIcon className="w-5 h-5" />
@@ -109,7 +113,7 @@ export default function AdminHostVerificationsPage() {
     const fetchPendingUsers = async () => {
         setLoading(true);
         try {
-            const users = await api.getPendingVerificationUsers();
+            const users = await api.getPendingDistributorUsers();
             setPendingUsers(users);
         } catch (error) {
             console.error("Failed to fetch pending users:", error);
@@ -125,9 +129,9 @@ export default function AdminHostVerificationsPage() {
 
     const handleApprove = async (userId: string) => {
         try {
-            await api.approveHostVerification(userId);
+            await api.approveDistributorVerification(userId);
             setPendingUsers(prev => prev.filter(u => u.id !== userId));
-            showToast("User approved as a host.", "success");
+            showToast("User approved as a distributor.", "success");
         } catch (error) {
             console.error("Failed to approve user:", error);
             showToast("Approval failed. Please try again.", "error");
@@ -136,7 +140,7 @@ export default function AdminHostVerificationsPage() {
 
     const handleReject = async (userId: string, note: string) => {
         try {
-            await api.rejectHostVerification(userId, note);
+            await api.rejectDistributorVerification(userId, note);
             setPendingUsers(prev => prev.filter(u => u.id !== userId));
             showToast("User verification rejected.", "success");
         } catch (error) {
@@ -151,7 +155,7 @@ export default function AdminHostVerificationsPage() {
                 <button onClick={() => navigate('/admin')} className="p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800">
                     <ChevronLeftIcon className="w-6 h-6 text-gray-800 dark:text-gray-200" />
                 </button>
-                <h1 className="text-xl font-bold flex-1 text-center dark:text-gray-100">Host Verifications</h1>
+                <h1 className="text-xl font-bold flex-1 text-center dark:text-gray-100">Distributor Verifications</h1>
                 <div className="w-6 h-6"></div> {/* Spacer */}
             </header>
             
@@ -175,7 +179,7 @@ export default function AdminHostVerificationsPage() {
                     <div className="text-center p-8 bg-white dark:bg-gray-800 rounded-xl">
                         <CheckCircleIcon className="w-12 h-12 mx-auto mb-4 text-green-500" />
                         <h2 className="text-lg font-semibold text-gray-700 dark:text-gray-200">All caught up!</h2>
-                        <p className="text-gray-500 dark:text-gray-400">There are no pending host verifications.</p>
+                        <p className="text-gray-500 dark:text-gray-400">There are no pending distributor verifications.</p>
                     </div>
                 )}
             </main>

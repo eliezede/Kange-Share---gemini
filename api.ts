@@ -33,7 +33,7 @@ import {
     getDownloadURL,
     deleteObject
 } from 'firebase/storage';
-import { User, WaterRequest, Message, RequestStatus, Review, Notification, NotificationType, HostVerificationStatus, HostVerificationDocument } from './types';
+import { User, WaterRequest, Message, RequestStatus, Review, Notification, NotificationType, DistributorStatus, DistributorProofDocument } from './types';
 
 // Placed at the top for reuse
 const defaultAvailability = {
@@ -71,10 +71,13 @@ const fromDoc = <T>(docSnap: DocumentSnapshot): T => {
         data.linkedin = data.linkedin || '';
         data.website = data.website || '';
 
-        // Add defaults for new verification fields
-        data.hostVerificationStatus = data.hostVerificationStatus || 'unverified';
-        data.hostVerificationDocuments = data.hostVerificationDocuments || [];
-        data.hostVerificationNote = data.hostVerificationNote || '';
+        // Add defaults for new distributor fields
+        const oldStatus = (data.hostVerificationStatus as any) || data.distributorStatus;
+        data.distributorStatus = oldStatus === 'unverified' ? 'none' : (oldStatus || 'none');
+        data.distributorProofDocuments = data.distributorProofDocuments || data.hostVerificationDocuments || [];
+        data.distributorRejectionReason = data.distributorRejectionReason || data.hostVerificationNote || '';
+        data.distributorId = data.distributorId || '';
+
 
         const defaultAddress = { street: '', number: '', postalCode: '', city: '', country: '' };
         // FIX: More robust merge to prevent crashes if `data.address` is not a valid object.
@@ -142,9 +145,10 @@ export const createInitialUser = (uid: string, email: string, name: string, prof
         address: { street: '', number: '', postalCode: '', city: '', country: '' },
         rating: 0, reviews: 0, phLevels: [], availability: defaultAvailability,
         maintenance: { lastFilterChange: '', lastECleaning: '' }, isVerified: false,
-        // New verification fields with defaults
-        hostVerificationStatus: 'unverified',
-        hostVerificationDocuments: [],
+        // New distributor fields with defaults
+        distributorId: '',
+        distributorStatus: 'none',
+        distributorProofDocuments: [],
         followers: [], following: [],
     };
     const userDocRef = doc(db, 'users', uid);
@@ -192,14 +196,14 @@ export const toggleFollowHost = async (currentUserId: string, targetHostId: stri
     return batch.commit();
 };
 
-export const uploadVerificationDocument = async (userId: string, file: File): Promise<HostVerificationDocument> => {
+export const uploadDistributorProofDocument = async (userId: string, file: File): Promise<DistributorProofDocument> => {
     const documentId = `${Date.now()}-${file.name.replace(/\s/g, '_')}`;
-    const storageRef = ref(storage, `verificationDocuments/${userId}/${documentId}`);
+    const storageRef = ref(storage, `distributorProofDocuments/${userId}/${documentId}`);
     
     await uploadBytes(storageRef, file);
     const downloadURL = await getDownloadURL(storageRef);
 
-    const newDocument: HostVerificationDocument = {
+    const newDocument: DistributorProofDocument = {
         id: documentId,
         fileName: file.name,
         url: downloadURL,
@@ -208,14 +212,14 @@ export const uploadVerificationDocument = async (userId: string, file: File): Pr
 
     const userDocRef = doc(db, 'users', userId);
     await updateDoc(userDocRef, {
-        hostVerificationDocuments: arrayUnion(newDocument),
+        distributorProofDocuments: arrayUnion(newDocument),
     });
 
     return newDocument;
 };
 
-export const deleteVerificationDocument = async (userId: string, documentToDelete: HostVerificationDocument): Promise<void> => {
-    const storageRef = ref(storage, `verificationDocuments/${userId}/${documentToDelete.id}`);
+export const deleteDistributorProofDocument = async (userId: string, documentToDelete: DistributorProofDocument): Promise<void> => {
+    const storageRef = ref(storage, `distributorProofDocuments/${userId}/${documentToDelete.id}`);
     try {
         await deleteObject(storageRef);
     } catch (error: any) {
@@ -227,7 +231,22 @@ export const deleteVerificationDocument = async (userId: string, documentToDelet
     
     const userDocRef = doc(db, 'users', userId);
     await updateDoc(userDocRef, {
-        hostVerificationDocuments: arrayRemove(documentToDelete),
+        distributorProofDocuments: arrayRemove(documentToDelete),
+    });
+};
+
+export const submitForDistributorVerification = async (userId: string, distributorId: string): Promise<void> => {
+    const userDocRef = doc(db, 'users', userId);
+    await updateDoc(userDocRef, {
+        distributorId,
+        distributorStatus: 'pending',
+        distributorRejectionReason: '', // Clear previous reason
+    });
+    
+    createNotification(userId, {
+        type: 'distributor_submitted',
+        relatedId: userId,
+        text: 'Your distributor verification has been submitted for review.',
     });
 };
 
@@ -486,28 +505,41 @@ export const getAllRequests = async (): Promise<WaterRequest[]> => {
     return querySnapshot.docs.map(d => fromDoc<WaterRequest>(d));
 };
 
-export const getPendingVerificationUsers = async (): Promise<User[]> => {
+export const getPendingDistributorUsers = async (): Promise<User[]> => {
     const usersRef = collection(db, 'users');
-    const q = query(usersRef, where('hostVerificationStatus', '==', 'pending'));
+    const q = query(usersRef, where('distributorStatus', '==', 'pending'));
     const querySnapshot = await getDocs(q);
     return querySnapshot.docs.map(d => fromDoc<User>(d));
 };
 
-export const approveHostVerification = (userId: string): Promise<void> => {
+export const approveDistributorVerification = async (userId: string): Promise<void> => {
     const userDocRef = doc(db, 'users', userId);
-    return updateDoc(userDocRef, {
-        hostVerificationStatus: 'approved',
+    await updateDoc(userDocRef, {
+        distributorStatus: 'approved',
         isHost: true,
-        isVerified: true, // Also mark them as a generally verified user
-        hostVerificationNote: '', // Clear any previous rejection notes
+        isVerified: true,
+        distributorRejectionReason: '',
+    });
+
+    createNotification(userId, {
+        type: 'distributor_approved',
+        relatedId: userId,
+        text: 'Congratulations! You are now an Official Enagic® Distributor.',
     });
 };
 
-export const rejectHostVerification = (userId: string, note: string): Promise<void> => {
+export const rejectDistributorVerification = async (userId: string, note: string): Promise<void> => {
     const userDocRef = doc(db, 'users', userId);
-    return updateDoc(userDocRef, {
-        hostVerificationStatus: 'rejected',
-        hostVerificationNote: note,
+    await updateDoc(userDocRef, {
+        distributorStatus: 'rejected',
+        distributorRejectionReason: note,
+        isVerified: false,
+    });
+    
+    createNotification(userId, {
+        type: 'distributor_rejected',
+        relatedId: userId,
+        text: `Your distributor verification was not approved. Reason: ${note}`,
     });
 };
 

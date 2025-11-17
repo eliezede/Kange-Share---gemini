@@ -1,5 +1,6 @@
 
 
+
 import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import * as api from '../api';
@@ -123,7 +124,7 @@ const UserDetailModal: React.FC<UserDetailModalProps> = ({ user, onClose, onUpda
                     <div className="bg-gray-50 dark:bg-gray-900/50 p-4 rounded-lg space-y-3">
                         <h4 className="font-semibold dark:text-gray-200">Permissions</h4>
                         <div className="flex justify-between items-center"><span>Is Host?</span><Toggle checked={editedUser.isHost} onChange={c => setEditedUser(u => ({...u, isHost: c}))} /></div>
-                        <div className="flex justify-between items-center"><span>Is Verified Host?</span><Toggle checked={editedUser.isVerified} onChange={c => setEditedUser(u => ({...u, isVerified: c}))} /></div>
+                        <div className="flex justify-between items-center"><span>Is Verified Distributor?</span><Toggle checked={editedUser.isVerified} onChange={c => setEditedUser(u => ({...u, isVerified: c}))} /></div>
                         <div className="flex justify-between items-center"><span>Is Admin?</span><Toggle checked={editedUser.isAdmin ?? false} onChange={c => setEditedUser(u => ({...u, isAdmin: c}))} /></div>
                     </div>
 
@@ -217,7 +218,7 @@ export default function AdminPage() {
             totalRequests: requests.filter(r => r.status !== 'chatting').length,
             verifiedHosts: hosts.filter(h => h.isVerified).length,
             pendingRequests: requests.filter(r => r.status === 'pending').length,
-            pendingVerifications: users.filter(u => u.hostVerificationStatus === 'pending').length,
+            pendingVerifications: users.filter(u => u.distributorStatus === 'pending').length,
         };
     }, [hosts, requests, users]);
 
@@ -282,7 +283,7 @@ export default function AdminPage() {
                             <MetricCard icon={<ClipboardDocumentListIcon className="w-6 h-6 text-brand-blue" />} label="Total Requests" value={metrics.totalRequests} />
                             <MetricCard icon={<CheckBadgeIcon className="w-6 h-6 text-green-500" />} label="Verified Hosts" value={metrics.verifiedHosts} />
                             <MetricCard icon={<ClockIcon className="w-6 h-6 text-yellow-500" />} label="Pending Requests" value={metrics.pendingRequests} />
-                            <Link to="/admin/host-verifications" className="block col-span-2 lg:col-span-1">
+                            <Link to="/admin/distributor-verifications" className="block col-span-2 lg:col-span-1">
                                 <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 flex items-center gap-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors h-full">
                                     <div className="p-3 bg-orange-100 dark:bg-orange-900/50 rounded-full">
                                         <ShieldExclamationIcon className="w-6 h-6 text-orange-500" />

@@ -10,7 +10,7 @@ import { HashRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { auth } from './firebase';
 import * as api from './api';
-import { User, Notification, HostVerificationStatus } from './types';
+import { User, Notification, DistributorStatus } from './types';
 
 import LoginModal from './pages/LoginPage';
 import MapPage from './pages/MapPage';
@@ -163,10 +163,11 @@ const sanitizeUser = (user: User | null): User | null => {
         maintenance: (user.maintenance && typeof user.maintenance === 'object')
             ? { ...defaultMaintenance, ...user.maintenance }
             : defaultMaintenance,
-        // Add defaults for new verification fields
-        hostVerificationStatus: user.hostVerificationStatus || 'unverified',
-        hostVerificationNote: user.hostVerificationNote || '',
-        hostVerificationDocuments: user.hostVerificationDocuments || [],
+        // Add defaults for new distributor fields
+        distributorId: user.distributorId || '',
+        distributorStatus: user.distributorStatus || 'none',
+        distributorRejectionReason: user.distributorRejectionReason || '',
+        distributorProofDocuments: user.distributorProofDocuments || [],
     };
 };
 
@@ -326,7 +327,7 @@ const AppRoutes = () => {
             {userData?.isAdmin ? <AdminPage /> : <Navigate to="/map" replace />}
           </ProtectedRoute>
         } />
-        <Route path="/admin/host-verifications" element={
+        <Route path="/admin/distributor-verifications" element={
           <ProtectedRoute>
             {userData?.isAdmin ? <AdminHostVerificationsPage /> : <Navigate to="/map" replace />}
           </ProtectedRoute>

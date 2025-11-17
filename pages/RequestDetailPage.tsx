@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import * as api from '../api';
 import { WaterRequest, RequestStatus, User } from '../types';
-import { ChevronLeftIcon, DropletIcon, CalendarDaysIcon, ClockIcon, ChatBubbleOvalLeftEllipsisIcon, SpinnerIcon } from '../components/Icons';
+import { ChevronLeftIcon, DropletIcon, CalendarDaysIcon, ClockIcon, ChatBubbleOvalLeftEllipsisIcon, SpinnerIcon, CheckBadgeIcon } from '../components/Icons';
 import { useAuth } from '../App';
 
 const StatusBadge: React.FC<{ status: RequestStatus }> = ({ status }) => {
@@ -144,7 +144,13 @@ export default function RequestDetailPage() {
                             className="w-16 h-16 rounded-full object-cover"
                         />
                         <div>
-                             <p className="font-bold text-xl dark:text-gray-100">{otherParty.name}</p>
+                            <div className="flex items-center gap-2">
+                                <p className="font-bold text-xl dark:text-gray-100">{otherParty.name}</p>
+                                {!isUserTheHost && host.isVerified && <CheckBadgeIcon className="w-5 h-5 text-brand-blue" />}
+                            </div>
+                            {!isUserTheHost && host.distributorStatus === 'approved' && (
+                                <p className="text-xs font-semibold text-brand-blue">Official Enagic® Distributor</p>
+                            )}
                              <p className="text-gray-600 dark:text-gray-400">{isUserTheHost ? 'Requester' : 'Host'}</p>
                         </div>
                     </div>

@@ -33,6 +33,9 @@ const NotificationIcon: React.FC<{ type: NotificationType }> = ({ type }) => {
         new_message: <ChatBubbleOvalLeftEllipsisIcon className="w-6 h-6 text-brand-blue" />,
         new_follower: <UserGroupIcon className="w-6 h-6 text-pink-500" />,
         review_left: <StarIcon className="w-6 h-6 text-yellow-400" />,
+        distributor_submitted: <ClipboardDocumentListIcon className="w-6 h-6 text-yellow-500" />,
+        distributor_approved: <CheckCircleIcon className="w-6 h-6 text-green-500" />,
+        distributor_rejected: <XCircleIcon className="w-6 h-6 text-red-500" />,
     };
     return <div className="p-2 bg-gray-100 dark:bg-gray-700 rounded-full">{iconMap[type]}</div>;
 };
@@ -71,6 +74,11 @@ export default function NotificationsPanel({ isOpen, onClose, notifications, tog
             case 'new_follower':
             case 'review_left':
                 navigate(`/host/${notification.relatedId}`);
+                break;
+            case 'distributor_submitted':
+            case 'distributor_approved':
+            case 'distributor_rejected':
+                navigate('/profile');
                 break;
             default:
                 break;

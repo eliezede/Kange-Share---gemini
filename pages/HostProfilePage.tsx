@@ -119,6 +119,10 @@ export default function HostProfilePage() {
               <h1 className="text-3xl font-bold dark:text-gray-100">{host.name}</h1>
               {host.isVerified && <CheckBadgeIcon className="w-7 h-7 text-brand-blue" />}
           </div>
+          
+          {host.distributorStatus === 'approved' && (
+            <p className="text-md font-semibold text-brand-blue mt-1">Official Enagic® Distributor</p>
+          )}
 
           <p className="text-gray-600 dark:text-gray-400 mt-1">{host.address.city}, {host.address.country}</p>
 
