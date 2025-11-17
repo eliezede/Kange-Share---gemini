@@ -1,6 +1,8 @@
 
 
 
+
+
 import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import * as api from '../api';
@@ -19,6 +21,7 @@ import {
     DevicePhoneMobileIcon,
     MapPinIcon,
     ShieldExclamationIcon,
+    DocumentTextIcon,
 } from '../components/Icons';
 import { useToast } from '../hooks/useToast';
 
@@ -122,10 +125,24 @@ const UserDetailModal: React.FC<UserDetailModalProps> = ({ user, onClose, onUpda
                     
                     {/* Permissions */}
                     <div className="bg-gray-50 dark:bg-gray-900/50 p-4 rounded-lg space-y-3">
-                        <h4 className="font-semibold dark:text-gray-200">Permissions</h4>
-                        <div className="flex justify-between items-center"><span>Is Host?</span><Toggle checked={editedUser.isHost} onChange={c => setEditedUser(u => ({...u, isHost: c}))} /></div>
-                        <div className="flex justify-between items-center"><span>Is Verified Distributor?</span><Toggle checked={editedUser.isVerified} onChange={c => setEditedUser(u => ({...u, isVerified: c}))} /></div>
-                        <div className="flex justify-between items-center"><span>Is Admin?</span><Toggle checked={editedUser.isAdmin ?? false} onChange={c => setEditedUser(u => ({...u, isAdmin: c}))} /></div>
+                        <h4 className="font-semibold dark:text-gray-200">Permissions & Status</h4>
+                         <div className="flex justify-between items-center">
+                            <span>Host Status:</span>
+                            <span className={`font-semibold px-2 py-0.5 rounded-full text-xs ${user.isHost ? 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300' : 'bg-gray-200 text-gray-800 dark:bg-gray-700 dark:text-gray-300'}`}>{user.isHost ? 'Active Host' : 'Not a Host'}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                            <span>Distributor Status:</span>
+                            <span className="font-semibold capitalize">{editedUser.distributorStatus}</span>
+                        </div>
+                         {editedUser.distributorStatus === 'pending' && (
+                            <Link to="/admin/distributor-verifications" className="text-brand-blue font-semibold text-sm hover:underline">
+                                Review Verification Request &rarr;
+                            </Link>
+                        )}
+                        <div className="flex justify-between items-center">
+                            <span>Is Admin?</span>
+                            <Toggle checked={editedUser.isAdmin ?? false} onChange={c => setEditedUser(u => ({...u, isAdmin: c}))} />
+                        </div>
                     </div>
 
                     {/* Contact & Address */}
@@ -141,6 +158,28 @@ const UserDetailModal: React.FC<UserDetailModalProps> = ({ user, onClose, onUpda
                             <DetailItem icon={<MapPinIcon />} label="Full Address" value={`${user.address.street} ${user.address.number}, ${user.address.postalCode}`} />
                         </div>
                     </div>
+                     
+                    {/* Distributor Details */}
+                    { (editedUser.distributorStatus !== 'none') && (
+                        <div className="space-y-4">
+                            <h4 className="font-semibold dark:text-gray-200 border-b dark:border-gray-700 pb-2">Distributor Details</h4>
+                            <DetailItem icon={<UserCircleIcon className="w-5 h-5" />} label="Distributor ID" value={editedUser.distributorId || 'N/A'} />
+                            <div>
+                                <h5 className="font-medium mb-2 flex items-center gap-2"><DocumentTextIcon className="w-5 h-5 text-gray-500 dark:text-gray-400" />Proof Documents:</h5>
+                                {editedUser.distributorProofDocuments.length > 0 ? (
+                                    <ul className="space-y-1 pl-4">
+                                        {editedUser.distributorProofDocuments.map(doc => (
+                                            <li key={doc.id}>
+                                                <a href={doc.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-brand-blue hover:underline">
+                                                    {doc.fileName}
+                                                </a>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                ) : <p className="text-sm text-gray-500 pl-4">No documents.</p>}
+                            </div>
+                        </div>
+                    )}
                     
                     {/* Host Details */}
                     {user.isHost && (

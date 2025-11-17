@@ -74,6 +74,8 @@ const fromDoc = <T>(docSnap: DocumentSnapshot): T => {
         // Add defaults for new distributor fields
         const oldStatus = (data.hostVerificationStatus as any) || data.distributorStatus;
         data.distributorStatus = oldStatus === 'unverified' ? 'none' : (oldStatus || 'none');
+        data.isHost = data.distributorStatus === 'approved';
+        data.isAcceptingRequests = data.isAcceptingRequests !== false;
         data.distributorProofDocuments = data.distributorProofDocuments || data.hostVerificationDocuments || [];
         data.distributorRejectionReason = data.distributorRejectionReason || data.hostVerificationNote || '';
         data.distributorId = data.distributorId || '';
@@ -132,19 +134,20 @@ export const getUserById = async (id: string): Promise<User | null> => {
 
 export const getHosts = async (): Promise<User[]> => {
     const usersRef = collection(db, 'users');
-    const q = query(usersRef, where('isHost', '==', true));
+    const q = query(usersRef, where('distributorStatus', '==', 'approved'), where('isAcceptingRequests', '==', true));
     const querySnapshot = await getDocs(q);
     return querySnapshot.docs.map(d => fromDoc<User>(d));
 };
 
 export const createInitialUser = (uid: string, email: string, name: string, profilePicture: string): Promise<void> => {
-    const newUser: Omit<User, 'id'> = {
-        email, name, profilePicture, isHost: false, phone: '',
+    const newUser: Omit<User, 'id' | 'isHost'> = {
+        email, name, profilePicture, phone: '',
         bio: '',
         instagram: '', facebook: '', linkedin: '', website: '',
         address: { street: '', number: '', postalCode: '', city: '', country: '' },
         rating: 0, reviews: 0, phLevels: [], availability: defaultAvailability,
         maintenance: { lastFilterChange: '', lastECleaning: '' }, isVerified: false,
+        isAcceptingRequests: true,
         // New distributor fields with defaults
         distributorId: '',
         distributorStatus: 'none',
@@ -516,7 +519,6 @@ export const approveDistributorVerification = async (userId: string): Promise<vo
     const userDocRef = doc(db, 'users', userId);
     await updateDoc(userDocRef, {
         distributorStatus: 'approved',
-        isHost: true,
         isVerified: true,
         distributorRejectionReason: '',
     });
@@ -524,7 +526,7 @@ export const approveDistributorVerification = async (userId: string): Promise<vo
     createNotification(userId, {
         type: 'distributor_approved',
         relatedId: userId,
-        text: 'Congratulations! You are now an Official Enagic® Distributor.',
+        text: 'Your Enagic distributor verification was approved. You are now a Host and can share water.',
     });
 };
 
@@ -539,16 +541,11 @@ export const rejectDistributorVerification = async (userId: string, note: string
     createNotification(userId, {
         type: 'distributor_rejected',
         relatedId: userId,
-        text: `Your distributor verification was not approved. Reason: ${note}`,
+        text: `Your distributor verification was rejected. Reason: ${note}. Please review your information and resubmit.`,
     });
 };
 
 export const toggleHostVerification = (hostId: string, isVerified: boolean): Promise<void> => {
     const hostRef = doc(db, 'users', hostId);
     return updateDoc(hostRef, { isVerified: !isVerified });
-};
-
-export const toggleHostStatus = (userId: string, isHost: boolean): Promise<void> => {
-    const userRef = doc(db, 'users', userId);
-    return updateDoc(userRef, { isHost: !isHost });
 };

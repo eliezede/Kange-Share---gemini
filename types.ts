@@ -1,4 +1,5 @@
 
+
 export interface Review {
   id: string; // Firestore doc ID
   reviewerId: string;
@@ -52,6 +53,7 @@ export interface User {
     lastECleaning: string;
   };
   isVerified: boolean;
+  isAcceptingRequests: boolean;
 
   // New distributor verification fields
   distributorId: string;

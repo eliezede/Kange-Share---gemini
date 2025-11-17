@@ -1,5 +1,6 @@
 
 
+
 import React, { useState, useEffect, useRef } from 'react';
 // FIX: Corrected import statement for react-router-dom.
 import { Link, useNavigate } from 'react-router-dom';
@@ -476,11 +477,16 @@ export default function UserProfilePage() {
             </FormSection>
 
             <FormSection title="Host Settings">
-                <div className="flex justify-between items-center">
-                  <span className="font-semibold text-gray-800 dark:text-gray-200">Are you available to host?</span>
-                  <Toggle checked={user.isHost} onChange={(checked) => handleToggleChange('isHost', checked)} />
-                </div>
-                {user.isHost && (<>
+                {user.isHost ? (<>
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <span className="font-semibold text-gray-800 dark:text-gray-200">Accepting Water Requests</span>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Temporarily stop appearing in host searches.</p>
+                    </div>
+                    <Toggle checked={user.isAcceptingRequests} onChange={(checked) => handleToggleChange('isAcceptingRequests', checked)} />
+                  </div>
+                  <div className="h-px bg-gray-200 dark:bg-gray-700"></div>
+
                   <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Water Available (pH)</label>
                       <div className="flex flex-wrap gap-2">
@@ -521,7 +527,11 @@ export default function UserProfilePage() {
                   </div>
                   <InputField label="Last Filter Change" id="maintenance.lastFilterChange" name="maintenance.lastFilterChange" type="date" value={user.maintenance.lastFilterChange} onChange={handleInputChange} />
                   <InputField label="Last E-Cleaning" id="maintenance.lastECleaning" name="maintenance.lastECleaning" type="date" value={user.maintenance.lastECleaning} onChange={handleInputChange} />
-                </>)}
+                </>) : (
+                    <div className="text-center text-gray-500 dark:text-gray-400">
+                        <p>Once your distributor verification is approved, you can manage your host settings here.</p>
+                    </div>
+                )}
             </FormSection>
 
             <FormSection title="Distributor Verification">
