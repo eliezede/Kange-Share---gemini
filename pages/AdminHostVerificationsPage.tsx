@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import * as api from '../api';
 import { User } from '../types';
 import { useToast } from '../hooks/useToast';
+// FIX: Import useAuth to get the current admin user's ID.
+import { useAuth } from '../App';
 import { ChevronLeftIcon, SpinnerIcon, DocumentTextIcon, CheckCircleIcon, XCircleIcon } from '../components/Icons';
 
 // Sub-component for each user card
@@ -107,6 +109,7 @@ const VerificationCard: React.FC<{
 export default function AdminHostVerificationsPage() {
     const navigate = useNavigate();
     const { showToast } = useToast();
+    const { userData: adminUser } = useAuth();
     const [pendingUsers, setPendingUsers] = useState<User[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -128,8 +131,13 @@ export default function AdminHostVerificationsPage() {
     }, []);
 
     const handleApprove = async (userId: string) => {
+        if (!adminUser) {
+            showToast('Admin user is not available.', 'error');
+            return;
+        }
         try {
-            await api.approveDistributorVerification(userId);
+            // FIX: Pass the admin user's ID as the second argument.
+            await api.approveDistributorVerification(userId, adminUser.id);
             setPendingUsers(prev => prev.filter(u => u.id !== userId));
             showToast("User approved as a distributor.", "success");
         } catch (error) {
@@ -139,8 +147,13 @@ export default function AdminHostVerificationsPage() {
     };
 
     const handleReject = async (userId: string, note: string) => {
+        if (!adminUser) {
+            showToast('Admin user is not available.', 'error');
+            return;
+        }
         try {
-            await api.rejectDistributorVerification(userId, note);
+            // FIX: Pass the admin user's ID as the second argument.
+            await api.rejectDistributorVerification(userId, adminUser.id, note);
             setPendingUsers(prev => prev.filter(u => u.id !== userId));
             showToast("User verification rejected.", "success");
         } catch (error) {

@@ -74,12 +74,19 @@ const fromDoc = <T>(docSnap: DocumentSnapshot): T => {
         // Add defaults for new distributor fields
         const oldStatus = (data.hostVerificationStatus as any) || data.distributorStatus;
         data.distributorStatus = oldStatus === 'unverified' ? 'none' : (oldStatus || 'none');
+        // TODO: isHost will be deprecated. Use isVerified and isAcceptingRequests instead.
+        // For now, isHost represents a user who is a verified distributor.
         data.isHost = data.distributorStatus === 'approved';
         data.isAcceptingRequests = data.isAcceptingRequests !== false;
         data.distributorProofDocuments = data.distributorProofDocuments || data.hostVerificationDocuments || [];
         data.distributorRejectionReason = data.distributorRejectionReason || data.hostVerificationNote || '';
         data.distributorId = data.distributorId || '';
 
+        // Admin and status fields
+        data.isBlocked = data.isBlocked || false;
+        data.deletedAt = data.deletedAt || null;
+        data.verificationReviewedAt = data.verificationReviewedAt || null;
+        data.verificationReviewedByAdminId = data.verificationReviewedByAdminId || null;
 
         const defaultAddress = { street: '', number: '', postalCode: '', city: '', country: '' };
         // FIX: More robust merge to prevent crashes if `data.address` is not a valid object.
@@ -129,14 +136,17 @@ export const logout = (): Promise<void> => signOut(auth);
 export const getUserById = async (id: string): Promise<User | null> => {
     const userDocRef = doc(db, 'users', id);
     const userDocSnap = await getDoc(userDocRef);
-    return userDocSnap.exists() ? fromDoc<User>(userDocSnap) : null;
+    if (!userDocSnap.exists()) return null;
+    const user = fromDoc<User>(userDocSnap);
+    return user.deletedAt ? null : user;
 };
 
 export const getHosts = async (): Promise<User[]> => {
     const usersRef = collection(db, 'users');
     const q = query(usersRef, where('distributorStatus', '==', 'approved'), where('isAcceptingRequests', '==', true));
     const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map(d => fromDoc<User>(d));
+    const users = querySnapshot.docs.map(d => fromDoc<User>(d));
+    return users.filter(u => !u.isBlocked && !u.deletedAt);
 };
 
 export const createInitialUser = (uid: string, email: string, name: string, profilePicture: string): Promise<void> => {
@@ -500,7 +510,8 @@ export const getPendingHostRequestsStream = (hostId: string, callback: (count: n
 
 export const getAllUsers = async (): Promise<User[]> => {
     const querySnapshot = await getDocs(collection(db, 'users'));
-    return querySnapshot.docs.map(d => fromDoc<User>(d));
+    const users = querySnapshot.docs.map(d => fromDoc<User>(d));
+    return users.filter(u => !u.deletedAt); // Client-side filter for soft-deleted users
 };
 
 export const getAllRequests = async (): Promise<WaterRequest[]> => {
@@ -515,37 +526,85 @@ export const getPendingDistributorUsers = async (): Promise<User[]> => {
     return querySnapshot.docs.map(d => fromDoc<User>(d));
 };
 
-export const approveDistributorVerification = async (userId: string): Promise<void> => {
+export const approveDistributorVerification = async (userId: string, adminId: string): Promise<void> => {
     const userDocRef = doc(db, 'users', userId);
     await updateDoc(userDocRef, {
         distributorStatus: 'approved',
         isVerified: true,
         distributorRejectionReason: '',
+        verificationReviewedAt: serverTimestamp(),
+        verificationReviewedByAdminId: adminId,
     });
 
     createNotification(userId, {
         type: 'distributor_approved',
         relatedId: userId,
-        text: 'Your Enagic distributor verification was approved. You are now a Host and can share water.',
+        text: 'Your Enagic distributor account has been verified. You can now share water as a host by enabling your availability.',
     });
 };
 
-export const rejectDistributorVerification = async (userId: string, note: string): Promise<void> => {
+export const rejectDistributorVerification = async (userId: string, adminId: string, note: string): Promise<void> => {
     const userDocRef = doc(db, 'users', userId);
     await updateDoc(userDocRef, {
         distributorStatus: 'rejected',
         distributorRejectionReason: note,
         isVerified: false,
+        isAcceptingRequests: false,
+        verificationReviewedAt: serverTimestamp(),
+        verificationReviewedByAdminId: adminId,
     });
     
     createNotification(userId, {
         type: 'distributor_rejected',
         relatedId: userId,
-        text: `Your distributor verification was rejected. Reason: ${note}. Please review your information and resubmit.`,
+        text: 'Your Enagic distributor verification was rejected. Please review your distributor ID and document and try again.',
     });
 };
 
-export const toggleHostVerification = (hostId: string, isVerified: boolean): Promise<void> => {
-    const hostRef = doc(db, 'users', hostId);
-    return updateDoc(hostRef, { isVerified: !isVerified });
+export const revokeDistributorVerification = async (userId: string, adminId: string, note: string): Promise<void> => {
+    const userDocRef = doc(db, 'users', userId);
+    await updateDoc(userDocRef, {
+        distributorStatus: 'revoked',
+        distributorRejectionReason: note,
+        isVerified: false,
+        isAcceptingRequests: false,
+        verificationReviewedAt: serverTimestamp(),
+        verificationReviewedByAdminId: adminId,
+    });
+    
+    createNotification(userId, {
+        type: 'distributor_revoked',
+        relatedId: userId,
+        text: 'Your Enagic distributor verification has been revoked. You will no longer appear as a host.',
+    });
+};
+
+export const updateUserBlockStatus = (userId: string, isBlocked: boolean): Promise<void> => {
+    const userRef = doc(db, 'users', userId);
+    const promise = updateDoc(userRef, { isBlocked });
+
+    if (isBlocked) {
+        createNotification(userId, {
+            type: 'user_blocked',
+            relatedId: userId,
+            text: 'Your Kangen Share account has been blocked by an administrator. You cannot send requests or messages at this time.',
+        });
+    } else {
+        createNotification(userId, {
+            type: 'user_unblocked',
+            relatedId: userId,
+            text: 'Your Kangen Share account has been unblocked. You can use the app normally again.',
+        });
+    }
+
+    return promise;
+};
+
+export const deleteUser = (userId: string): Promise<void> => {
+    // TODO: A Cloud Function should listen for this document change and delete the corresponding Firebase Auth user.
+    const userRef = doc(db, 'users', userId);
+    return updateDoc(userRef, { 
+        deletedAt: serverTimestamp(),
+        isBlocked: true, // Also block them as part of deletion
+    });
 };

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../App';
 import * as api from '../api';
 import { Notification, NotificationType } from '../types';
-import { UserGroupIcon, ClipboardDocumentListIcon, ChatBubbleOvalLeftEllipsisIcon, StarIcon, BellIcon, ProfilePicture, CheckCircleIcon, XCircleIcon } from './Icons';
+import { UserGroupIcon, ClipboardDocumentListIcon, ChatBubbleOvalLeftEllipsisIcon, StarIcon, BellIcon, ProfilePicture, CheckCircleIcon, XCircleIcon, ShieldExclamationIcon } from './Icons';
 import { useClickOutside } from '../hooks/useClickOutside';
 
 const TimeAgo: React.FC<{ dateString: string }> = ({ dateString }) => {
@@ -36,6 +36,9 @@ const NotificationIcon: React.FC<{ type: NotificationType }> = ({ type }) => {
         distributor_submitted: <ClipboardDocumentListIcon className="w-6 h-6 text-yellow-500" />,
         distributor_approved: <CheckCircleIcon className="w-6 h-6 text-green-500" />,
         distributor_rejected: <XCircleIcon className="w-6 h-6 text-red-500" />,
+        distributor_revoked: <XCircleIcon className="w-6 h-6 text-orange-500" />,
+        user_blocked: <ShieldExclamationIcon className="w-6 h-6 text-red-500" />,
+        user_unblocked: <CheckCircleIcon className="w-6 h-6 text-green-500" />,
     };
     return <div className="p-2 bg-gray-100 dark:bg-gray-700 rounded-full">{iconMap[type]}</div>;
 };
@@ -78,6 +81,9 @@ export default function NotificationsPanel({ isOpen, onClose, notifications, tog
             case 'distributor_submitted':
             case 'distributor_approved':
             case 'distributor_rejected':
+            case 'distributor_revoked':
+            case 'user_blocked':
+            case 'user_unblocked':
                 navigate('/profile');
                 break;
             default:

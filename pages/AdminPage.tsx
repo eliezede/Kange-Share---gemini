@@ -1,8 +1,4 @@
 
-
-
-
-
 import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import * as api from '../api';
@@ -22,8 +18,12 @@ import {
     MapPinIcon,
     ShieldExclamationIcon,
     DocumentTextIcon,
+    TrashIcon,
+    CheckCircleIcon,
+    XCircleIcon as XCircleIconSolid
 } from '../components/Icons';
 import { useToast } from '../hooks/useToast';
+import { useAuth } from '../App';
 
 const MetricCard: React.FC<{ icon: React.ReactNode; label: string; value: number | string }> = ({ icon, label, value }) => (
     <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 flex items-center gap-4">
@@ -37,7 +37,7 @@ const MetricCard: React.FC<{ icon: React.ReactNode; label: string; value: number
     </div>
 );
 
-const StatusBadge: React.FC<{ status: RequestStatus }> = ({ status }) => {
+const RequestStatusBadge: React.FC<{ status: RequestStatus }> = ({ status }) => {
     const statusStyles: Record<RequestStatus, string> = {
         pending: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300',
         accepted: 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300',
@@ -53,6 +53,39 @@ const StatusBadge: React.FC<{ status: RequestStatus }> = ({ status }) => {
     );
 };
 
+const UserStatusBadge: React.FC<{ user: User }> = ({ user }) => {
+    if (user.isBlocked) {
+        return <span className="px-2.5 py-0.5 text-xs font-semibold rounded-full bg-gray-200 text-gray-800 dark:bg-gray-600 dark:text-gray-200">Blocked</span>;
+    }
+    switch (user.distributorStatus) {
+        case 'pending':
+            return <span className="px-2.5 py-0.5 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300">Pending</span>;
+        case 'approved':
+            return <span className="px-2.5 py-0.5 text-xs font-semibold rounded-full bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300">Verified</span>;
+        case 'rejected':
+            return <span className="px-2.5 py-0.5 text-xs font-semibold rounded-full bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300">Rejected</span>;
+        case 'revoked':
+             return <span className="px-2.5 py-0.5 text-xs font-semibold rounded-full bg-orange-100 text-orange-800 dark:bg-orange-900/50 dark:text-orange-300">Revoked</span>;
+        default:
+            return <span className="px-2.5 py-0.5 text-xs font-semibold rounded-full bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200">User</span>;
+    }
+};
+
+const ConfirmationModal: React.FC<{ isOpen: boolean; title: string; message: string; onConfirm: () => void; onCancel: () => void; confirmText?: string; isDestructive?: boolean }> = ({ isOpen, title, message, onConfirm, onCancel, confirmText = "Confirm", isDestructive = false }) => {
+    if (!isOpen) return null;
+    return (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={onCancel}>
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-sm m-4 p-6 text-center" onClick={e => e.stopPropagation()}>
+                <h2 className="text-xl font-bold mb-2 dark:text-white">{title}</h2>
+                <p className="text-gray-600 dark:text-gray-400 mb-6">{message}</p>
+                <div className="flex gap-3">
+                    <button onClick={onCancel} className="flex-1 px-4 py-2.5 font-semibold rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 transition">Cancel</button>
+                    <button onClick={onConfirm} className={`flex-1 px-4 py-2.5 font-semibold rounded-lg text-white transition ${isDestructive ? 'bg-red-600 hover:bg-red-700' : 'bg-brand-blue hover:bg-blue-600'}`}>{confirmText}</button>
+                </div>
+            </div>
+        </div>
+    );
+};
 
 // --- User Detail Modal Component ---
 const Toggle: React.FC<{ checked: boolean; onChange: (checked: boolean) => void }> = ({ checked, onChange }) => (
@@ -81,27 +114,45 @@ interface UserDetailModalProps {
 }
 
 const UserDetailModal: React.FC<UserDetailModalProps> = ({ user, onClose, onUpdate }) => {
-    const [editedUser, setEditedUser] = useState<User>(JSON.parse(JSON.stringify(user)));
-    const [isSaving, setIsSaving] = useState(false);
+    const [isProcessing, setIsProcessing] = useState<string | null>(null);
+    const [rejectionNote, setRejectionNote] = useState('');
+    const [showRejectionInput, setShowRejectionInput] = useState(false);
+    const [actionToConfirm, setActionToConfirm] = useState<(() => void) | null>(null);
+    const [confirmationDetails, setConfirmationDetails] = useState({ title: '', message: '', confirmText: 'Confirm', isDestructive: false });
+    const { userData: adminUser } = useAuth();
     const { showToast } = useToast();
 
-    const isDirty = useMemo(() => JSON.stringify(editedUser) !== JSON.stringify(user), [editedUser, user]);
-
-    const handleSave = async () => {
-        setIsSaving(true);
+    const handleAction = async (action: string, apiCall: () => Promise<void>) => {
+        setIsProcessing(action);
         try {
-            await api.updateUser(editedUser.id, editedUser);
+            await apiCall();
             await onUpdate();
-            showToast('User updated successfully!', 'success');
+            showToast(`User ${action} successfully!`, 'success');
         } catch (error) {
-            console.error("Failed to update user:", error);
-            showToast("Failed to save changes. Please try again.", "error");
+            console.error(`Failed to ${action} user:`, error);
+            showToast(`Failed to ${action}. Please try again.`, 'error');
         } finally {
-            setIsSaving(false);
+            setIsProcessing(null);
         }
     };
     
+    const handleApprove = () => handleAction('approved', () => api.approveDistributorVerification(user.id, adminUser!.id));
+    const handleReject = () => {
+        if (!rejectionNote.trim()) { showToast('Rejection reason cannot be empty.', 'error'); return; }
+        handleAction('rejected', () => api.rejectDistributorVerification(user.id, adminUser!.id, rejectionNote)).then(() => setShowRejectionInput(false));
+    };
+    const handleRevoke = () => {
+        if (!rejectionNote.trim()) { showToast('Revocation reason cannot be empty.', 'error'); return; }
+        handleAction('revoked', () => api.revokeDistributorVerification(user.id, adminUser!.id, rejectionNote)).then(() => setShowRejectionInput(false));
+    };
+    const handleBlockToggle = () => handleAction(user.isBlocked ? 'unblocked' : 'blocked', () => api.updateUserBlockStatus(user.id, !user.isBlocked));
+    const handleDelete = () => {
+        setConfirmationDetails({ title: "Delete User", message: `Are you sure you want to permanently delete ${user.name}? This action cannot be undone.`, confirmText: 'Delete', isDestructive: true });
+        setActionToConfirm(() => () => handleAction('deleted', () => api.deleteUser(user.id)));
+    };
+
     return (
+        <>
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={onClose}>
             <div 
                 className="relative bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-2xl m-4 text-left max-h-[90vh] flex flex-col"
@@ -120,32 +171,74 @@ const UserDetailModal: React.FC<UserDetailModalProps> = ({ user, onClose, onUpda
                         <div>
                             <h3 className="text-2xl font-bold dark:text-gray-100">{user.name}</h3>
                             <p className="text-gray-500 dark:text-gray-400">{user.id}</p>
+                            <div className="mt-1"><UserStatusBadge user={user} /></div>
                         </div>
                     </div>
                     
-                    {/* Permissions */}
+                    {/* Verification Section */}
                     <div className="bg-gray-50 dark:bg-gray-900/50 p-4 rounded-lg space-y-3">
-                        <h4 className="font-semibold dark:text-gray-200">Permissions & Status</h4>
-                         <div className="flex justify-between items-center">
-                            <span>Host Status:</span>
-                            <span className={`font-semibold px-2 py-0.5 rounded-full text-xs ${user.isHost ? 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300' : 'bg-gray-200 text-gray-800 dark:bg-gray-700 dark:text-gray-300'}`}>{user.isHost ? 'Active Host' : 'Not a Host'}</span>
+                        <h4 className="font-semibold dark:text-gray-200">Verification Management</h4>
+                         <DetailItem icon={<UserCircleIcon />} label="Distributor ID" value={user.distributorId || 'Not provided'} />
+                         <div>
+                            <p className="text-sm text-gray-700 dark:text-gray-300 mb-1">Proof Documents:</p>
+                            {user.distributorProofDocuments.length > 0 ? (
+                                <div className="space-y-1 pl-8">
+                                    {user.distributorProofDocuments.map(doc => (
+                                        <a href={doc.url} target="_blank" rel="noopener noreferrer" key={doc.id} className="flex items-center gap-2 text-brand-blue hover:underline text-sm">
+                                            <DocumentTextIcon className="w-4 h-4" /> {doc.fileName}
+                                        </a>
+                                    ))}
+                                </div>
+                            ) : <p className="text-sm pl-8 text-gray-500">No documents uploaded.</p>}
                         </div>
-                        <div className="flex justify-between items-center">
-                            <span>Distributor Status:</span>
-                            <span className="font-semibold capitalize">{editedUser.distributorStatus}</span>
-                        </div>
-                         {editedUser.distributorStatus === 'pending' && (
-                            <Link to="/admin/distributor-verifications" className="text-brand-blue font-semibold text-sm hover:underline">
-                                Review Verification Request &rarr;
-                            </Link>
+                         
+                        {(showRejectionInput) && (
+                            <div className="pt-2">
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Reason for Rejection/Revocation</label>
+                                <textarea value={rejectionNote} onChange={e => setRejectionNote(e.target.value)} className="w-full p-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-lg focus:ring-2 focus:ring-brand-blue outline-none transition" rows={2}/>
+                            </div>
                         )}
-                        <div className="flex justify-between items-center">
-                            <span>Is Admin?</span>
-                            <Toggle checked={editedUser.isAdmin ?? false} onChange={c => setEditedUser(u => ({...u, isAdmin: c}))} />
+
+                        <div className="flex flex-wrap gap-2 pt-2">
+                            {user.distributorStatus === 'pending' && (
+                                <>
+                                    <button onClick={handleApprove} disabled={!!isProcessing} className="flex items-center gap-1 px-3 py-1.5 text-sm font-semibold rounded-md bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/50 dark:text-green-300 dark:hover:bg-green-900/70 transition">
+                                        {isProcessing === 'approved' ? <SpinnerIcon className="w-4 h-4 animate-spin"/> : <CheckCircleIcon className="w-5 h-5"/>} Approve
+                                    </button>
+                                    <button onClick={() => setShowRejectionInput(current => !current)} className="flex items-center gap-1 px-3 py-1.5 text-sm font-semibold rounded-md bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/50 dark:text-red-300 dark:hover:bg-red-900/70 transition">
+                                        <XCircleIconSolid className="w-5 h-5"/> Reject
+                                    </button>
+                                     {showRejectionInput && <button onClick={handleReject} disabled={!rejectionNote.trim() || !!isProcessing} className="px-3 py-1.5 text-sm font-semibold rounded-md bg-red-600 text-white hover:bg-red-700 transition">Confirm Rejection</button>}
+                                </>
+                            )}
+                             {user.distributorStatus === 'approved' && (
+                                <>
+                                <button onClick={() => setShowRejectionInput(current => !current)} className="flex items-center gap-1 px-3 py-1.5 text-sm font-semibold rounded-md bg-orange-100 text-orange-700 hover:bg-orange-200 dark:bg-orange-900/50 dark:text-orange-300 dark:hover:bg-orange-900/70 transition">
+                                    <XCircleIconSolid className="w-5 h-5"/> Revoke
+                                </button>
+                                {showRejectionInput && <button onClick={handleRevoke} disabled={!rejectionNote.trim() || !!isProcessing} className="px-3 py-1.5 text-sm font-semibold rounded-md bg-orange-600 text-white hover:bg-orange-700 transition">Confirm Revocation</button>}
+                                </>
+                            )}
                         </div>
                     </div>
+                    
+                     {/* Account Status Section */}
+                    <div className="bg-gray-50 dark:bg-gray-900/50 p-4 rounded-lg space-y-3">
+                         <h4 className="font-semibold dark:text-gray-200">Account Status</h4>
+                         <div className="flex justify-between items-center">
+                            <span>Blocked</span>
+                             <button onClick={handleBlockToggle} disabled={!!isProcessing} className={`font-semibold px-3 py-1 text-sm rounded-md transition ${user.isBlocked ? 'bg-gray-200 text-gray-800' : 'bg-red-600 text-white'}`}>
+                                {isProcessing === 'blocked' || isProcessing === 'unblocked' ? <SpinnerIcon className="w-4 h-4 animate-spin"/> : (user.isBlocked ? 'Unblock' : 'Block')}
+                            </button>
+                         </div>
+                         <div className="flex justify-between items-center">
+                            <span>Delete User</span>
+                            <button onClick={handleDelete} disabled={!!isProcessing} className="font-semibold px-3 py-1 text-sm rounded-md transition bg-red-600 text-white">
+                                {isProcessing === 'deleted' ? <SpinnerIcon className="w-4 h-4 animate-spin"/> : 'Delete'}
+                            </button>
+                         </div>
+                    </div>
 
-                    {/* Contact & Address */}
                     <div className="grid md:grid-cols-2 gap-6">
                         <div className="space-y-4">
                             <h4 className="font-semibold dark:text-gray-200 border-b dark:border-gray-700 pb-2">Contact</h4>
@@ -155,66 +248,18 @@ const UserDetailModal: React.FC<UserDetailModalProps> = ({ user, onClose, onUpda
                          <div className="space-y-4">
                             <h4 className="font-semibold dark:text-gray-200 border-b dark:border-gray-700 pb-2">Address</h4>
                             <DetailItem icon={<MapPinIcon />} label="Location" value={`${user.address.city}, ${user.address.country}`} />
-                            <DetailItem icon={<MapPinIcon />} label="Full Address" value={`${user.address.street} ${user.address.number}, ${user.address.postalCode}`} />
                         </div>
                     </div>
-                     
-                    {/* Distributor Details */}
-                    { (editedUser.distributorStatus !== 'none') && (
-                        <div className="space-y-4">
-                            <h4 className="font-semibold dark:text-gray-200 border-b dark:border-gray-700 pb-2">Distributor Details</h4>
-                            <DetailItem icon={<UserCircleIcon className="w-5 h-5" />} label="Distributor ID" value={editedUser.distributorId || 'N/A'} />
-                            <div>
-                                <h5 className="font-medium mb-2 flex items-center gap-2"><DocumentTextIcon className="w-5 h-5 text-gray-500 dark:text-gray-400" />Proof Documents:</h5>
-                                {editedUser.distributorProofDocuments.length > 0 ? (
-                                    <ul className="space-y-1 pl-4">
-                                        {editedUser.distributorProofDocuments.map(doc => (
-                                            <li key={doc.id}>
-                                                <a href={doc.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-brand-blue hover:underline">
-                                                    {doc.fileName}
-                                                </a>
-                                            </li>
-                                        ))}
-                                    </ul>
-                                ) : <p className="text-sm text-gray-500 pl-4">No documents.</p>}
-                            </div>
-                        </div>
-                    )}
-                    
-                    {/* Host Details */}
-                    {user.isHost && (
-                        <div className="space-y-4">
-                            <h4 className="font-semibold dark:text-gray-200 border-b dark:border-gray-700 pb-2">Host Details</h4>
-                            <p><span className="font-medium">Rating:</span> {user.rating.toFixed(1)} ({user.reviews} reviews)</p>
-                            <p><span className="font-medium">pH Levels:</span> {user.phLevels.join(', ')}</p>
-                            <p><span className="font-medium">Last Filter Change:</span> {user.maintenance.lastFilterChange || 'N/A'}</p>
-                            <p><span className="font-medium">Last E-Cleaning:</span> {user.maintenance.lastECleaning || 'N/A'}</p>
-                            <h5 className="font-medium mt-2">Availability:</h5>
-                            <ul className="text-sm space-y-1 pl-2">
-                                {/* FIX: Explicitly cast schedule to its correct type to resolve inference issue with Object.entries. */}
-                                {Object.entries(user.availability).map(([day, schedule]) => {
-                                    const typedSchedule = schedule as { enabled: boolean; startTime: string; endTime: string; };
-                                    return typedSchedule.enabled && (
-                                        <li key={day}><span className="font-semibold w-24 inline-block">{day}:</span> {typedSchedule.startTime} - {typedSchedule.endTime}</li>
-                                    );
-                                })}
-                            </ul>
-                        </div>
-                    )}
                 </main>
-
-                <footer className="p-4 border-t dark:border-gray-700 flex justify-end gap-3 sticky bottom-0 bg-white dark:bg-gray-800 rounded-b-2xl">
-                    <button onClick={onClose} className="px-4 py-2 font-semibold rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 transition">Cancel</button>
-                    <button 
-                        onClick={handleSave} 
-                        disabled={!isDirty || isSaving}
-                        className="px-4 py-2 font-semibold rounded-lg bg-brand-blue text-white hover:bg-blue-600 transition disabled:bg-blue-300 dark:disabled:bg-gray-500"
-                    >
-                        {isSaving ? <SpinnerIcon className="w-5 h-5 animate-spin" /> : 'Save Changes'}
-                    </button>
-                </footer>
             </div>
         </div>
+        <ConfirmationModal 
+            isOpen={!!actionToConfirm}
+            onCancel={() => setActionToConfirm(null)}
+            onConfirm={() => { if(actionToConfirm) actionToConfirm(); setActionToConfirm(null); }}
+            {...confirmationDetails}
+        />
+        </>
     );
 };
 
@@ -225,8 +270,7 @@ export default function AdminPage() {
     const [users, setUsers] = useState<User[]>([]);
     const [requests, setRequests] = useState<WaterRequest[]>([]);
     const [loading, setLoading] = useState(true);
-    const [updatingUserId, setUpdatingUserId] = useState<string | null>(null);
-    const [userFilter, setUserFilter] = useState<'all' | 'hosts' | 'non-hosts'>('all');
+    const [userFilter, setUserFilter] = useState<'all' | 'pending' | 'verified' | 'blocked'>('all');
     const [userSearchQuery, setUserSearchQuery] = useState('');
     const [selectedUser, setSelectedUser] = useState<User | null>(null);
 
@@ -249,24 +293,28 @@ export default function AdminPage() {
         fetchData();
     }, []);
     
-    const hosts = useMemo(() => users.filter(u => u.isHost), [users]);
-
     const metrics = useMemo(() => {
+        const verifiedHosts = users.filter(u => u.distributorStatus === 'approved');
         return {
-            totalHosts: hosts.length,
+            totalUsers: users.length,
             totalRequests: requests.filter(r => r.status !== 'chatting').length,
-            verifiedHosts: hosts.filter(h => h.isVerified).length,
+            verifiedHosts: verifiedHosts.length,
             pendingRequests: requests.filter(r => r.status === 'pending').length,
             pendingVerifications: users.filter(u => u.distributorStatus === 'pending').length,
         };
-    }, [hosts, requests, users]);
+    }, [users, requests]);
 
     const filteredUsers = useMemo(() => {
         return users
             .filter(user => {
-                if (userFilter === 'hosts') return user.isHost;
-                if (userFilter === 'non-hosts') return !user.isHost;
-                return true; // 'all'
+                switch(userFilter) {
+                    case 'pending': return user.distributorStatus === 'pending';
+                    case 'verified': return user.distributorStatus === 'approved';
+                    case 'blocked': return user.isBlocked;
+                    case 'all':
+                    default:
+                        return true;
+                }
             })
             .filter(user => {
                 const query = userSearchQuery.toLowerCase();
@@ -280,14 +328,6 @@ export default function AdminPage() {
         const endIndex = startIndex + itemsPerPage;
         return filteredUsers.slice(startIndex, endIndex);
     }, [filteredUsers, currentPage, itemsPerPage]);
-
-    const handleVerifyToggle = async (host: User) => {
-        setUpdatingUserId(host.id);
-        await api.toggleHostVerification(host.id, host.isVerified);
-        const updatedUsers = await api.getAllUsers();
-        setUsers(updatedUsers);
-        setUpdatingUserId(null);
-    };
 
     const recentRequests = useMemo(() => {
         return requests
@@ -349,7 +389,7 @@ export default function AdminPage() {
                                 />
                             </div>
                             <div className="flex items-center gap-2 bg-gray-100 dark:bg-gray-700 p-1 rounded-lg">
-                                {(['all', 'hosts', 'non-hosts'] as const).map(filter => (
+                                {(['all', 'pending', 'verified', 'blocked'] as const).map(filter => (
                                     <button
                                         key={filter} onClick={() => setUserFilter(filter)}
                                         className={`px-3 py-1.5 text-sm font-semibold rounded-md capitalize transition-colors flex-1 md:flex-none ${userFilter === filter ? 'bg-white dark:bg-gray-800 text-brand-blue shadow-sm' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'}`}
@@ -369,32 +409,15 @@ export default function AdminPage() {
                                             <div>
                                                 <p className="font-semibold text-gray-800 dark:text-gray-100">{user.name}</p>
                                                 <p className="text-sm text-gray-500 dark:text-gray-400">{user.email}</p>
-                                                <p className="text-sm text-gray-500 dark:text-gray-400">{user.address.city}</p>
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-4 w-full md:w-auto self-end md:self-center">
                                             <div className="flex flex-col items-start md:items-end gap-1 flex-1">
-                                                {user.isHost ? (
-                                                    <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300">Host</span>
-                                                ) : (
-                                                    <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300">User</span>
-                                                )}
-                                                {user.isVerified && (
-                                                    <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300">Verified</span>
-                                                )}
+                                                <UserStatusBadge user={user} />
                                                 {user.isAdmin && (
                                                     <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-purple-100 text-purple-800 dark:bg-purple-900/50 dark:text-purple-300">Admin</span>
                                                 )}
                                             </div>
-                                            {user.isHost && (
-                                                <button
-                                                    onClick={(e) => { e.stopPropagation(); handleVerifyToggle(user); }}
-                                                    disabled={updatingUserId === user.id}
-                                                    className={`px-3 py-1.5 rounded-md font-semibold text-xs transition-colors w-20 text-center ${user.isVerified ? 'bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/50 dark:text-red-300 dark:hover:bg-red-900/70' : 'bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/50 dark:text-green-300 dark:hover:bg-green-900/70'}`}
-                                                >
-                                                    {updatingUserId === user.id ? <SpinnerIcon className="w-4 h-4 mx-auto animate-spin" /> : (user.isVerified ? 'Revoke' : 'Verify')}
-                                                </button>
-                                            )}
                                         </div>
                                     </div>
                                 ))}
@@ -431,7 +454,7 @@ export default function AdminPage() {
                                                 </p>
                                                 <p className="text-sm text-gray-500 dark:text-gray-400">{new Date(req.createdAt).toLocaleString()}</p>
                                             </div>
-                                            <StatusBadge status={req.status} />
+                                            <RequestStatusBadge status={req.status} />
                                         </Link>
                                 )) : <p className="p-4 text-gray-500 dark:text-gray-400 text-sm">No recent requests.</p>}
                             </div>

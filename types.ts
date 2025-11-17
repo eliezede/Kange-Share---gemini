@@ -17,7 +17,7 @@ export interface DistributorProofDocument {
   uploadedAt: string; // ISO String
 }
 
-export type DistributorStatus = 'none' | 'pending' | 'approved' | 'rejected';
+export type DistributorStatus = 'none' | 'pending' | 'approved' | 'rejected' | 'revoked';
 
 // A unified type for all users. Any user can become a host.
 export interface User {
@@ -40,6 +40,7 @@ export interface User {
     country: string;
   };
   
+  // TODO: isHost will be deprecated. Use isVerified to check if a user is a potential host.
   isHost: boolean;
   isAdmin?: boolean;
 
@@ -64,6 +65,12 @@ export interface User {
   // Social fields
   followers: string[]; // array of user UIDs
   following: string[]; // array of user UIDs
+
+  // Admin and status fields
+  isBlocked?: boolean;
+  deletedAt?: string; // ISO String for soft delete
+  verificationReviewedAt?: string; // ISO String
+  verificationReviewedByAdminId?: string; // Admin's UID
 }
 
 export interface Message {
@@ -94,7 +101,7 @@ export interface WaterRequest {
   hostImage: string;
 }
 
-export type NotificationType = 'new_request' | 'request_accepted' | 'request_declined' | 'request_cancelled' | 'new_message' | 'new_follower' | 'review_left' | 'distributor_submitted' | 'distributor_approved' | 'distributor_rejected';
+export type NotificationType = 'new_request' | 'request_accepted' | 'request_declined' | 'request_cancelled' | 'new_message' | 'new_follower' | 'review_left' | 'distributor_submitted' | 'distributor_approved' | 'distributor_rejected' | 'distributor_revoked' | 'user_blocked' | 'user_unblocked';
 
 export interface Notification {
   id: string;
