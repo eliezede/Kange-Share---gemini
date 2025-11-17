@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import * as api from '../api';
 import { User } from '../types';
 import { useToast } from '../hooks/useToast';
-// FIX: Import useAuth to get the current admin user's ID.
 import { useAuth } from '../App';
 import { ChevronLeftIcon, SpinnerIcon, DocumentTextIcon, CheckCircleIcon, XCircleIcon } from '../components/Icons';
 
@@ -37,7 +36,7 @@ const VerificationCard: React.FC<{
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
             <div className="p-4 flex justify-between items-center cursor-pointer" onClick={() => setIsExpanded(!isExpanded)}>
                 <div>
-                    <p className="font-bold text-gray-800 dark:text-gray-100">{user.name}</p>
+                    <p className="font-bold text-gray-800 dark:text-gray-100">{user.displayName}</p>
                     <p className="text-sm text-gray-500 dark:text-gray-400">{user.email}</p>
                 </div>
                 <span className="px-3 py-1 text-sm font-semibold rounded-full bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300">
@@ -136,7 +135,6 @@ export default function AdminHostVerificationsPage() {
             return;
         }
         try {
-            // FIX: Pass the admin user's ID as the second argument.
             await api.approveDistributorVerification(userId, adminUser.id);
             setPendingUsers(prev => prev.filter(u => u.id !== userId));
             showToast("User approved as a distributor.", "success");
@@ -152,7 +150,6 @@ export default function AdminHostVerificationsPage() {
             return;
         }
         try {
-            // FIX: Pass the admin user's ID as the second argument.
             await api.rejectDistributorVerification(userId, adminUser.id, note);
             setPendingUsers(prev => prev.filter(u => u.id !== userId));
             showToast("User verification rejected.", "success");

@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-// FIX: Corrected import statement for react-router-dom.
 import { useParams, useNavigate } from 'react-router-dom';
 import * as api from '../api';
 import { ChevronLeftIcon, PaperAirplaneIcon, SpinnerIcon } from '../components/Icons';
@@ -102,8 +101,8 @@ export default function ChatPage() {
           <ChevronLeftIcon className="w-6 h-6 text-gray-800 dark:text-gray-200" />
         </button>
         <div className="flex items-center mx-auto">
-          <img src={otherParty.profilePicture} alt={otherParty.name} className="w-9 h-9 rounded-full object-cover" />
-          <span className="ml-3 font-bold text-lg dark:text-gray-100">{otherParty.name}</span>
+          <img src={otherParty.profilePicture} alt={otherParty.displayName} className="w-9 h-9 rounded-full object-cover" />
+          <span className="ml-3 font-bold text-lg dark:text-gray-100">{otherParty.displayName}</span>
         </div>
         <div className="w-6"></div>
       </header>
@@ -111,7 +110,7 @@ export default function ChatPage() {
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.map((msg) => (
           <div key={msg.id} className={`flex items-end gap-2 ${msg.sender === currentUser.id ? 'justify-end' : 'justify-start'}`}>
-            {msg.sender !== currentUser.id && <img src={otherParty.profilePicture} alt={otherParty.name} className="w-6 h-6 rounded-full" />}
+            {msg.sender !== currentUser.id && <img src={otherParty.profilePicture} alt={otherParty.displayName} className="w-6 h-6 rounded-full" />}
             <div className={`max-w-xs md:max-w-md px-4 py-2 rounded-2xl ${msg.sender === currentUser.id ? 'bg-brand-blue text-white rounded-br-lg' : 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-bl-lg'}`}>
               <p>{msg.text}</p>
             </div>

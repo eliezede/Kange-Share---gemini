@@ -1,4 +1,5 @@
 
+
 import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import * as api from '../api';
@@ -57,7 +58,7 @@ const UserStatusBadge: React.FC<{ user: User }> = ({ user }) => {
     if (user.isBlocked) {
         return <span className="px-2.5 py-0.5 text-xs font-semibold rounded-full bg-gray-200 text-gray-800 dark:bg-gray-600 dark:text-gray-200">Blocked</span>;
     }
-    switch (user.distributorStatus) {
+    switch (user.distributorVerificationStatus) {
         case 'pending':
             return <span className="px-2.5 py-0.5 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300">Pending</span>;
         case 'approved':
@@ -147,7 +148,7 @@ const UserDetailModal: React.FC<UserDetailModalProps> = ({ user, onClose, onUpda
     };
     const handleBlockToggle = () => handleAction(user.isBlocked ? 'unblocked' : 'blocked', () => api.updateUserBlockStatus(user.id, !user.isBlocked));
     const handleDelete = () => {
-        setConfirmationDetails({ title: "Delete User", message: `Are you sure you want to permanently delete ${user.name}? This action cannot be undone.`, confirmText: 'Delete', isDestructive: true });
+        setConfirmationDetails({ title: "Delete User", message: `Are you sure you want to permanently delete ${user.displayName}? This action cannot be undone.`, confirmText: 'Delete', isDestructive: true });
         setActionToConfirm(() => () => handleAction('deleted', () => api.deleteUser(user.id)));
     };
 
@@ -167,9 +168,9 @@ const UserDetailModal: React.FC<UserDetailModalProps> = ({ user, onClose, onUpda
                 
                 <main className="p-6 space-y-6 overflow-y-auto">
                     <div className="flex items-center gap-4">
-                        <img src={user.profilePicture} alt={user.name} className="w-20 h-20 rounded-full object-cover" />
+                        <img src={user.profilePicture} alt={user.displayName} className="w-20 h-20 rounded-full object-cover" />
                         <div>
-                            <h3 className="text-2xl font-bold dark:text-gray-100">{user.name}</h3>
+                            <h3 className="text-2xl font-bold dark:text-gray-100">{user.displayName}</h3>
                             <p className="text-gray-500 dark:text-gray-400">{user.id}</p>
                             <div className="mt-1"><UserStatusBadge user={user} /></div>
                         </div>
@@ -200,7 +201,7 @@ const UserDetailModal: React.FC<UserDetailModalProps> = ({ user, onClose, onUpda
                         )}
 
                         <div className="flex flex-wrap gap-2 pt-2">
-                            {user.distributorStatus === 'pending' && (
+                            {user.distributorVerificationStatus === 'pending' && (
                                 <>
                                     <button onClick={handleApprove} disabled={!!isProcessing} className="flex items-center gap-1 px-3 py-1.5 text-sm font-semibold rounded-md bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/50 dark:text-green-300 dark:hover:bg-green-900/70 transition">
                                         {isProcessing === 'approved' ? <SpinnerIcon className="w-4 h-4 animate-spin"/> : <CheckCircleIcon className="w-5 h-5"/>} Approve
@@ -211,7 +212,7 @@ const UserDetailModal: React.FC<UserDetailModalProps> = ({ user, onClose, onUpda
                                      {showRejectionInput && <button onClick={handleReject} disabled={!rejectionNote.trim() || !!isProcessing} className="px-3 py-1.5 text-sm font-semibold rounded-md bg-red-600 text-white hover:bg-red-700 transition">Confirm Rejection</button>}
                                 </>
                             )}
-                             {user.distributorStatus === 'approved' && (
+                             {user.distributorVerificationStatus === 'approved' && (
                                 <>
                                 <button onClick={() => setShowRejectionInput(current => !current)} className="flex items-center gap-1 px-3 py-1.5 text-sm font-semibold rounded-md bg-orange-100 text-orange-700 hover:bg-orange-200 dark:bg-orange-900/50 dark:text-orange-300 dark:hover:bg-orange-900/70 transition">
                                     <XCircleIconSolid className="w-5 h-5"/> Revoke
@@ -294,13 +295,13 @@ export default function AdminPage() {
     }, []);
     
     const metrics = useMemo(() => {
-        const verifiedHosts = users.filter(u => u.distributorStatus === 'approved');
+        const verifiedHosts = users.filter(u => u.distributorVerificationStatus === 'approved');
         return {
             totalUsers: users.length,
             totalRequests: requests.filter(r => r.status !== 'chatting').length,
             verifiedHosts: verifiedHosts.length,
             pendingRequests: requests.filter(r => r.status === 'pending').length,
-            pendingVerifications: users.filter(u => u.distributorStatus === 'pending').length,
+            pendingVerifications: users.filter(u => u.distributorVerificationStatus === 'pending').length,
         };
     }, [users, requests]);
 
@@ -308,8 +309,8 @@ export default function AdminPage() {
         return users
             .filter(user => {
                 switch(userFilter) {
-                    case 'pending': return user.distributorStatus === 'pending';
-                    case 'verified': return user.distributorStatus === 'approved';
+                    case 'pending': return user.distributorVerificationStatus === 'pending';
+                    case 'verified': return user.distributorVerificationStatus === 'approved';
                     case 'blocked': return user.isBlocked;
                     case 'all':
                     default:
@@ -318,7 +319,7 @@ export default function AdminPage() {
             })
             .filter(user => {
                 const query = userSearchQuery.toLowerCase();
-                return user.name.toLowerCase().includes(query) || user.email.toLowerCase().includes(query);
+                return user.displayName.toLowerCase().includes(query) || user.email.toLowerCase().includes(query);
             });
     }, [users, userFilter, userSearchQuery]);
 
@@ -405,9 +406,9 @@ export default function AdminPage() {
                                 {paginatedUsers.map(user => (
                                     <div key={user.id} onClick={() => setSelectedUser(user)} className="p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer transition-colors">
                                         <div className="flex items-center gap-3 flex-1">
-                                            <img src={user.profilePicture} alt={user.name} className="w-10 h-10 rounded-full object-cover" />
+                                            <img src={user.profilePicture} alt={user.displayName} className="w-10 h-10 rounded-full object-cover" />
                                             <div>
-                                                <p className="font-semibold text-gray-800 dark:text-gray-100">{user.name}</p>
+                                                <p className="font-semibold text-gray-800 dark:text-gray-100">{user.displayName}</p>
                                                 <p className="text-sm text-gray-500 dark:text-gray-400">{user.email}</p>
                                             </div>
                                         </div>

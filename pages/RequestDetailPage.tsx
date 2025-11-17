@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-// FIX: Corrected import statement for react-router-dom.
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import * as api from '../api';
 import { WaterRequest, RequestStatus, User } from '../types';
@@ -140,15 +139,15 @@ export default function RequestDetailPage() {
                     <div className="flex items-center gap-4">
                         <img 
                             src={otherParty.profilePicture} 
-                            alt={otherParty.name} 
+                            alt={otherParty.displayName} 
                             className="w-16 h-16 rounded-full object-cover"
                         />
                         <div>
                             <div className="flex items-center gap-2">
-                                <p className="font-bold text-xl dark:text-gray-100">{otherParty.name}</p>
-                                {!isUserTheHost && host.isVerified && <CheckBadgeIcon className="w-5 h-5 text-brand-blue" />}
+                                <p className="font-bold text-xl dark:text-gray-100">{otherParty.displayName}</p>
+                                {!isUserTheHost && host.distributorVerificationStatus === 'approved' && <CheckBadgeIcon className="w-5 h-5 text-brand-blue" />}
                             </div>
-                            {!isUserTheHost && host.distributorStatus === 'approved' && (
+                            {!isUserTheHost && host.distributorVerificationStatus === 'approved' && (
                                 <p className="text-xs font-semibold text-brand-blue">Official Enagic® Distributor</p>
                             )}
                              <p className="text-gray-600 dark:text-gray-400">{isUserTheHost ? 'Requester' : 'Host'}</p>
@@ -176,7 +175,7 @@ export default function RequestDetailPage() {
                  {(request.status === 'accepted' || request.status === 'chatting' || request.status === 'pending') && (
                     <Link to={`/chat/${request.id}`} className="w-full flex items-center justify-center gap-2 bg-brand-blue text-white font-bold py-3 px-4 rounded-xl hover:bg-blue-600 transition-colors text-center">
                        <ChatBubbleOvalLeftEllipsisIcon className="w-5 h-5"/>
-                       <span>Chat with {otherParty.name.split(' ')[0]}</span>
+                       <span>Chat with {otherParty.displayName.split(' ')[0]}</span>
                     </Link>
                  )}
                  {isUserTheHost && request.status === 'pending' && (

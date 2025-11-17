@@ -49,7 +49,7 @@ export default function Header() {
                             className="w-10 h-10 rounded-full overflow-hidden border-2 border-gray-200 dark:border-gray-600 hover:border-brand-blue dark:hover:border-brand-blue transition focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-blue"
                             aria-label="Toggle user menu"
                         >
-                            <ProfilePicture src={userData.profilePicture} alt={userData.name} className="w-full h-full object-cover" />
+                            <ProfilePicture src={userData.profilePicture} alt={userData.displayName} className="w-full h-full object-cover" />
                         </button>
                          <AccountDropdown 
                             isOpen={isAccountDropdownOpen}

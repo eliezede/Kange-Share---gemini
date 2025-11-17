@@ -1,5 +1,4 @@
 import React, { useState, useMemo, useEffect } from 'react';
-// FIX: Corrected import statement for react-router-dom.
 import { Link } from 'react-router-dom';
 import * as api from '../api';
 import { StarIcon, SearchIcon, AdjustmentsHorizontalIcon, CheckBadgeIcon, ClipboardDocumentListIcon, ChevronRightIcon, SpinnerIcon, ProfilePicture } from '../components/Icons';
@@ -8,13 +7,13 @@ import { useAuth } from '../App';
 
 const HostCard: React.FC<{ host: User }> = ({ host }) => (
   <Link to={`/host/${host.id}`} className="flex items-center space-x-4 p-4 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors duration-200 border-b border-gray-100 dark:border-gray-800">
-    <ProfilePicture src={host.profilePicture} alt={host.name} className="w-20 h-20 rounded-lg object-cover" />
+    <ProfilePicture src={host.profilePicture} alt={host.displayName} className="w-20 h-20 rounded-lg object-cover" />
     <div className="flex-1">
       <div className="flex items-center">
-        <h3 className="font-bold text-lg dark:text-gray-100">{host.name}</h3>
-        {host.isVerified && <CheckBadgeIcon className="w-5 h-5 text-brand-blue ml-2 flex-shrink-0" />}
+        <h3 className="font-bold text-lg dark:text-gray-100">{host.displayName}</h3>
+        {host.distributorVerificationStatus === 'approved' && <CheckBadgeIcon className="w-5 h-5 text-brand-blue ml-2 flex-shrink-0" />}
       </div>
-      {host.distributorStatus === 'approved' && (
+      {host.distributorVerificationStatus === 'approved' && (
         <p className="text-xs font-semibold text-brand-blue">Official Enagic® Distributor</p>
       )}
       <p className="text-gray-600 dark:text-gray-400 mt-1">{host.address.city}</p>
@@ -55,7 +54,6 @@ const FilterModal: React.FC<FilterModalProps> = ({ isOpen, onClose, onApply, act
     }
 
     const toggleDay = (day: string) => {
-        // FIX: Corrected a typo where 'd' was used instead of 'day' in the add-to-array part of the ternary.
         setSelectedDays(prev => prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day]);
     }
     
@@ -127,7 +125,7 @@ export default function MapPage() {
 
   const filteredHosts = useMemo(() => {
     return hosts.filter(host => {
-      const matchesSearch = host.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      const matchesSearch = host.displayName.toLowerCase().includes(searchQuery.toLowerCase()) ||
                             host.address.city.toLowerCase().includes(searchQuery.toLowerCase());
 
       const matchesPh = activeFilters.ph.length === 0 || activeFilters.ph.some(ph => host.phLevels.includes(ph));
@@ -208,6 +206,15 @@ export default function MapPage() {
                       <ChevronRightIcon className="w-5 h-5 text-gray-500 dark:text-gray-400" />
                   </Link>
               </div>
+            )}
+            {userData?.distributorVerificationStatus === 'pending' && (
+                <div className="p-4">
+                    <div className="p-4 rounded-xl bg-yellow-100 dark:bg-yellow-900/50 border border-yellow-200 dark:border-yellow-700">
+                        <p className="text-sm text-yellow-800 dark:text-yellow-200 font-medium text-center">
+                            Your distributor verification is pending. You will be able to share water after your verification is approved.
+                        </p>
+                    </div>
+                </div>
             )}
             <div className="px-4 pt-2 text-sm font-semibold text-gray-500 dark:text-gray-400">NEARBY HOSTS</div>
             {renderContent()}

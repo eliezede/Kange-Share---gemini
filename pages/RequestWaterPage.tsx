@@ -1,6 +1,6 @@
 
+
 import React, { useState, useMemo, useEffect } from 'react';
-// FIX: Corrected import statement for react-router-dom.
 import { useParams, useNavigate } from 'react-router-dom';
 import * as api from '../api';
 import { ChevronLeftIcon, SpinnerIcon } from '../components/Icons';
@@ -78,9 +78,9 @@ export default function RequestWaterPage() {
         pickupDate: selectedDate,
         pickupTime: selectedTime,
         notes,
-        requesterName: currentUser.name,
+        requesterName: currentUser.displayName,
         requesterImage: currentUser.profilePicture,
-        hostName: host.name,
+        hostName: host.displayName,
         hostImage: host.profilePicture,
     });
     
@@ -107,7 +107,7 @@ export default function RequestWaterPage() {
             <button onClick={() => navigate(-1)} className="p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800">
                 <ChevronLeftIcon className="w-6 h-6 text-gray-800 dark:text-gray-200" />
             </button>
-            <h1 className="text-xl font-bold mx-auto dark:text-gray-100">Request from {host.name}</h1>
+            <h1 className="text-xl font-bold mx-auto dark:text-gray-100">Request from {host.displayName}</h1>
             <div className="w-6"></div>
         </header>
 

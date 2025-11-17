@@ -1,5 +1,6 @@
 
 
+
 export interface Review {
   id: string; // Firestore doc ID
   reviewerId: string;
@@ -17,13 +18,15 @@ export interface DistributorProofDocument {
   uploadedAt: string; // ISO String
 }
 
-export type DistributorStatus = 'none' | 'pending' | 'approved' | 'rejected' | 'revoked';
+export type DistributorVerificationStatus = 'none' | 'pending' | 'approved' | 'rejected' | 'revoked';
 
 // A unified type for all users. Any user can become a host.
 export interface User {
   id: string; // Firebase Auth UID
   email: string;
-  name: string;
+  firstName: string;
+  lastName: string;
+  displayName: string;
   profilePicture: string; // URL from Firebase Storage
   phone: string;
   bio?: string;
@@ -39,8 +42,11 @@ export interface User {
     city: string;
     country: string;
   };
+
+  // Onboarding Status
+  onboardingCompleted: boolean;
+  onboardingStep: 'welcome' | 'profile' | 'address' | 'distributor-status' | 'summary' | 'completed';
   
-  // TODO: isHost will be deprecated. Use isVerified to check if a user is a potential host.
   isHost: boolean;
   isAdmin?: boolean;
 
@@ -53,14 +59,14 @@ export interface User {
     lastFilterChange: string;
     lastECleaning: string;
   };
-  isVerified: boolean;
   isAcceptingRequests: boolean;
 
   // New distributor verification fields
   distributorId: string;
-  distributorStatus: DistributorStatus;
+  distributorVerificationStatus: DistributorVerificationStatus;
   distributorRejectionReason?: string;
   distributorProofDocuments: DistributorProofDocument[];
+  interestedInDistributor: boolean; // for non-distributors
   
   // Social fields
   followers: string[]; // array of user UIDs

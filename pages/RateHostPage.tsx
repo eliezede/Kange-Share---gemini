@@ -1,6 +1,6 @@
 
+
 import React, { useState, useEffect } from 'react';
-// FIX: Corrected import statement for react-router-dom.
 import { useParams, useNavigate } from 'react-router-dom';
 import * as api from '../api';
 import { User, WaterRequest, Review } from '../types';
@@ -46,7 +46,7 @@ export default function RateHostPage() {
         rating,
         comment,
         reviewerId: currentUser.id,
-        reviewerName: currentUser.name,
+        reviewerName: currentUser.displayName,
         reviewerImage: currentUser.profilePicture,
         date: new Date().toISOString(),
     };
@@ -73,9 +73,9 @@ export default function RateHostPage() {
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen p-4 text-center">
-      <img src={host.profilePicture} alt={host.name} className="w-24 h-24 rounded-full object-cover shadow-lg mb-4"/>
+      <img src={host.profilePicture} alt={host.displayName} className="w-24 h-24 rounded-full object-cover shadow-lg mb-4"/>
       <h1 className="text-2xl font-bold dark:text-gray-100">Rate your experience with</h1>
-      <p className="text-2xl text-gray-800 dark:text-gray-200 mb-6">{host.name}</p>
+      <p className="text-2xl text-gray-800 dark:text-gray-200 mb-6">{host.displayName}</p>
       
       <div className="flex items-center gap-2 mb-6">
         {[1, 2, 3, 4, 5].map((star) => (

@@ -33,7 +33,7 @@ import {
     getDownloadURL,
     deleteObject
 } from 'firebase/storage';
-import { User, WaterRequest, Message, RequestStatus, Review, Notification, NotificationType, DistributorStatus, DistributorProofDocument } from './types';
+import { User, WaterRequest, Message, RequestStatus, Review, Notification, NotificationType, DistributorVerificationStatus, DistributorProofDocument } from './types';
 
 // Placed at the top for reuse
 const defaultAvailability = {
@@ -61,6 +61,14 @@ const fromDoc = <T>(docSnap: DocumentSnapshot): T => {
     // Ensure array and object properties exist on User objects to prevent runtime errors
     // if they are missing from the Firestore document.
     if (docSnap.ref.parent.id === 'users') {
+        data.displayName = data.displayName || data.name || 'New User';
+        const nameParts = (data.displayName || '').split(' ');
+        data.firstName = data.firstName || nameParts[0] || '';
+        data.lastName = data.lastName || nameParts.slice(1).join(' ') || '';
+
+        data.onboardingCompleted = data.onboardingCompleted || false;
+        data.onboardingStep = data.onboardingStep || 'profile';
+
         data.followers = data.followers || [];
         data.following = data.following || [];
         data.phLevels = data.phLevels || [];
@@ -71,16 +79,15 @@ const fromDoc = <T>(docSnap: DocumentSnapshot): T => {
         data.linkedin = data.linkedin || '';
         data.website = data.website || '';
 
-        // Add defaults for new distributor fields
-        const oldStatus = (data.hostVerificationStatus as any) || data.distributorStatus;
-        data.distributorStatus = oldStatus === 'unverified' ? 'none' : (oldStatus || 'none');
-        // TODO: isHost will be deprecated. Use isVerified and isAcceptingRequests instead.
-        // For now, isHost represents a user who is a verified distributor.
-        data.isHost = data.distributorStatus === 'approved';
+        const oldStatus = (data.distributorStatus as any) || data.hostVerificationStatus;
+        data.distributorVerificationStatus = oldStatus === 'unverified' ? 'none' : (oldStatus || 'none');
+        
+        data.isHost = data.isHost || false;
         data.isAcceptingRequests = data.isAcceptingRequests !== false;
         data.distributorProofDocuments = data.distributorProofDocuments || data.hostVerificationDocuments || [];
         data.distributorRejectionReason = data.distributorRejectionReason || data.hostVerificationNote || '';
         data.distributorId = data.distributorId || '';
+        data.interestedInDistributor = data.interestedInDistributor || false;
 
         // Admin and status fields
         data.isBlocked = data.isBlocked || false;
@@ -89,19 +96,15 @@ const fromDoc = <T>(docSnap: DocumentSnapshot): T => {
         data.verificationReviewedByAdminId = data.verificationReviewedByAdminId || null;
 
         const defaultAddress = { street: '', number: '', postalCode: '', city: '', country: '' };
-        // FIX: More robust merge to prevent crashes if `data.address` is not a valid object.
         data.address = (data.address && typeof data.address === 'object')
             ? { ...defaultAddress, ...data.address }
             : defaultAddress;
 
         const defaultMaintenance = { lastFilterChange: '', lastECleaning: '' };
-        // FIX: More robust merge for maintenance.
         data.maintenance = (data.maintenance && typeof data.maintenance === 'object')
             ? { ...defaultMaintenance, ...data.maintenance }
             : defaultMaintenance;
         
-        // FIX: Perform a true deep merge for availability to ensure all days and their properties exist,
-        // preventing crashes if data is malformed (e.g., a day is `true` instead of an object).
         const mergedAvailability: Record<string, { enabled: boolean; startTime: string; endTime: string; }> = {};
         for (const day of Object.keys(defaultAvailability)) {
             const defaultDayData = defaultAvailability[day];
@@ -143,25 +146,28 @@ export const getUserById = async (id: string): Promise<User | null> => {
 
 export const getHosts = async (): Promise<User[]> => {
     const usersRef = collection(db, 'users');
-    const q = query(usersRef, where('distributorStatus', '==', 'approved'), where('isAcceptingRequests', '==', true));
+    const q = query(usersRef, where('distributorVerificationStatus', '==', 'approved'), where('isAcceptingRequests', '==', true));
     const querySnapshot = await getDocs(q);
     const users = querySnapshot.docs.map(d => fromDoc<User>(d));
     return users.filter(u => !u.isBlocked && !u.deletedAt);
 };
 
-export const createInitialUser = (uid: string, email: string, name: string, profilePicture: string): Promise<void> => {
-    const newUser: Omit<User, 'id' | 'isHost'> = {
-        email, name, profilePicture, phone: '',
+export const createInitialUser = (uid: string, email: string, firstName: string, lastName: string, displayName: string, profilePicture: string): Promise<void> => {
+    const newUser: Omit<User, 'id'> = {
+        email, firstName, lastName, displayName, profilePicture, phone: '',
         bio: '',
         instagram: '', facebook: '', linkedin: '', website: '',
         address: { street: '', number: '', postalCode: '', city: '', country: '' },
+        onboardingCompleted: false,
+        onboardingStep: 'profile',
+        isHost: false,
         rating: 0, reviews: 0, phLevels: [], availability: defaultAvailability,
-        maintenance: { lastFilterChange: '', lastECleaning: '' }, isVerified: false,
-        isAcceptingRequests: true,
-        // New distributor fields with defaults
+        maintenance: { lastFilterChange: '', lastECleaning: '' }, 
+        isAcceptingRequests: false,
         distributorId: '',
-        distributorStatus: 'none',
+        distributorVerificationStatus: 'none',
         distributorProofDocuments: [],
+        interestedInDistributor: false,
         followers: [], following: [],
     };
     const userDocRef = doc(db, 'users', uid);
@@ -199,9 +205,9 @@ export const toggleFollowHost = async (currentUserId: string, targetHostId: stri
              createNotification(targetHostId, {
                 type: 'new_follower',
                 relatedId: currentUserId,
-                text: `${follower.name} started following you.`,
+                text: `${follower.displayName} started following you.`,
                 senderId: currentUserId,
-                senderName: follower.name,
+                senderName: follower.displayName,
                 senderImage: follower.profilePicture
             });
         }
@@ -252,7 +258,7 @@ export const submitForDistributorVerification = async (userId: string, distribut
     const userDocRef = doc(db, 'users', userId);
     await updateDoc(userDocRef, {
         distributorId,
-        distributorStatus: 'pending',
+        distributorVerificationStatus: 'pending',
         distributorRejectionReason: '', // Clear previous reason
     });
     
@@ -353,8 +359,8 @@ export const createNewChat = async (hostId: string, requesterId: string, host: U
     const newChatRequest: Omit<WaterRequest, 'id' | 'createdAt'> = {
         requesterId, hostId, status: 'chatting', phLevel: 0, liters: 0,
         pickupDate: '', pickupTime: '', notes: '',
-        requesterName: requester.name, requesterImage: requester.profilePicture,
-        hostName: host.name, hostImage: host.profilePicture,
+        requesterName: requester.displayName, requesterImage: requester.profilePicture,
+        hostName: host.displayName, hostImage: host.profilePicture,
     };
     const requestsRef = collection(db, 'requests');
     const docRef = await addDoc(requestsRef, {
@@ -391,9 +397,9 @@ export const sendMessage = async (requestId: string, text: string, senderId: str
         createNotification(receiverId, {
             type: 'new_message',
             relatedId: requestId,
-            text: `New message from ${sender.name}.`,
+            text: `New message from ${sender.displayName}.`,
             senderId: senderId,
-            senderName: sender.name,
+            senderName: sender.displayName,
             senderImage: sender.profilePicture,
         });
     }
@@ -521,7 +527,7 @@ export const getAllRequests = async (): Promise<WaterRequest[]> => {
 
 export const getPendingDistributorUsers = async (): Promise<User[]> => {
     const usersRef = collection(db, 'users');
-    const q = query(usersRef, where('distributorStatus', '==', 'pending'));
+    const q = query(usersRef, where('distributorVerificationStatus', '==', 'pending'));
     const querySnapshot = await getDocs(q);
     return querySnapshot.docs.map(d => fromDoc<User>(d));
 };
@@ -529,8 +535,8 @@ export const getPendingDistributorUsers = async (): Promise<User[]> => {
 export const approveDistributorVerification = async (userId: string, adminId: string): Promise<void> => {
     const userDocRef = doc(db, 'users', userId);
     await updateDoc(userDocRef, {
-        distributorStatus: 'approved',
-        isVerified: true,
+        distributorVerificationStatus: 'approved',
+        isHost: true,
         distributorRejectionReason: '',
         verificationReviewedAt: serverTimestamp(),
         verificationReviewedByAdminId: adminId,
@@ -539,16 +545,16 @@ export const approveDistributorVerification = async (userId: string, adminId: st
     createNotification(userId, {
         type: 'distributor_approved',
         relatedId: userId,
-        text: 'Your Enagic distributor account has been verified. You can now share water as a host by enabling your availability.',
+        text: 'Congratulations! You are now an Official Enagic® Distributor and can enable Host Availability.',
     });
 };
 
 export const rejectDistributorVerification = async (userId: string, adminId: string, note: string): Promise<void> => {
     const userDocRef = doc(db, 'users', userId);
     await updateDoc(userDocRef, {
-        distributorStatus: 'rejected',
+        distributorVerificationStatus: 'rejected',
         distributorRejectionReason: note,
-        isVerified: false,
+        isHost: false,
         isAcceptingRequests: false,
         verificationReviewedAt: serverTimestamp(),
         verificationReviewedByAdminId: adminId,
@@ -557,16 +563,16 @@ export const rejectDistributorVerification = async (userId: string, adminId: str
     createNotification(userId, {
         type: 'distributor_rejected',
         relatedId: userId,
-        text: 'Your Enagic distributor verification was rejected. Please review your distributor ID and document and try again.',
+        text: 'Your distributor verification was rejected. Please review your documents and try again.',
     });
 };
 
 export const revokeDistributorVerification = async (userId: string, adminId: string, note: string): Promise<void> => {
     const userDocRef = doc(db, 'users', userId);
     await updateDoc(userDocRef, {
-        distributorStatus: 'revoked',
+        distributorVerificationStatus: 'revoked',
         distributorRejectionReason: note,
-        isVerified: false,
+        isHost: false,
         isAcceptingRequests: false,
         verificationReviewedAt: serverTimestamp(),
         verificationReviewedByAdminId: adminId,

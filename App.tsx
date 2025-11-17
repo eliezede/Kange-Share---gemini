@@ -1,16 +1,11 @@
 
 
-
-
-
-
 import React, { useState, useContext, createContext, useCallback, useEffect, useMemo } from 'react';
-// FIX: Corrected import statement for react-router-dom and switched to HashRouter.
-import { HashRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
+import { HashRouter, Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom';
 import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { auth } from './firebase';
 import * as api from './api';
-import { User, Notification, DistributorStatus } from './types';
+import { User, Notification } from './types';
 
 import LoginModal from './pages/LoginPage';
 import MapPage from './pages/MapPage';
@@ -27,11 +22,9 @@ import MessagesPage from './pages/MessagesPage';
 import FollowListPage from './pages/FollowListPage';
 import AdminPage from './pages/AdminPage';
 import SignUpPage from './pages/SignUpPage';
-import VerifyEmailPage from './pages/VerifyEmailPage';
 import OnboardingPage from './pages/OnboardingPage';
 import { SpinnerIcon } from './components/Icons';
 import Header from './components/Header';
-// FIX: Moved ToastContainer import from hooks/useToast to components/Toast.
 import { ToastProvider } from './hooks/useToast';
 import { ToastContainer } from './components/Toast';
 import SettingsPage from './pages/SettingsPage';
@@ -103,6 +96,7 @@ interface AuthContextType {
   unreadCount: number;
   pendingHostRequestCount: number;
   unreadMessagesCount: number;
+  loading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -115,104 +109,42 @@ export const useAuth = () => {
   return context;
 };
 
-const defaultAvailability = {
-  'Monday': { enabled: false, startTime: '09:00', endTime: '17:00' },
-  'Tuesday': { enabled: false, startTime: '09:00', endTime: '17:00' },
-  'Wednesday': { enabled: false, startTime: '09:00', endTime: '17:00' },
-  'Thursday': { enabled: false, startTime: '09:00', endTime: '17:00' },
-  'Friday': { enabled: false, startTime: '09:00', endTime: '17:00' },
-  'Saturday': { enabled: false, startTime: '10:00', endTime: '14:00' },
-  'Sunday': { enabled: false, startTime: '10:00', endTime: '14:00' },
-};
-
-const sanitizeUser = (user: User | null): User | null => {
-    if (!user) return null;
-
-    // Perform a true deep merge for availability to ensure all days and their properties exist,
-    // preventing crashes if data is malformed (e.g., a day is `true` instead of an object).
-    const mergedAvailability: Record<string, { enabled: boolean; startTime: string; endTime: string; }> = {};
-    for (const day of Object.keys(defaultAvailability)) {
-        const defaultDayData = defaultAvailability[day];
-        const userDayData = (user.availability && typeof user.availability === 'object' && user.availability[day] && typeof user.availability[day] === 'object')
-            ? user.availability[day]
-            : {};
-        mergedAvailability[day] = { ...defaultDayData, ...userDayData };
-    }
-
-    const defaultAddress = { street: '', number: '', postalCode: '', city: '', country: '' };
-    const defaultMaintenance = { lastFilterChange: '', lastECleaning: '' };
-
-    return {
-        ...user,
-        bio: user.bio || '',
-        instagram: user.instagram || '',
-        facebook: user.facebook || '',
-        linkedin: user.linkedin || '',
-        website: user.website || '',
-        isAdmin: user.isAdmin || false,
-        followers: user.followers || [],
-        following: user.following || [],
-        phLevels: user.phLevels || [],
-        availability: mergedAvailability,
-        phone: user.phone || '',
-        // FIX: More robust merge to prevent crashes if `user.address` is not a valid object.
-        address: (user.address && typeof user.address === 'object')
-            ? { ...defaultAddress, ...user.address }
-            : defaultAddress,
-        // FIX: More robust merge for maintenance.
-        maintenance: (user.maintenance && typeof user.maintenance === 'object')
-            ? { ...defaultMaintenance, ...user.maintenance }
-            : defaultMaintenance,
-        // Add defaults for new distributor fields
-        distributorId: user.distributorId || '',
-        distributorStatus: user.distributorStatus || 'none',
-        distributorRejectionReason: user.distributorRejectionReason || '',
-        distributorProofDocuments: user.distributorProofDocuments || [],
-    };
-};
-
 const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<FirebaseUser | null>(null);
-  const [userData, setUserDataInternal] = useState<User | null>(null);
+  const [userData, setUserData] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [isLoginModalOpen, setLoginModalOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [pendingHostRequestCount, setPendingHostRequestCount] = useState(0);
-  
-  const setUserData = useCallback((value: React.SetStateAction<User | null>) => {
-      if (typeof value === 'function') {
-          setUserDataInternal(prev => sanitizeUser(value(prev)));
-      } else {
-          setUserDataInternal(sanitizeUser(value));
-      }
-  }, []);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       setLoading(true);
-      try {
-        if (firebaseUser) {
-          setUser(firebaseUser);
-          const dbUser = await api.getUserById(firebaseUser.uid);
-          if (dbUser) {
-              setUserData(dbUser);
-          } else {
-              setUserData(null);
-          }
-        } else {
-          setUser(null);
-          setUserData(null);
+      if (firebaseUser) {
+        setUser(firebaseUser);
+        let dbUser = await api.getUserById(firebaseUser.uid);
+        if (!dbUser) {
+          // New user (e.g., via Google Sign-In for the first time)
+          const nameParts = (firebaseUser.displayName || 'New User').split(' ');
+          await api.createInitialUser(
+              firebaseUser.uid,
+              firebaseUser.email || '',
+              nameParts[0] || '',
+              nameParts.slice(1).join(' ') || '',
+              firebaseUser.displayName || 'New User',
+              firebaseUser.photoURL || ''
+          );
+          dbUser = await api.getUserById(firebaseUser.uid);
         }
-      } catch (error) {
-        console.error("Failed to load user data:", error);
+        setUserData(dbUser);
+      } else {
         setUser(null);
         setUserData(null);
-      } finally {
-        setLoading(false);
       }
+      setLoading(false);
     });
     return () => unsubscribe();
-  }, [setUserData]);
+  }, []);
 
   useEffect(() => {
     let notifUnsubscribe: (() => void) | null = null;
@@ -220,7 +152,11 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
     
     if (user) {
         notifUnsubscribe = api.getNotificationsStream(user.uid, setNotifications);
-        requestsUnsubscribe = api.getPendingHostRequestsStream(user.uid, setPendingHostRequestCount);
+        if (userData?.isHost) {
+          requestsUnsubscribe = api.getPendingHostRequestsStream(user.uid, setPendingHostRequestCount);
+        } else {
+          setPendingHostRequestCount(0);
+        }
     } else {
         setNotifications([]);
         setPendingHostRequestCount(0);
@@ -230,7 +166,7 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
       if (notifUnsubscribe) notifUnsubscribe();
       if (requestsUnsubscribe) requestsUnsubscribe();
     };
-  }, [user]);
+  }, [user, userData?.isHost]);
 
   const unreadCount = useMemo(() => notifications.filter(n => !n.read).length, [notifications]);
   const unreadMessagesCount = useMemo(() => notifications.filter(n => n.type === 'new_message' && !n.read).length, [notifications]);
@@ -243,6 +179,7 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
     userData,
     isAuthenticated: !!user,
     isLoginModalOpen,
+    loading,
     loginWithEmail: (email, password) => api.loginWithEmail(email, password).then(res => { closeLoginModal(); return res; }),
     loginWithGoogle: () => api.loginWithGoogle().then(res => { closeLoginModal(); return res; }),
     signUpWithEmail: api.signUpWithEmail,
@@ -255,14 +192,6 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
     pendingHostRequestCount,
     unreadMessagesCount,
   };
-  
-   if (loading) {
-    return (
-      <div className="w-full h-screen flex justify-center items-center bg-gray-50 dark:bg-gray-950">
-        <SpinnerIcon className="w-12 h-12 text-brand-blue animate-spin" />
-      </div>
-    );
-  }
 
   return (
     <AuthContext.Provider value={value}>
@@ -271,89 +200,93 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
   );
 };
 
-const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    const { isAuthenticated, openLoginModal } = useAuth();
-    
-    useEffect(() => {
-        if (!isAuthenticated) {
-            openLoginModal();
-        }
-    }, [isAuthenticated, openLoginModal]);
-
-    if (!isAuthenticated) {
-      return <div className="w-full h-screen bg-gray-50 dark:bg-gray-950" />;
-    }
-    return <>{children}</>;
-};
-
 const MainLayout: React.FC = () => (
-    <div>
-        <div className="pb-16">
-            <Outlet />
-        </div>
+    <div className="flex flex-col h-screen">
+        <Header />
+        <main className="flex-1 overflow-y-auto">
+             <div className="pb-16 h-full">
+                <Outlet />
+            </div>
+        </main>
         <BottomNav />
     </div>
 );
 
 
 const AppRoutes = () => {
-  const { isAuthenticated, userData } = useAuth();
-  return (
-    <Routes>
-        <Route path="/" element={!isAuthenticated ? <LandingPage /> : <Navigate to="/map" />} />
-        <Route path="/signup" element={<SignUpPage />} />
-        <Route path="/verify-email" element={<VerifyEmailPage />} />
-        
-        {/* Onboarding is protected in a sense that it needs a userId, but user is not fully auth'd yet */}
-        <Route path="/onboarding" element={<OnboardingPage />} />
-        
-        {/* Protected Routes */}
-        <Route element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
-          <Route path="/map" element={<MapPage />} />
-          <Route path="/requests" element={<RequestsPage />} />
-          <Route path="/messages" element={<MessagesPage />} />
-          <Route path="/profile" element={<UserProfilePage />} />
-        </Route>
-        
-        <Route path="/host/:id" element={<ProtectedRoute><HostProfilePage /></ProtectedRoute>} />
-        <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
-        <Route path="/profile/:userId/:followType" element={<ProtectedRoute><FollowListPage /></ProtectedRoute>} />
-        <Route path="/request/:hostId" element={<ProtectedRoute><RequestWaterPage /></ProtectedRoute>} />
-        <Route path="/request-detail/:requestId" element={<ProtectedRoute><RequestDetailPage /></ProtectedRoute>} />
-        <Route path="/chat/:requestId" element={<ProtectedRoute><ChatPage /></ProtectedRoute>} />
-        <Route path="/rate/:requestId" element={<ProtectedRoute><RateHostPage /></ProtectedRoute>} />
-        <Route path="/admin" element={
-          <ProtectedRoute>
-            {userData?.isAdmin ? <AdminPage /> : <Navigate to="/map" replace />}
-          </ProtectedRoute>
-        } />
-        <Route path="/admin/distributor-verifications" element={
-          <ProtectedRoute>
-            {userData?.isAdmin ? <AdminHostVerificationsPage /> : <Navigate to="/map" replace />}
-          </ProtectedRoute>
-        } />
-        
-        <Route path="/*" element={<Navigate to={isAuthenticated ? "/map" : "/"} replace />} />
-      </Routes>
-  );
+    const { isAuthenticated, userData, loading, openLoginModal } = useAuth();
+    const location = useLocation();
+
+    useEffect(() => {
+        // If user is not authenticated and tries to access a protected page, open login modal.
+        // This handles deep links.
+        if (!loading && !isAuthenticated && location.pathname !== '/' && location.pathname !== '/signup') {
+            openLoginModal();
+        }
+    }, [isAuthenticated, loading, location.pathname, openLoginModal]);
+
+    if (loading) {
+        return (
+            <div className="w-full h-screen flex justify-center items-center bg-gray-50 dark:bg-gray-950">
+                <SpinnerIcon className="w-12 h-12 text-brand-blue animate-spin" />
+            </div>
+        );
+    }
+
+    if (!isAuthenticated) {
+        return (
+            <Routes>
+                <Route path="/signup" element={<SignUpPage />} />
+                <Route path="/" element={<LandingPage />} />
+                <Route path="/*" element={<Navigate to="/" replace />} />
+            </Routes>
+        );
+    }
+    
+    // User is authenticated
+    if (userData && !userData.onboardingCompleted) {
+        return (
+             <Routes>
+                <Route path="/onboarding/:step" element={<OnboardingPage />} />
+                <Route path="/*" element={<Navigate to={`/onboarding/${userData.onboardingStep || 'welcome'}`} replace />} />
+            </Routes>
+        );
+    }
+
+    // User is authenticated and onboarding is complete
+    return (
+        <Routes>
+            <Route element={<MainLayout />}>
+                <Route path="/map" element={<MapPage />} />
+                <Route path="/requests" element={<RequestsPage />} />
+                <Route path="/messages" element={<MessagesPage />} />
+                <Route path="/profile" element={<UserProfilePage />} />
+                <Route path="/host/:id" element={<HostProfilePage />} />
+                <Route path="/settings" element={<SettingsPage />} />
+                <Route path="/profile/:userId/:followType" element={<FollowListPage />} />
+                <Route path="/request/:hostId" element={<RequestWaterPage />} />
+                <Route path="/request-detail/:requestId" element={<RequestDetailPage />} />
+                <Route path="/chat/:requestId" element={<ChatPage />} />
+                <Route path="/rate/:requestId" element={<RateHostPage />} />
+                {userData?.isAdmin && (
+                    <>
+                        <Route path="/admin" element={<AdminPage />} />
+                        <Route path="/admin/distributor-verifications" element={<AdminHostVerificationsPage />} />
+                    </>
+                )}
+            </Route>
+            <Route path="/*" element={<Navigate to="/map" replace />} />
+        </Routes>
+    );
 };
 
 const AppContent = () => {
-    const { isAuthenticated, isLoginModalOpen, closeLoginModal } = useAuth();
+    const { isLoginModalOpen, closeLoginModal } = useAuth();
     return (
         <HashRouter>
             <div className="max-w-4xl mx-auto bg-white dark:bg-gray-900 min-h-screen shadow-2xl shadow-gray-300/20 dark:shadow-black/20">
                 <LoginModal isOpen={isLoginModalOpen} onClose={closeLoginModal} />
-                {isAuthenticated ? (
-                    <div className="flex flex-col h-screen">
-                        <Header />
-                        <main className="flex-1 overflow-y-auto">
-                           <AppRoutes />
-                        </main>
-                    </div>
-                ) : (
-                    <AppRoutes />
-                )}
+                <AppRoutes />
                 <ToastContainer />
             </div>
         </HashRouter>

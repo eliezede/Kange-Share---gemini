@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-// FIX: Corrected import statement for react-router-dom.
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import * as api from '../api';
 import { StarIcon, ChevronLeftIcon, CheckBadgeIcon, MapPinIcon, ChatBubbleOvalLeftEllipsisIcon, SpinnerIcon, ProfilePicture, UserGroupIcon, CalendarDaysIcon, DropletIcon, InstagramIcon, FacebookIcon, LinkedInIcon, GlobeAltIcon } from '../components/Icons';
@@ -107,20 +106,21 @@ export default function HostProfilePage() {
   
   const isFollowing = currentUser.following?.includes(host.id);
   const isCurrentUserProfile = currentUser.id === host.id;
+  const isOfficialDistributor = host.distributorVerificationStatus === 'approved';
 
   return (
     <div className="pb-24 bg-gray-50 dark:bg-gray-900 min-h-screen">
       {/* New Unified Header */}
       <div className="bg-white dark:bg-gray-800 pt-6 pb-4">
         <div className="flex flex-col items-center text-center px-6">
-          <ProfilePicture src={host.profilePicture} alt={host.name} className="w-28 h-28 rounded-full object-cover border-4 border-gray-100 dark:border-gray-700 shadow-lg" />
+          <ProfilePicture src={host.profilePicture} alt={host.displayName} className="w-28 h-28 rounded-full object-cover border-4 border-gray-100 dark:border-gray-700 shadow-lg" />
           
           <div className="flex items-center justify-center gap-2 mt-4">
-              <h1 className="text-3xl font-bold dark:text-gray-100">{host.name}</h1>
-              {host.isVerified && <CheckBadgeIcon className="w-7 h-7 text-brand-blue" />}
+              <h1 className="text-3xl font-bold dark:text-gray-100">{host.displayName}</h1>
+              {isOfficialDistributor && <CheckBadgeIcon className="w-7 h-7 text-brand-blue" />}
           </div>
           
-          {host.distributorStatus === 'approved' && (
+          {isOfficialDistributor && (
             <p className="text-md font-semibold text-brand-blue mt-1">Official Enagic® Distributor</p>
           )}
 
@@ -192,7 +192,7 @@ export default function HostProfilePage() {
         </div>
       </div>
       
-       {!isCurrentUserProfile && (
+       {!isCurrentUserProfile && host.isAcceptingRequests && isOfficialDistributor && (
         <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border-t border-gray-200 dark:border-gray-700 max-w-4xl mx-auto">
           <Link
             to={`/request/${id}`}

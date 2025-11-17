@@ -24,7 +24,11 @@ export default function SignUpPage() {
             // Check if user document already exists
             const existingUser = await api.getUserById(user.uid);
             if (!existingUser) {
-                await api.createInitialUser(user.uid, user.email || '', user.displayName || 'Google User', user.photoURL || '');
+                // FIX: Added missing firstName and lastName arguments derived from displayName.
+                const nameParts = (user.displayName || 'Google User').split(' ');
+                const firstName = nameParts[0] || '';
+                const lastName = nameParts.slice(1).join(' ') || '';
+                await api.createInitialUser(user.uid, user.email || '', firstName, lastName, user.displayName || 'Google User', user.photoURL || '');
             }
             // AuthProvider will handle navigation
         } catch (err: any) {
@@ -45,7 +49,8 @@ export default function SignUpPage() {
         try {
             const userCredential = await api.signUpWithEmail(email, password);
             const user = userCredential.user;
-            await api.createInitialUser(user.uid, email, 'New User', '');
+            // FIX: Added missing firstName, lastName, displayName, and profilePicture arguments.
+            await api.createInitialUser(user.uid, email, '', '', 'New User', '');
             navigate('/onboarding', { state: { userId: user.uid } });
         } catch (err: any) {
              setError(err.message);

@@ -1,10 +1,10 @@
 
 
+
 import React, { useState, useEffect, useRef } from 'react';
-// FIX: Corrected import statement for react-router-dom.
 import { Link, useNavigate } from 'react-router-dom';
 import * as api from '../api';
-import { User, DistributorStatus, DistributorProofDocument } from '../types';
+import { User, DistributorVerificationStatus, DistributorProofDocument } from '../types';
 import { ChevronLeftIcon, CameraIcon, ArrowLeftOnRectangleIcon, TrashIcon, ShieldCheckIcon, SpinnerIcon, SunIcon, MoonIcon, ProfilePicture, VideoCameraIcon, ArrowUpTrayIcon, DocumentTextIcon, CheckCircleIcon, ShieldExclamationIcon } from '../components/Icons';
 import { useAuth, useTheme } from '../App';
 import { useToast } from '../hooks/useToast';
@@ -143,8 +143,8 @@ const cropImageToSquare = (file: File): Promise<Blob> => {
     });
 };
 
-const VerificationStatusBadge: React.FC<{ status: DistributorStatus }> = ({ status }) => {
-    const statusInfo: Record<DistributorStatus, { text: string; className: string }> = {
+const VerificationStatusBadge: React.FC<{ status: DistributorVerificationStatus }> = ({ status }) => {
+    const statusInfo: Record<DistributorVerificationStatus, { text: string; className: string }> = {
         none: { text: 'Not Verified', className: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300' },
         pending: { text: 'Pending Review', className: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300' },
         approved: { text: 'Official Enagic® Distributor', className: 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300' },
@@ -292,6 +292,8 @@ export default function UserProfilePage() {
     
     // Create a mutable copy for URL validation
     const userToSave = { ...user };
+    userToSave.displayName = `${userToSave.firstName} ${userToSave.lastName}`.trim();
+
     const socialFields = ['instagram', 'facebook', 'linkedin', 'website'] as const;
     socialFields.forEach(field => {
       const url = userToSave[field];
@@ -314,7 +316,6 @@ export default function UserProfilePage() {
 
     setIsUploadingDocument(true);
     try {
-        // FIX: Explicitly type 'file' as File to resolve type inference issue.
         const uploadPromises = files.map((file: File) => api.uploadDistributorProofDocument(user.id, file));
         const newDocuments = await Promise.all(uploadPromises);
         
@@ -369,7 +370,7 @@ export default function UserProfilePage() {
       setIsSubmittingVerification(true);
       try {
           await api.submitForDistributorVerification(user.id, user.distributorId);
-          const updatedUser = { ...user, distributorStatus: 'pending' as DistributorStatus };
+          const updatedUser = { ...user, distributorVerificationStatus: 'pending' as DistributorVerificationStatus };
           setUser(updatedUser);
           setUserData(updatedUser);
           setOriginalUser(JSON.parse(JSON.stringify(updatedUser)));
@@ -444,7 +445,7 @@ export default function UserProfilePage() {
                 </div>
 
                 <FormSection title="Personal Info">
-                    <InputField label="Name" id="name" name="name" value={user.name} onChange={handleInputChange} />
+                    <InputField label="Display Name" id="displayName" name="displayName" value={user.displayName} onChange={handleInputChange} />
                     <div>
                     <label htmlFor="bio" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Bio</label>
                     <textarea
@@ -488,7 +489,7 @@ export default function UserProfilePage() {
                 </FormSection>
 
                 <FormSection title="Host Settings">
-                    {user.isVerified ? (<>
+                    {user.isHost ? (<>
                     <div className="flex justify-between items-center">
                         <div>
                         <span className="font-semibold text-gray-800 dark:text-gray-200">Available to share water</span>
@@ -546,12 +547,12 @@ export default function UserProfilePage() {
                 </FormSection>
 
                 <FormSection title="Distributor Verification">
-                    {user.distributorStatus === 'approved' ? (
+                    {user.distributorVerificationStatus === 'approved' ? (
                         <div className="p-4 bg-green-50 dark:bg-green-900/40 border border-green-200 dark:border-green-700/60 rounded-lg text-green-800 dark:text-green-200 text-center">
                             <CheckCircleIcon className="w-8 h-8 mx-auto mb-2" />
                             <p className="font-semibold">You are an Official Enagic® Distributor!</p>
                         </div>
-                    ) : user.distributorStatus === 'pending' ? (
+                    ) : user.distributorVerificationStatus === 'pending' ? (
                         <div className="p-4 bg-yellow-50 dark:bg-yellow-900/40 border border-yellow-200 dark:border-yellow-700/60 rounded-lg text-yellow-800 dark:text-yellow-200 text-center">
                             <p className="font-semibold">Verification in progress...</p>
                             <p className="text-sm mt-1">Your documents are under review. We will notify you once it's complete.</p>
@@ -562,7 +563,7 @@ export default function UserProfilePage() {
                                 <p>To become a host and share Kangen water with other official owners, you must be an Official Enagic® Distributor. Please enter your Enagic Distributor ID and upload your proof document.</p>
                             </div>
 
-                            {(user.distributorStatus === 'rejected' || user.distributorStatus === 'revoked') && user.distributorRejectionReason && (
+                            {(user.distributorVerificationStatus === 'rejected' || user.distributorVerificationStatus === 'revoked') && user.distributorRejectionReason && (
                                 <div className="p-3 bg-red-50 dark:bg-red-900/40 border border-red-200 dark:border-red-700/60 rounded-lg text-red-800 dark:text-red-200 text-sm">
                                     <p className="font-semibold mb-1">Verification Not Approved:</p>
                                     <p>{user.distributorRejectionReason}</p>

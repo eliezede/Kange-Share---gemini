@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-// FIX: Corrected import statement for react-router-dom.
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import * as api from '../api';
 import { User } from '../types';
@@ -25,9 +24,9 @@ const UserCard: React.FC<UserCardProps> = ({ user, currentUser, onFollowToggle }
 
     return (
         <Link to={`/host/${user.id}`} className="flex items-center p-4 border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800">
-            <img src={user.profilePicture} alt={user.name} className="w-12 h-12 rounded-full object-cover" />
+            <img src={user.profilePicture} alt={user.displayName} className="w-12 h-12 rounded-full object-cover" />
             <div className="flex-1 ml-4">
-                <p className="font-bold dark:text-gray-100">{user.name}</p>
+                <p className="font-bold dark:text-gray-100">{user.displayName}</p>
                 <p className="text-sm text-gray-500 dark:text-gray-400">{user.address.city}</p>
             </div>
             {!isCurrentUserProfile && (
@@ -107,7 +106,7 @@ export default function FollowListPage() {
                 </button>
                 <div className="text-center flex-1">
                     <h1 className="text-xl font-bold dark:text-gray-100">{title}</h1>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">{profileUser.name}</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">{profileUser.displayName}</p>
                 </div>
                 <div className="w-6 h-6"></div>
             </header>

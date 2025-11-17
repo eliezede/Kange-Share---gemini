@@ -49,9 +49,13 @@ const AccountDropdown: React.FC<AccountDropdownProps> = ({ isOpen, onClose, togg
 
   if (userData.isHost) {
     menuItems.push({ label: 'Host Dashboard', icon: <PresentationChartBarIcon className="w-5 h-5" />, action: () => navigate('/requests') });
+  } else if (userData.distributorVerificationStatus === 'approved') {
+     // Approved but maybe they turned off hosting
+    menuItems.push({ label: 'Host Settings', icon: <PresentationChartBarIcon className="w-5 h-5" />, action: () => navigate('/profile') });
   } else {
     menuItems.push({ label: 'Become a Host', icon: <PresentationChartBarIcon className="w-5 h-5" />, action: () => navigate('/profile') });
   }
+
 
   if (userData.isAdmin) {
     menuItems.push({ label: 'Admin Dashboard', icon: <ShieldCheckIcon className="w-5 h-5" />, action: () => navigate('/admin') });
