@@ -13,6 +13,7 @@ import ChatPage from './pages/ChatPage';
 import RateHostPage from './pages/RateHostPage';
 import LandingPage from './pages/LandingPage';
 import UserProfilePage from './pages/UserProfilePage';
+import UserDashboardPage from './pages/UserDashboardPage';
 import RequestsPage from './pages/RequestsPage';
 import RequestDetailPage from './pages/RequestDetailPage';
 import BottomNav from './components/BottomNav';
@@ -142,7 +143,7 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
           }
       } catch (error) {
           console.error("Error fetching user data:", error);
-          // Optionally handle error state here, but ensure loading is set to false
+          // Ensure loading is false even on error
       } finally {
           setLoading(false);
       }
@@ -264,7 +265,8 @@ const AppRoutes = () => {
                 <Route path="/map" element={<MapPage />} />
                 <Route path="/requests" element={<RequestsPage />} />
                 <Route path="/messages" element={<MessagesPage />} />
-                <Route path="/profile" element={<UserProfilePage />} />
+                <Route path="/profile" element={<UserDashboardPage />} />
+                <Route path="/profile/edit" element={<UserProfilePage />} />
                 <Route path="/host/:id" element={<HostProfilePage />} />
                 <Route path="/settings" element={<SettingsPage />} />
                 <Route path="/profile/:userId/:followType" element={<FollowListPage />} />
