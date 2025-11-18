@@ -204,7 +204,7 @@ const MainLayout: React.FC = () => (
     <div className="flex flex-col h-screen">
         <Header />
         <main className="flex-1 overflow-y-auto">
-             <div className="pb-16 h-full">
+             <div className="pb-28">
                 <Outlet />
             </div>
         </main>

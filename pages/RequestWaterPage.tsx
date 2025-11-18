@@ -102,7 +102,7 @@ export default function RequestWaterPage() {
   }
 
   return (
-    <div className="pb-24">
+    <div>
         <header className="p-4 flex items-center border-b border-gray-200 dark:border-gray-700 sticky top-0 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm z-10">
             <button onClick={() => navigate(-1)} className="p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800">
                 <ChevronLeftIcon className="w-6 h-6 text-gray-800 dark:text-gray-200" />
@@ -191,7 +191,7 @@ export default function RequestWaterPage() {
             </div>
         </div>
 
-        <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border-t border-gray-200 dark:border-gray-700 max-w-4xl mx-auto">
+        <div className="fixed bottom-16 left-0 right-0 p-4 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border-t border-gray-200 dark:border-gray-700 max-w-4xl mx-auto">
             <button 
                 onClick={handleConfirm} 
                 disabled={!selectedPh || !selectedTime || isSubmitting}

@@ -391,7 +391,7 @@ export default function UserProfilePage() {
   const isDistributorApproved = user.distributorVerificationStatus === 'approved';
 
   return (
-    <div className="pb-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+    <div className="bg-gray-50 dark:bg-gray-900 min-h-screen">
       <header className="p-4 flex items-center border-b border-gray-200 dark:border-gray-700 sticky top-0 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm z-10">
         <button onClick={() => navigate(-1)} className="p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800" disabled={user.isBlocked}>
           <ChevronLeftIcon className="w-6 h-6 text-gray-800 dark:text-gray-200" />

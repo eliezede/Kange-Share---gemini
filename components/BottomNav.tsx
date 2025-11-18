@@ -16,7 +16,7 @@ export default function BottomNav() {
   const inactiveLinkClass = 'text-gray-500 dark:text-gray-400 hover:text-brand-blue';
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 max-w-4xl mx-auto bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border-t border-gray-200 dark:border-gray-700 z-40">
+    <nav className="fixed bottom-0 left-0 right-0 max-w-4xl mx-auto bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border-t border-gray-200 dark:border-gray-700 z-40 pb-[env(safe-area-inset-bottom)]">
       <div className="flex justify-around h-16">
         {navItems.map(({ path, label, icon: Icon }) => (
           <NavLink

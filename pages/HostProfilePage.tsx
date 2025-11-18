@@ -109,7 +109,7 @@ export default function HostProfilePage() {
   const isOfficialDistributor = host.distributorVerificationStatus === 'approved';
 
   return (
-    <div className="pb-24 bg-gray-50 dark:bg-gray-900 min-h-screen">
+    <div className="bg-gray-50 dark:bg-gray-900 min-h-screen">
       {/* New Unified Header */}
       <div className="bg-white dark:bg-gray-800 pt-6 pb-4">
         <div className="flex flex-col items-center text-center px-6">
@@ -193,7 +193,7 @@ export default function HostProfilePage() {
       </div>
       
        {!isCurrentUserProfile && host.isAcceptingRequests && isOfficialDistributor && (
-        <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border-t border-gray-200 dark:border-gray-700 max-w-4xl mx-auto">
+        <div className="fixed bottom-16 left-0 right-0 p-4 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border-t border-gray-200 dark:border-gray-700 max-w-4xl mx-auto">
           <Link
             to={`/request/${id}`}
             className="w-full block text-center bg-brand-blue text-white font-bold py-3.5 px-4 rounded-xl hover:bg-blue-600 transition-colors"

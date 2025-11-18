@@ -86,7 +86,7 @@ export default function FollowListPage() {
 
     if (loading) {
         return (
-            <div className="flex justify-center items-center h-screen">
+            <div className="flex justify-center items-center h-full">
                 <SpinnerIcon className="w-10 h-10 text-brand-blue animate-spin" />
             </div>
         );
@@ -99,7 +99,7 @@ export default function FollowListPage() {
     const title = followType === 'followers' ? 'Followers' : 'Following';
 
     return (
-        <div className="flex flex-col h-screen">
+        <div>
             <header className="p-4 flex items-center border-b border-gray-200 dark:border-gray-700 sticky top-0 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm z-10">
                 <button onClick={() => navigate(-1)} className="p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800">
                     <ChevronLeftIcon className="w-6 h-6 text-gray-800 dark:text-gray-200" />
@@ -111,7 +111,7 @@ export default function FollowListPage() {
                 <div className="w-6 h-6"></div>
             </header>
 
-            <div className="flex-1 overflow-y-auto">
+            <div>
                 {userList.length > 0 ? (
                     userList.map(user => (
                         <UserCard key={user.id} user={user} currentUser={currentUser} onFollowToggle={handleFollowToggle} />

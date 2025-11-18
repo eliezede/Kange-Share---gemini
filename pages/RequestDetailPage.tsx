@@ -95,7 +95,7 @@ export default function RequestDetailPage() {
 
 
     return (
-        <div className="pb-24 bg-gray-50 dark:bg-gray-900 min-h-screen">
+        <div className="bg-gray-50 dark:bg-gray-900 min-h-screen">
             <header className="p-4 flex items-center border-b border-gray-200 dark:border-gray-700 sticky top-0 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm z-10">
                 <button onClick={() => navigate('/requests')} className="p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800">
                     <ChevronLeftIcon className="w-6 h-6 text-gray-800 dark:text-gray-200" />
@@ -171,7 +171,7 @@ export default function RequestDetailPage() {
 
             </div>
             
-            <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border-t border-gray-200 dark:border-gray-700 max-w-4xl mx-auto space-y-2">
+            <div className="fixed bottom-16 left-0 right-0 p-4 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border-t border-gray-200 dark:border-gray-700 max-w-4xl mx-auto space-y-2">
                  {(request.status === 'accepted' || request.status === 'chatting' || request.status === 'pending') && (
                     <Link to={`/chat/${request.id}`} className="w-full flex items-center justify-center gap-2 bg-brand-blue text-white font-bold py-3 px-4 rounded-xl hover:bg-blue-600 transition-colors text-center">
                        <ChatBubbleOvalLeftEllipsisIcon className="w-5 h-5"/>
