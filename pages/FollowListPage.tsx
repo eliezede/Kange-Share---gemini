@@ -100,7 +100,7 @@ export default function FollowListPage() {
 
     return (
         <div className="flex flex-col">
-            <header className="p-4 flex items-center border-b border-gray-200 dark:border-gray-700 sticky top-16 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm z-10 flex-shrink-0">
+            <header className="p-4 flex items-center border-b border-gray-200 dark:border-gray-700 sticky top-0 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm z-10 flex-shrink-0">
                 <button onClick={() => navigate(-1)} className="p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800">
                     <ChevronLeftIcon className="w-6 h-6 text-gray-800 dark:text-gray-200" />
                 </button>

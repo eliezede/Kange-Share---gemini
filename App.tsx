@@ -1,5 +1,3 @@
-
-
 import React, { useState, useContext, createContext, useCallback, useEffect, useMemo } from 'react';
 import { HashRouter, Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom';
 import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
@@ -120,28 +118,34 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       setLoading(true);
-      if (firebaseUser) {
-        setUser(firebaseUser);
-        let dbUser = await api.getUserById(firebaseUser.uid);
-        if (!dbUser) {
-          // New user (e.g., via Google Sign-In for the first time)
-          const nameParts = (firebaseUser.displayName || 'New User').split(' ');
-          await api.createInitialUser(
-              firebaseUser.uid,
-              firebaseUser.email || '',
-              nameParts[0] || '',
-              nameParts.slice(1).join(' ') || '',
-              firebaseUser.displayName || 'New User',
-              firebaseUser.photoURL || ''
-          );
-          dbUser = await api.getUserById(firebaseUser.uid);
-        }
-        setUserData(dbUser);
-      } else {
-        setUser(null);
-        setUserData(null);
+      try {
+          if (firebaseUser) {
+            setUser(firebaseUser);
+            let dbUser = await api.getUserById(firebaseUser.uid);
+            if (!dbUser) {
+              // New user (e.g., via Google Sign-In for the first time)
+              const nameParts = (firebaseUser.displayName || 'New User').split(' ');
+              await api.createInitialUser(
+                  firebaseUser.uid,
+                  firebaseUser.email || '',
+                  nameParts[0] || '',
+                  nameParts.slice(1).join(' ') || '',
+                  firebaseUser.displayName || 'New User',
+                  firebaseUser.photoURL || ''
+              );
+              dbUser = await api.getUserById(firebaseUser.uid);
+            }
+            setUserData(dbUser);
+          } else {
+            setUser(null);
+            setUserData(null);
+          }
+      } catch (error) {
+          console.error("Error fetching user data:", error);
+          // Optionally handle error state here, but ensure loading is set to false
+      } finally {
+          setLoading(false);
       }
-      setLoading(false);
     });
     return () => unsubscribe();
   }, []);

@@ -51,7 +51,7 @@ export default function MessagesPage() {
 
     return (
          <div className="flex flex-col">
-            <header className="p-4 border-b border-gray-200 dark:border-gray-700 sticky top-16 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm z-10 flex-shrink-0">
+            <header className="p-4 border-b border-gray-200 dark:border-gray-700 sticky top-0 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm z-10 flex-shrink-0">
                 <h1 className="text-2xl font-bold text-center dark:text-gray-100">Messages</h1>
             </header>
             <div>
