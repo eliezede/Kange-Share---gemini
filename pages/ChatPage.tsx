@@ -59,7 +59,9 @@ export default function ChatPage() {
     };
   }, [requestId, currentUser]);
 
-  useEffect(scrollToBottom, [messages]);
+  useEffect(() => {
+      scrollToBottom();
+  }, [messages]);
 
   const handleSend = async () => {
     if (newMessage.trim() && requestId && currentUser) {
@@ -90,8 +92,8 @@ export default function ChatPage() {
   const isUserHost = request.hostId === currentUser.id;
 
   return (
-    <div className="flex flex-col min-h-full relative">
-      <header className="flex items-center p-3 border-b border-gray-200 dark:border-gray-700 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm sticky top-0 z-20">
+    <div className="fixed top-16 left-0 right-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] w-full max-w-4xl mx-auto flex flex-col bg-gray-50 dark:bg-gray-900 z-0">
+      <header className="flex items-center p-3 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 flex-shrink-0">
         <button onClick={() => {
           if (request.status === 'chatting') {
             navigate(-1);
@@ -108,7 +110,7 @@ export default function ChatPage() {
         <div className="w-6"></div>
       </header>
 
-      <div className="flex-1 p-4 space-y-4 pb-32">
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.map((msg) => (
           <div key={msg.id} className={`flex items-end gap-2 ${msg.sender === currentUser.id ? 'justify-end' : 'justify-start'}`}>
             {msg.sender !== currentUser.id && <img src={otherParty.profilePicture} alt={otherParty.displayName} className="w-6 h-6 rounded-full" />}
@@ -120,7 +122,7 @@ export default function ChatPage() {
         <div ref={messagesEndRef} />
       </div>
 
-       <div className="fixed bottom-16 left-0 right-0 max-w-4xl mx-auto p-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 flex items-center gap-2 z-20">
+       <div className="p-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 flex items-center gap-2 flex-shrink-0">
             {!isUserHost && request.status === 'accepted' && (
                 <button 
                     onClick={handleComplete}
