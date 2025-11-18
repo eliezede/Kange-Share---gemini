@@ -96,14 +96,10 @@ const fromDoc = <T>(docSnap: DocumentSnapshot): T => {
         data.verificationReviewedByAdminId = data.verificationReviewedByAdminId || null;
 
         const defaultAddress = { street: '', number: '', postalCode: '', city: '', country: '' };
-        data.address = (data.address && typeof data.address === 'object')
-            ? { ...defaultAddress, ...data.address }
-            : defaultAddress;
+        data.address = { ...defaultAddress, ...(data.address && typeof data.address === 'object' ? data.address : {}) };
 
         const defaultMaintenance = { lastFilterChange: '', lastECleaning: '' };
-        data.maintenance = (data.maintenance && typeof data.maintenance === 'object')
-            ? { ...defaultMaintenance, ...data.maintenance }
-            : defaultMaintenance;
+        data.maintenance = { ...defaultMaintenance, ...(data.maintenance && typeof data.maintenance === 'object' ? data.maintenance : {}) };
         
         const mergedAvailability: Record<string, { enabled: boolean; startTime: string; endTime: string; }> = {};
         for (const day of Object.keys(defaultAvailability)) {

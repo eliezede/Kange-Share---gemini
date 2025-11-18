@@ -50,11 +50,11 @@ export default function MessagesPage() {
     }, [userData]);
 
     return (
-         <div className="flex flex-col h-full">
-            <header className="p-4 border-b border-gray-200 dark:border-gray-700 sticky top-0 bg-white dark:bg-gray-900 z-10">
+         <div className="flex flex-col">
+            <header className="p-4 border-b border-gray-200 dark:border-gray-700 sticky top-16 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm z-10 flex-shrink-0">
                 <h1 className="text-2xl font-bold text-center dark:text-gray-100">Messages</h1>
             </header>
-            <div className="flex-1 overflow-y-auto">
+            <div>
                 {loading ? (
                     <div className="flex justify-center items-center h-64">
                         <SpinnerIcon className="w-10 h-10 text-brand-blue animate-spin" />
