@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import * as api from '../api';
@@ -89,8 +90,8 @@ export default function ChatPage() {
   const isUserHost = request.hostId === currentUser.id;
 
   return (
-    <div className="flex flex-col h-screen">
-      <header className="flex items-center p-3 border-b border-gray-200 dark:border-gray-700 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm sticky top-0 z-10">
+    <div className="flex flex-col min-h-full relative">
+      <header className="flex items-center p-3 border-b border-gray-200 dark:border-gray-700 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm sticky top-0 z-20">
         <button onClick={() => {
           if (request.status === 'chatting') {
             navigate(-1);
@@ -107,7 +108,7 @@ export default function ChatPage() {
         <div className="w-6"></div>
       </header>
 
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div className="flex-1 p-4 space-y-4 pb-32">
         {messages.map((msg) => (
           <div key={msg.id} className={`flex items-end gap-2 ${msg.sender === currentUser.id ? 'justify-end' : 'justify-start'}`}>
             {msg.sender !== currentUser.id && <img src={otherParty.profilePicture} alt={otherParty.displayName} className="w-6 h-6 rounded-full" />}
@@ -119,11 +120,11 @@ export default function ChatPage() {
         <div ref={messagesEndRef} />
       </div>
 
-       <div className="p-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 flex items-center gap-2">
+       <div className="fixed bottom-16 left-0 right-0 max-w-4xl mx-auto p-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 flex items-center gap-2 z-20">
             {!isUserHost && request.status === 'accepted' && (
                 <button 
                     onClick={handleComplete}
-                    className="px-4 py-2.5 bg-green-500 text-white font-semibold rounded-full hover:bg-green-600 transition"
+                    className="px-4 py-2.5 bg-green-500 text-white font-semibold rounded-full hover:bg-green-600 transition whitespace-nowrap"
                 >
                     Complete Pickup
                 </button>
@@ -136,7 +137,7 @@ export default function ChatPage() {
                 placeholder="Type a message..."
                 className="flex-1 px-4 py-2.5 bg-gray-100 dark:bg-gray-800 dark:text-gray-200 border-transparent rounded-full focus:ring-2 focus:ring-brand-blue outline-none"
             />
-            <button onClick={handleSend} className="p-3 bg-brand-blue text-white rounded-full hover:bg-blue-600 transition disabled:bg-gray-300 dark:disabled:bg-gray-600" disabled={!newMessage.trim()}>
+            <button onClick={handleSend} className="p-3 bg-brand-blue text-white rounded-full hover:bg-blue-600 transition disabled:bg-gray-300 dark:disabled:bg-gray-600 flex-shrink-0" disabled={!newMessage.trim()}>
                 <PaperAirplaneIcon className="w-5 h-5"/>
             </button>
         </div>
