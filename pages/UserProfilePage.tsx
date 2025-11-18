@@ -576,7 +576,7 @@ export default function UserProfilePage() {
                                 </div>
                             )}
                             
-                            <InputField label="Enagic Distributor ID" id="distributorId" name="distributorId" value={user.distributorId} onChange={handleInputChange} required />
+                            <InputField label="Enagic Distributor ID" id="distributorId" name="distributorId" value={user.distributorId} onChange={handleInputChange} />
                             
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Upload proof of distributor status</label>

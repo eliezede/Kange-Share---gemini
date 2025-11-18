@@ -23,15 +23,6 @@ const InputField: React.FC<React.InputHTMLAttributes<HTMLInputElement> & { label
   </div>
 );
 
-const Toggle: React.FC<{ checked: boolean; onChange: (checked: boolean) => void }> = ({ checked, onChange }) => (
-  <button
-    type="button" role="switch" aria-checked={checked} onClick={() => onChange(!checked)}
-    className={`relative inline-flex items-center h-6 rounded-full w-11 transition-colors ${checked ? 'bg-brand-blue' : 'bg-gray-300 dark:bg-gray-600'}`}
-  >
-    <span className={`inline-block w-4 h-4 transform bg-white rounded-full transition-transform ${checked ? 'translate-x-6' : 'translate-x-1'}`} />
-  </button>
-);
-
 export default function OnboardingPage() {
     const navigate = useNavigate();
     const { userData, setUserData } = useAuth();
@@ -39,9 +30,6 @@ export default function OnboardingPage() {
     const [user, setUser] = useState<Partial<User> | null>(null);
     const [loading, setLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
-    const [showHostSettings, setShowHostSettings] = useState(false);
-
-    const DAYS_OF_WEEK = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
     useEffect(() => {
         if (userData) {
@@ -68,26 +56,6 @@ export default function OnboardingPage() {
         });
     };
     
-    const handleAvailabilityChange = (day: string, field: 'enabled' | 'startTime' | 'endTime', value: boolean | string) => {
-        setUser(prev => {
-            if (!prev) return null;
-    
-            const currentAvailability = prev.availability || {};
-            const dayAvailability = currentAvailability[day] || { enabled: false, startTime: '09:00', endTime: '17:00' };
-    
-            return {
-                ...prev,
-                availability: {
-                    ...currentAvailability,
-                    [day]: {
-                        ...dayAvailability,
-                        [field]: value,
-                    },
-                },
-            };
-        });
-    };
-
     const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!user || !userData) return;
@@ -99,7 +67,6 @@ export default function OnboardingPage() {
                 firstName: user.firstName || '',
                 lastName: user.lastName || '',
                 displayName: `${user.firstName || ''} ${user.lastName || ''}`.trim(),
-                isHost: showHostSettings,
                 onboardingCompleted: true,
                 onboardingStep: 'completed'
             };
@@ -153,40 +120,10 @@ export default function OnboardingPage() {
                          <p className="text-xs text-gray-500 dark:text-gray-400 !mt-2">Your city and country are public. Full address can be added later in your profile settings.</p>
                     </FormSection>
 
-                    {showHostSettings ? (
-                        <FormSection title="Host Settings">
-                             <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Pickup Availability</label>
-                                <div className="space-y-3">
-                                    {DAYS_OF_WEEK.map(day => (
-                                    <div key={day} className="space-y-2">
-                                        <div className="flex items-center justify-between">
-                                        <span className="font-semibold text-gray-800 dark:text-gray-200">{day}</span>
-                                        <Toggle 
-                                            checked={user.availability?.[day]?.enabled || false}
-                                            onChange={(checked) => handleAvailabilityChange(day, 'enabled', checked)}
-                                        />
-                                        </div>
-                                        {user.availability?.[day]?.enabled && (
-                                        <div className="grid grid-cols-2 gap-3 pl-4">
-                                            <input type="time" defaultValue="09:00" onChange={(e) => handleAvailabilityChange(day, 'startTime', e.target.value)} className="w-full p-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-md text-sm"/>
-                                            <input type="time" defaultValue="17:00" onChange={(e) => handleAvailabilityChange(day, 'endTime', e.target.value)} className="w-full p-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-md text-sm"/>
-                                        </div>
-                                        )}
-                                    </div>
-                                    ))}
-                                </div>
-                            </div>
-                        </FormSection>
-                    ) : (
-                        <div className="text-center">
-                            <button type="button" onClick={() => setShowHostSettings(true)} className="font-semibold text-brand-blue hover:underline">
-                                Want to share water? Add host settings.
-                            </button>
-                        </div>
-                    )}
-
                     <div className="pt-4">
+                        <p className="text-center text-gray-500 dark:text-gray-400 mb-4 text-sm">
+                            Want to share water? You can set up your host profile and get verified after completing this initial setup.
+                        </p>
                         <button 
                             type="submit"
                             disabled={isSaving}
