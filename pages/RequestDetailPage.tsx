@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import * as api from '../api';
 import { WaterRequest, RequestStatus, User } from '../types';
-import { ChevronLeftIcon, DropletIcon, CalendarDaysIcon, ClockIcon, ChatBubbleOvalLeftEllipsisIcon, SpinnerIcon, CheckBadgeIcon } from '../components/Icons';
+import { ChevronLeftIcon, DropletIcon, CalendarDaysIcon, ClockIcon, ChatBubbleOvalLeftEllipsisIcon, SpinnerIcon, CheckBadgeIcon, QrCodeIcon } from '../components/Icons';
 import { useAuth } from '../App';
+import { QRCodeDisplayModal, QRScannerModal } from '../components/QRModals';
+import { useToast } from '../hooks/useToast';
 
 const StatusBadge: React.FC<{ status: RequestStatus }> = ({ status }) => {
     const statusInfo: Record<RequestStatus, { className: string; text: string }> = {
@@ -36,11 +38,16 @@ export default function RequestDetailPage() {
     const { requestId } = useParams<{ requestId: string }>();
     const navigate = useNavigate();
     const { userData: currentUser } = useAuth();
+    const { showToast } = useToast();
     
     const [request, setRequest] = useState<WaterRequest | null>(null);
     const [host, setHost] = useState<User | null>(null);
     const [requester, setRequester] = useState<User | null>(null);
     const [loading, setLoading] = useState(true);
+
+    // QR Modal States
+    const [showQRDisplay, setShowQRDisplay] = useState(false);
+    const [showQRScanner, setShowQRScanner] = useState(false);
 
     useEffect(() => {
         if (!requestId) return;
@@ -68,6 +75,34 @@ export default function RequestDetailPage() {
         await api.updateRequestStatus(requestId, newStatus);
         if(request) {
             setRequest({ ...request, status: newStatus });
+        }
+    };
+
+    const handleScanSuccess = async (decodedText: string) => {
+        try {
+            // Try parsing JSON first
+            let scannedRequestId = decodedText;
+            try {
+                const payload = JSON.parse(decodedText);
+                if (payload.requestId) scannedRequestId = payload.requestId;
+            } catch (e) {
+                // Not JSON, treat as raw string
+            }
+
+            if (scannedRequestId === requestId && currentUser) {
+                await api.verifyPickupScan(requestId, currentUser.id);
+                showToast("Pickup verified successfully!", "success");
+                
+                // Update local state
+                if(request) setRequest({ ...request, status: 'completed' });
+                // Navigate to rate page
+                setTimeout(() => navigate(`/rate/${requestId}`), 1000);
+            } else {
+                showToast("Invalid QR Code for this request.", "error");
+            }
+        } catch (err) {
+            console.error(err);
+            showToast("Verification failed.", "error");
         }
     };
     
@@ -106,6 +141,32 @@ export default function RequestDetailPage() {
             
             <div className="p-4 md:p-6 space-y-6">
                 <StatusBadge status={request.status} />
+
+                {/* QR Actions */}
+                {request.status === 'accepted' && (
+                    <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 text-center">
+                        <div className="w-12 h-12 bg-blue-50 dark:bg-blue-900/30 rounded-full flex items-center justify-center mx-auto mb-3">
+                            <QrCodeIcon className="w-6 h-6 text-brand-blue" />
+                        </div>
+                        <h3 className="font-bold text-lg text-gray-800 dark:text-gray-100 mb-2">Pickup Verification</h3>
+                        
+                        {isUserTheHost ? (
+                            <>
+                                <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Scan the requester's QR code to verify the pickup and complete the order.</p>
+                                <button onClick={() => setShowQRScanner(true)} className="w-full bg-brand-blue text-white font-bold py-3 px-4 rounded-xl hover:bg-blue-600 transition-colors">
+                                    Scan Pickup Code
+                                </button>
+                            </>
+                        ) : (
+                            <>
+                                <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Show this code to the host when you pick up your water.</p>
+                                <button onClick={() => setShowQRDisplay(true)} className="w-full bg-white dark:bg-gray-700 text-brand-blue dark:text-white border border-brand-blue dark:border-gray-600 font-bold py-3 px-4 rounded-xl hover:bg-blue-50 dark:hover:bg-gray-600 transition-colors">
+                                    Show Pickup Code
+                                </button>
+                            </>
+                        )}
+                    </div>
+                )}
 
                 <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 space-y-4">
                     <h2 className="text-lg font-bold dark:text-gray-100">Pickup Details</h2>
@@ -190,6 +251,19 @@ export default function RequestDetailPage() {
                     </button>
                  )}
             </div>
+            
+            <QRCodeDisplayModal 
+                isOpen={showQRDisplay}
+                onClose={() => setShowQRDisplay(false)}
+                requestId={request.id}
+                requesterName={requester.displayName}
+            />
+
+            <QRScannerModal 
+                isOpen={showQRScanner}
+                onClose={() => setShowQRScanner(false)}
+                onScanSuccess={handleScanSuccess}
+            />
         </div>
     )
 }

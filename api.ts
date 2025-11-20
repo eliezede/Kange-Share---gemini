@@ -371,6 +371,28 @@ export const updateRequestStatus = async (requestId: string, newStatus: RequestS
     }
 };
 
+// Verifies a QR Code scan for pickup
+export const verifyPickupScan = async (requestId: string, hostId: string): Promise<void> => {
+    // 1. Fetch request to ensure it exists and to get details
+    const request = await getRequestById(requestId);
+    if (!request) {
+        throw new Error("Request not found");
+    }
+
+    // 2. Security Check: Ensure the person scanning is indeed the host of this request
+    if (request.hostId !== hostId) {
+        throw new Error("Unauthorized: You are not the host of this request.");
+    }
+
+    // 3. If status is already completed, we can just return or throw info
+    if (request.status === 'completed') {
+        return; // Already done
+    }
+
+    // 4. Mark as completed
+    await updateRequestStatus(requestId, 'completed');
+};
+
 export const createNewChat = async (hostId: string, requesterId: string, host: User, requester: User): Promise<string> => {
     const newChatRequest: Omit<WaterRequest, 'id' | 'createdAt'> = {
         requesterId, hostId, status: 'chatting', phLevel: 0, liters: 0,
