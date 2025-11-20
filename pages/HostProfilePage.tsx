@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import * as api from '../api';
@@ -159,7 +160,7 @@ export default function HostProfilePage() {
             <div className="flex justify-around items-start text-center py-4 my-6 border-y-2 border-gray-100 dark:border-gray-800">
                 <Metric
                     icon={<StarIcon className="w-6 h-6 mx-auto text-yellow-400" />}
-                    value={`${host.rating.toFixed(1)} (${host.reviews})`}
+                    value={`${host.rating.toFixed(1)} (${reviews.length})`}
                     label="Reviews"
                 />
                 <Metric

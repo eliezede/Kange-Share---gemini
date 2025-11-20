@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth, useTheme } from '../App';
@@ -77,12 +78,19 @@ export default function UserDashboardPage() {
 
     useEffect(() => {
         if (userData?.id) {
+            // Fetch fresh user data to ensure counts (followers, etc.) are up to date
+            api.getUserById(userData.id).then(freshUser => {
+                if (freshUser) {
+                    setUserData(freshUser);
+                }
+            });
+
             api.getRequestsByHostId(userData.id).then(requests => {
                 const completed = requests.filter(r => r.status === 'completed').length;
                 setCompletedRequestsCount(completed);
             });
         }
-    }, [userData?.id]);
+    }, [userData?.id, setUserData]);
 
     if (!userData) return null;
 
