@@ -256,7 +256,7 @@ export default function RequestDetailPage() {
                 isOpen={showQRDisplay}
                 onClose={() => setShowQRDisplay(false)}
                 requestId={request.id}
-                requesterName={requester.displayName}
+                hostName={host.displayName}
             />
 
             <QRScannerModal 

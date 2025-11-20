@@ -5,11 +5,11 @@ interface QRCodeDisplayModalProps {
     isOpen: boolean;
     onClose: () => void;
     requestId: string;
-    requesterName: string;
+    hostName: string;
 }
 
 // Uses QR Server API to generate QR code image
-export const QRCodeDisplayModal: React.FC<QRCodeDisplayModalProps> = ({ isOpen, onClose, requestId, requesterName }) => {
+export const QRCodeDisplayModal: React.FC<QRCodeDisplayModalProps> = ({ isOpen, onClose, requestId, hostName }) => {
     if (!isOpen) return null;
 
     // We encode the requestId as the payload.
@@ -25,7 +25,7 @@ export const QRCodeDisplayModal: React.FC<QRCodeDisplayModalProps> = ({ isOpen, 
                 </button>
                 
                 <h3 className="text-2xl font-bold text-gray-800 dark:text-white mb-2">Pickup Verification</h3>
-                <p className="text-gray-500 dark:text-gray-400 mb-6">Show this code to {requesterName} (the host) when you pick up your water.</p>
+                <p className="text-gray-500 dark:text-gray-400 mb-6">Show this code to {hostName} (the host) when you pick up your water.</p>
                 
                 <div className="bg-white p-4 rounded-xl inline-block shadow-inner border border-gray-100">
                     <img src={qrUrl} alt="Pickup QR Code" className="w-48 h-48 mx-auto" />
