@@ -1,6 +1,4 @@
 
-
-
 export interface Review {
   id: string; // Firestore doc ID
   reviewerId: string;
@@ -41,6 +39,10 @@ export interface User {
     postalCode: string;
     city: string;
     country: string;
+    coordinates?: {
+        lat: number;
+        lng: number;
+    };
   };
 
   // Onboarding Status

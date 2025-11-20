@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth, useTheme } from '../App';
 import * as api from '../api';
@@ -13,13 +13,16 @@ import {
     MoonIcon,
     DocumentTextIcon,
     SpinnerIcon,
-    UserGroupIcon,
     ProfilePicture,
     ShieldCheckIcon,
     InstagramIcon,
     FacebookIcon,
     LinkedInIcon,
-    GlobeAltIcon
+    GlobeAltIcon,
+    BellIcon,
+    TrashIcon,
+    ExclamationTriangleIcon,
+    DropletIcon
 } from '../components/Icons';
 import { useToast } from '../hooks/useToast';
 
@@ -65,16 +68,28 @@ const Toggle: React.FC<{ checked: boolean; onChange: (checked: boolean) => void;
 );
 
 export default function UserDashboardPage() {
-    const { userData, setUserData, logout, pendingHostRequestCount, unreadMessagesCount, unreadCount } = useAuth();
+    const { userData, setUserData, logout, pendingHostRequestCount, unreadMessagesCount } = useAuth();
     const { theme, toggleTheme } = useTheme();
     const navigate = useNavigate();
     const { showToast } = useToast();
     const [isTogglingHost, setIsTogglingHost] = useState(false);
+    const [completedRequestsCount, setCompletedRequestsCount] = useState(0);
+
+    useEffect(() => {
+        if (userData?.id) {
+            api.getRequestsByHostId(userData.id).then(requests => {
+                const completed = requests.filter(r => r.status === 'completed').length;
+                setCompletedRequestsCount(completed);
+            });
+        }
+    }, [userData?.id]);
 
     if (!userData) return null;
 
     const isDistributor = userData.distributorVerificationStatus === 'approved';
     const isPending = userData.distributorVerificationStatus === 'pending';
+    const isRejected = userData.distributorVerificationStatus === 'rejected';
+    const isRevoked = userData.distributorVerificationStatus === 'revoked';
 
     const handleHostToggle = async (newValue: boolean) => {
         if (!userData) return;
@@ -181,6 +196,22 @@ export default function UserDashboardPage() {
                             <p className="font-bold text-yellow-800 dark:text-yellow-200">Verification in Progress</p>
                             <p className="text-xs text-yellow-600 dark:text-yellow-300 mt-1">We are reviewing your documents.</p>
                         </div>
+                    ) : isRejected || isRevoked ? (
+                        <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-100 dark:border-red-900/30 text-center">
+                            <ExclamationTriangleIcon className="w-6 h-6 text-red-500 mx-auto mb-2" />
+                            <p className="font-bold text-red-800 dark:text-red-200">Verification {isRevoked ? 'Revoked' : 'Rejected'}</p>
+                            {userData.distributorRejectionReason && (
+                                <p className="text-xs text-red-600 dark:text-red-300 mt-1 mb-3 bg-white dark:bg-gray-800 p-2 rounded border border-red-100 dark:border-red-800">
+                                    "{userData.distributorRejectionReason}"
+                                </p>
+                            )}
+                             <button 
+                                onClick={() => navigate('/profile/edit')}
+                                className="w-full py-2 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700 transition text-sm"
+                            >
+                                Update & Resubmit
+                            </button>
+                        </div>
                     ) : (
                          <div className="text-center space-y-3">
                             <p className="text-sm text-gray-600 dark:text-gray-300">
@@ -239,14 +270,18 @@ export default function UserDashboardPage() {
 
                 {/* Activity Card */}
                 <DashboardCard title="Activity">
-                     <div className="grid grid-cols-2 gap-4">
-                        <Link to="/requests" className="bg-brand-light dark:bg-blue-900/20 p-4 rounded-xl text-center hover:opacity-80 transition">
-                            <p className="text-2xl font-bold text-brand-blue">{pendingHostRequestCount}</p>
-                            <p className="text-xs font-medium text-gray-600 dark:text-gray-300">Pending Requests</p>
+                     <div className="grid grid-cols-3 gap-3">
+                        <Link to="/requests" className="bg-brand-light dark:bg-blue-900/20 p-3 rounded-xl text-center hover:opacity-80 transition flex flex-col items-center justify-center">
+                            <p className="text-xl font-bold text-brand-blue">{pendingHostRequestCount}</p>
+                            <p className="text-[10px] uppercase font-bold text-gray-500 dark:text-gray-400 mt-1">Pending</p>
                         </Link>
-                         <Link to="/messages" className="bg-brand-light dark:bg-blue-900/20 p-4 rounded-xl text-center hover:opacity-80 transition">
-                            <p className="text-2xl font-bold text-brand-blue">{unreadMessagesCount}</p>
-                            <p className="text-xs font-medium text-gray-600 dark:text-gray-300">Unread Messages</p>
+                         <Link to="/requests" className="bg-green-50 dark:bg-green-900/20 p-3 rounded-xl text-center hover:opacity-80 transition flex flex-col items-center justify-center">
+                            <p className="text-xl font-bold text-green-600 dark:text-green-400">{completedRequestsCount}</p>
+                            <p className="text-[10px] uppercase font-bold text-gray-500 dark:text-gray-400 mt-1">Completed</p>
+                        </Link>
+                         <Link to="/messages" className="bg-purple-50 dark:bg-purple-900/20 p-3 rounded-xl text-center hover:opacity-80 transition flex flex-col items-center justify-center">
+                            <p className="text-xl font-bold text-purple-600 dark:text-purple-400">{unreadMessagesCount}</p>
+                            <p className="text-[10px] uppercase font-bold text-gray-500 dark:text-gray-400 mt-1">Messages</p>
                         </Link>
                      </div>
                 </DashboardCard>
@@ -262,13 +297,29 @@ export default function UserDashboardPage() {
                         </div>
                         <Toggle checked={theme === 'dark'} onChange={toggleTheme} />
                      </div>
+                     
+                     <div className="h-px bg-gray-100 dark:bg-gray-700/50 my-1 mx-3"></div>
+                     <ActionButton 
+                        icon={<BellIcon className="w-5 h-5" />}
+                        label="Notifications"
+                        onClick={() => navigate('/settings')}
+                     />
+                     
+                     <div className="h-px bg-gray-100 dark:bg-gray-700/50 my-1 mx-3"></div>
+                     <ActionButton 
+                        icon={<TrashIcon className="w-5 h-5" />}
+                        label="Delete Account"
+                        onClick={() => navigate('/settings')}
+                        colorClass="text-red-600 dark:text-red-400"
+                     />
+
                      <div className="h-px bg-gray-100 dark:bg-gray-700/50 my-1 mx-3"></div>
                      <ActionButton 
                         icon={<ArrowLeftOnRectangleIcon className="w-5 h-5" />}
                         label="Logout"
                         onClick={handleLogout}
                         colorClass="text-red-600 dark:text-red-400"
-                    />
+                     />
                 </DashboardCard>
              </div>
         </div>
