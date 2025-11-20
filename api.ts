@@ -80,8 +80,11 @@ const fromDoc = <T>(docSnap: DocumentSnapshot): T => {
         data.linkedin = data.linkedin || '';
         data.website = data.website || '';
 
-        const oldStatus = (data.distributorStatus as any) || data.hostVerificationStatus;
-        data.distributorVerificationStatus = oldStatus === 'unverified' ? 'none' : (oldStatus || 'none');
+        // FIX: Do not overwrite existing verification status with legacy defaults
+        if (!data.distributorVerificationStatus) {
+            const oldStatus = (data.distributorStatus as any) || data.hostVerificationStatus;
+            data.distributorVerificationStatus = oldStatus === 'unverified' ? 'none' : (oldStatus || 'none');
+        }
         
         data.isHost = data.isHost || false;
         data.isAcceptingRequests = data.isAcceptingRequests !== false;
