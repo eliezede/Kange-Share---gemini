@@ -1,3 +1,4 @@
+
 import { db, auth, storage, googleProvider } from './firebase';
 import {
     collection,
@@ -91,6 +92,7 @@ const fromDoc = <T>(docSnap: DocumentSnapshot): T => {
 
         // Admin and status fields
         data.isBlocked = data.isBlocked || false;
+        data.isAdmin = data.isAdmin || false;
         data.deletedAt = data.deletedAt || null;
         data.verificationReviewedAt = data.verificationReviewedAt || null;
         data.verificationReviewedByAdminId = data.verificationReviewedByAdminId || null;
@@ -113,6 +115,34 @@ const fromDoc = <T>(docSnap: DocumentSnapshot): T => {
     }
 
     return { id: docSnap.id, ...data } as T;
+};
+
+
+// --- HELPER: ADMIN NOTIFICATIONS ---
+
+const notifyAdmins = async (notificationData: Omit<Notification, 'id' | 'createdAt' | 'read'>) => {
+    try {
+        const usersRef = collection(db, 'users');
+        const q = query(usersRef, where('isAdmin', '==', true));
+        const adminsSnap = await getDocs(q);
+        
+        if (adminsSnap.empty) return;
+
+        const batch = writeBatch(db);
+
+        adminsSnap.forEach(adminDoc => {
+            const ref = doc(collection(db, `notifications/${adminDoc.id}/items`));
+            batch.set(ref, { 
+                ...notificationData, 
+                read: false, 
+                createdAt: serverTimestamp() 
+            });
+        });
+
+        await batch.commit();
+    } catch (error) {
+        console.error("Failed to notify admins:", error);
+    }
 };
 
 
@@ -148,7 +178,7 @@ export const getHosts = async (): Promise<User[]> => {
     return users.filter(u => !u.isBlocked && !u.deletedAt);
 };
 
-export const createInitialUser = (uid: string, email: string, firstName: string, lastName: string, displayName: string, profilePicture: string): Promise<void> => {
+export const createInitialUser = async (uid: string, email: string, firstName: string, lastName: string, displayName: string, profilePicture: string): Promise<void> => {
     const newUser: Omit<User, 'id'> = {
         email, firstName, lastName, displayName, profilePicture, phone: '',
         bio: '',
@@ -167,7 +197,17 @@ export const createInitialUser = (uid: string, email: string, firstName: string,
         followers: [], following: [],
     };
     const userDocRef = doc(db, 'users', uid);
-    return setDoc(userDocRef, newUser);
+    await setDoc(userDocRef, newUser);
+
+    // Notify admins of new user
+    await notifyAdmins({
+        type: 'new_follower', // Reusing 'new_follower' for generic notification
+        relatedId: uid,
+        text: `New user registered: ${displayName} (${email})`,
+        senderId: uid,
+        senderName: displayName,
+        senderImage: profilePicture
+    });
 };
 
 export const updateUser = async (userId: string, updates: Partial<User>): Promise<void> => {
@@ -272,16 +312,30 @@ export const deleteDistributorProofDocument = async (userId: string, documentToD
 
 export const submitForDistributorVerification = async (userId: string, distributorId: string): Promise<void> => {
     const userDocRef = doc(db, 'users', userId);
+    const userSnap = await getDoc(userDocRef);
+    const userData = userSnap.data() as User;
+
     await updateDoc(userDocRef, {
         distributorId,
         distributorVerificationStatus: 'pending',
         distributorRejectionReason: '', // Clear previous reason
     });
     
+    // Notify User
     createNotification(userId, {
         type: 'distributor_submitted',
         relatedId: userId,
         text: 'Your distributor verification has been submitted for review.',
+    });
+
+    // Notify Admins
+    await notifyAdmins({
+        type: 'distributor_submitted',
+        relatedId: userId,
+        text: `${userData?.displayName || 'A user'} has requested distributor verification.`,
+        senderId: userId,
+        senderName: userData?.displayName,
+        senderImage: userData?.profilePicture
     });
 };
 

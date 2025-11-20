@@ -1,5 +1,4 @@
 
-
 import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import * as api from '../api';
@@ -89,15 +88,6 @@ const ConfirmationModal: React.FC<{ isOpen: boolean; title: string; message: str
 };
 
 // --- User Detail Modal Component ---
-const Toggle: React.FC<{ checked: boolean; onChange: (checked: boolean) => void }> = ({ checked, onChange }) => (
-  <button
-    type="button" role="switch" aria-checked={checked} onClick={() => onChange(!checked)}
-    className={`relative inline-flex items-center h-6 rounded-full w-11 transition-colors ${checked ? 'bg-brand-blue' : 'bg-gray-300 dark:bg-gray-600'}`}
-  >
-    <span className={`inline-block w-4 h-4 transform bg-white rounded-full transition-transform ${checked ? 'translate-x-6' : 'translate-x-1'}`} />
-  </button>
-);
-
 const DetailItem: React.FC<{ icon: React.ReactNode; label: string; value: React.ReactNode }> = ({ icon, label, value }) => (
     <div className="flex items-start gap-3 text-gray-700 dark:text-gray-300">
         <div className="w-5 h-5 text-gray-500 dark:text-gray-400 mt-0.5">{icon}</div>
@@ -127,7 +117,7 @@ const UserDetailModal: React.FC<UserDetailModalProps> = ({ user, onClose, onUpda
         setIsProcessing(action);
         try {
             await apiCall();
-            await onUpdate();
+            await onUpdate(); // Refresh data in parent
             showToast(`User ${action} successfully!`, 'success');
         } catch (error) {
             console.error(`Failed to ${action} user:`, error);
@@ -149,7 +139,7 @@ const UserDetailModal: React.FC<UserDetailModalProps> = ({ user, onClose, onUpda
     const handleBlockToggle = () => handleAction(user.isBlocked ? 'unblocked' : 'blocked', () => api.updateUserBlockStatus(user.id, !user.isBlocked));
     const handleDelete = () => {
         setConfirmationDetails({ title: "Delete User", message: `Are you sure you want to permanently delete ${user.displayName}? This action cannot be undone.`, confirmText: 'Delete', isDestructive: true });
-        setActionToConfirm(() => () => handleAction('deleted', () => api.deleteUser(user.id)));
+        setActionToConfirm(() => () => handleAction('deleted', () => api.deleteUser(user.id)).then(() => onClose()));
     };
 
     return (
@@ -359,7 +349,7 @@ export default function AdminPage() {
                     <section>
                         <h2 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-3">Key Metrics</h2>
                         <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            <MetricCard icon={<UserGroupIcon className="w-6 h-6 text-brand-blue" />} label="Total Users" value={users.length} />
+                            <MetricCard icon={<UserGroupIcon className="w-6 h-6 text-brand-blue" />} label="Total Users" value={metrics.totalUsers} />
                             <MetricCard icon={<ClipboardDocumentListIcon className="w-6 h-6 text-brand-blue" />} label="Total Requests" value={metrics.totalRequests} />
                             <MetricCard icon={<CheckBadgeIcon className="w-6 h-6 text-green-500" />} label="Verified Hosts" value={metrics.verifiedHosts} />
                             <MetricCard icon={<ClockIcon className="w-6 h-6 text-yellow-500" />} label="Pending Requests" value={metrics.pendingRequests} />
@@ -469,8 +459,13 @@ export default function AdminPage() {
                     user={selectedUser}
                     onClose={() => setSelectedUser(null)}
                     onUpdate={async () => {
-                        setSelectedUser(null);
+                        // Do not clear selected user here immediately to avoid UI jank, 
+                        // the detail modal itself handles its own state updates via api call,
+                        // but we refresh the main list.
                         await fetchData();
+                        // Re-fetch the selected user data to update the modal content if it's still open
+                        const updatedUser = await api.getUserById(selectedUser.id);
+                        if (updatedUser) setSelectedUser(updatedUser);
                     }}
                 />
             )}
