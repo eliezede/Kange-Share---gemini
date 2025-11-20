@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import * as api from '../api';
 import { 
     StarIcon, SearchIcon, AdjustmentsHorizontalIcon, CheckBadgeIcon, 
@@ -210,6 +210,7 @@ const CategorySection: React.FC<{ title: string; icon?: React.ReactNode; childre
 );
 
 export default function MapPage() {
+  const navigate = useNavigate();
   const { userData, pendingHostRequestCount } = useAuth();
   const [hosts, setHosts] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
@@ -516,7 +517,12 @@ export default function MapPage() {
                 >
                     {hostsNearYou.map(host => (
                         <div key={host.id} className="snap-start">
-                            <HostCard host={host} isCompact distance={(host as any).distance} />
+                            <HostCard 
+                                host={host} 
+                                isCompact 
+                                distance={(host as any).distance} 
+                                onClick={() => navigate(`/host/${host.id}`)}
+                            />
                         </div>
                     ))}
                 </CategorySection>
@@ -528,7 +534,12 @@ export default function MapPage() {
                 >
                      {officialDistributors.map(host => (
                         <div key={host.id} className="snap-start">
-                            <HostCard host={host} isCompact distance={(host as any).distance} />
+                             <HostCard 
+                                host={host} 
+                                isCompact 
+                                distance={(host as any).distance} 
+                                onClick={() => navigate(`/host/${host.id}`)}
+                            />
                         </div>
                     ))}
                 </CategorySection>
@@ -543,7 +554,12 @@ export default function MapPage() {
                     {filteredHosts.length > 0 ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                             {filteredHosts.map(host => (
-                                <HostCard key={host.id} host={host} distance={(host as any).distance} />
+                                <HostCard 
+                                    key={host.id} 
+                                    host={host} 
+                                    distance={(host as any).distance} 
+                                    onClick={() => navigate(`/host/${host.id}`)}
+                                />
                             ))}
                         </div>
                     ) : (

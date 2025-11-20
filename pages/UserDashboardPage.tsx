@@ -75,13 +75,17 @@ export default function UserDashboardPage() {
     const { showToast } = useToast();
     const [isTogglingHost, setIsTogglingHost] = useState(false);
     const [completedRequestsCount, setCompletedRequestsCount] = useState(0);
+    
+    // Local state to ensure we render the freshest data immediately
+    const [dashboardUser, setDashboardUser] = useState(userData);
 
     useEffect(() => {
         if (userData?.id) {
             // Fetch fresh user data to ensure counts (followers, etc.) are up to date
             api.getUserById(userData.id).then(freshUser => {
                 if (freshUser) {
-                    setUserData(freshUser);
+                    setDashboardUser(freshUser); // Update local for immediate display
+                    setUserData(freshUser);      // Update global context
                 }
             });
 
@@ -92,19 +96,25 @@ export default function UserDashboardPage() {
         }
     }, [userData?.id, setUserData]);
 
-    if (!userData) return null;
+    const userToRender = dashboardUser || userData;
 
-    const isDistributor = userData.distributorVerificationStatus === 'approved';
-    const isPending = userData.distributorVerificationStatus === 'pending';
-    const isRejected = userData.distributorVerificationStatus === 'rejected';
-    const isRevoked = userData.distributorVerificationStatus === 'revoked';
+    if (!userToRender) return null;
+
+    const isDistributor = userToRender.distributorVerificationStatus === 'approved';
+    const isPending = userToRender.distributorVerificationStatus === 'pending';
+    const isRejected = userToRender.distributorVerificationStatus === 'rejected';
+    const isRevoked = userToRender.distributorVerificationStatus === 'revoked';
 
     const handleHostToggle = async (newValue: boolean) => {
-        if (!userData) return;
+        if (!userToRender) return;
         setIsTogglingHost(true);
         try {
-            await api.updateUser(userData.id, { isAcceptingRequests: newValue });
-            setUserData({ ...userData, isAcceptingRequests: newValue });
+            await api.updateUser(userToRender.id, { isAcceptingRequests: newValue });
+            
+            const updatedUser = { ...userToRender, isAcceptingRequests: newValue };
+            setDashboardUser(updatedUser);
+            setUserData(updatedUser);
+            
             showToast(newValue ? 'You are now visible to travelers.' : 'You are hidden from search.', 'success');
         } catch (error) {
             showToast('Failed to update status.', 'error');
@@ -123,9 +133,9 @@ export default function UserDashboardPage() {
              {/* Header */}
              <div className="bg-white dark:bg-gray-800 pb-6 pt-4 px-6 rounded-b-[2.5rem] shadow-sm border-b border-gray-100 dark:border-gray-700/50">
                 <div className="flex flex-col items-center text-center">
-                    <ProfilePicture src={userData.profilePicture} alt={userData.displayName} className="w-24 h-24 rounded-full object-cover shadow-lg mb-4" />
+                    <ProfilePicture src={userToRender.profilePicture} alt={userToRender.displayName} className="w-24 h-24 rounded-full object-cover shadow-lg mb-4" />
                     <div className="flex items-center gap-2 justify-center mb-1">
-                        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{userData.displayName}</h1>
+                        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{userToRender.displayName}</h1>
                         {isDistributor && <CheckBadgeIcon className="w-6 h-6 text-brand-blue" />}
                     </div>
                     {isDistributor ? (
@@ -139,13 +149,13 @@ export default function UserDashboardPage() {
                     )}
                     
                     <div className="flex items-center gap-8 w-full justify-center max-w-xs mx-auto">
-                        <Link to={`/profile/${userData.id}/followers`} className="flex-1 text-center p-2 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700/50 transition">
-                            <p className="font-bold text-xl dark:text-white">{userData.followers.length}</p>
+                        <Link to={`/profile/${userToRender.id}/followers`} className="flex-1 text-center p-2 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700/50 transition">
+                            <p className="font-bold text-xl dark:text-white">{userToRender.followers.length}</p>
                             <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Followers</p>
                         </Link>
                         <div className="w-px h-8 bg-gray-200 dark:bg-gray-700"></div>
-                        <Link to={`/profile/${userData.id}/following`} className="flex-1 text-center p-2 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700/50 transition">
-                            <p className="font-bold text-xl dark:text-white">{userData.following.length}</p>
+                        <Link to={`/profile/${userToRender.id}/following`} className="flex-1 text-center p-2 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700/50 transition">
+                            <p className="font-bold text-xl dark:text-white">{userToRender.following.length}</p>
                             <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Following</p>
                         </Link>
                     </div>
@@ -159,7 +169,7 @@ export default function UserDashboardPage() {
                         icon={<UserCircleIcon className="w-5 h-5 text-gray-600 dark:text-gray-300" />}
                         label="View Public Profile"
                         subLabel="See how others view your profile"
-                        onClick={() => navigate(`/host/${userData.id}`)}
+                        onClick={() => navigate(`/host/${userToRender.id}`)}
                     />
                      <div className="h-px bg-gray-100 dark:bg-gray-700/50 my-1 mx-3"></div>
                     <ActionButton 
@@ -170,10 +180,10 @@ export default function UserDashboardPage() {
                     />
                     
                     <div className="flex justify-center gap-4 mt-4 pt-2">
-                         {userData.instagram && <a href={userData.instagram} target="_blank" rel="noreferrer" className="text-pink-600 hover:opacity-80"><InstagramIcon className="w-5 h-5" /></a>}
-                         {userData.facebook && <a href={userData.facebook} target="_blank" rel="noreferrer" className="text-blue-600 hover:opacity-80"><FacebookIcon className="w-5 h-5" /></a>}
-                         {userData.linkedin && <a href={userData.linkedin} target="_blank" rel="noreferrer" className="text-blue-700 hover:opacity-80"><LinkedInIcon className="w-5 h-5" /></a>}
-                         {userData.website && <a href={userData.website} target="_blank" rel="noreferrer" className="text-gray-600 dark:text-gray-300 hover:opacity-80"><GlobeAltIcon className="w-5 h-5" /></a>}
+                         {userToRender.instagram && <a href={userToRender.instagram} target="_blank" rel="noreferrer" className="text-pink-600 hover:opacity-80"><InstagramIcon className="w-5 h-5" /></a>}
+                         {userToRender.facebook && <a href={userToRender.facebook} target="_blank" rel="noreferrer" className="text-blue-600 hover:opacity-80"><FacebookIcon className="w-5 h-5" /></a>}
+                         {userToRender.linkedin && <a href={userToRender.linkedin} target="_blank" rel="noreferrer" className="text-blue-700 hover:opacity-80"><LinkedInIcon className="w-5 h-5" /></a>}
+                         {userToRender.website && <a href={userToRender.website} target="_blank" rel="noreferrer" className="text-gray-600 dark:text-gray-300 hover:opacity-80"><GlobeAltIcon className="w-5 h-5" /></a>}
                     </div>
                 </DashboardCard>
 
@@ -188,7 +198,7 @@ export default function UserDashboardPage() {
                                     </div>
                                     <div>
                                         <p className="font-bold text-green-800 dark:text-green-200 text-sm">Verified Distributor</p>
-                                        <p className="text-xs text-green-600 dark:text-green-300">ID: {userData.distributorId}</p>
+                                        <p className="text-xs text-green-600 dark:text-green-300">ID: {userToRender.distributorId}</p>
                                     </div>
                                 </div>
                              </div>
@@ -208,9 +218,9 @@ export default function UserDashboardPage() {
                         <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-100 dark:border-red-900/30 text-center">
                             <ExclamationTriangleIcon className="w-6 h-6 text-red-500 mx-auto mb-2" />
                             <p className="font-bold text-red-800 dark:text-red-200">Verification {isRevoked ? 'Revoked' : 'Rejected'}</p>
-                            {userData.distributorRejectionReason && (
+                            {userToRender.distributorRejectionReason && (
                                 <p className="text-xs text-red-600 dark:text-red-300 mt-1 mb-3 bg-white dark:bg-gray-800 p-2 rounded border border-red-100 dark:border-red-800">
-                                    "{userData.distributorRejectionReason}"
+                                    "{userToRender.distributorRejectionReason}"
                                 </p>
                             )}
                              <button 
@@ -241,16 +251,16 @@ export default function UserDashboardPage() {
                         <div className="space-y-2">
                             <div className="flex items-center justify-between p-2">
                                 <div className="flex items-center gap-3">
-                                    <div className={`p-2 rounded-full ${userData.isAcceptingRequests ? 'bg-green-100 dark:bg-green-900/50 text-green-600' : 'bg-gray-100 dark:bg-gray-700 text-gray-500'}`}>
+                                    <div className={`p-2 rounded-full ${userToRender.isAcceptingRequests ? 'bg-green-100 dark:bg-green-900/50 text-green-600' : 'bg-gray-100 dark:bg-gray-700 text-gray-500'}`}>
                                         <PresentationChartBarIcon className="w-5 h-5" />
                                     </div>
                                     <div>
                                         <p className="font-semibold text-gray-800 dark:text-gray-200">Accept Requests</p>
-                                        <p className="text-xs text-gray-500 dark:text-gray-400">{userData.isAcceptingRequests ? 'Visible on map' : 'Hidden from map'}</p>
+                                        <p className="text-xs text-gray-500 dark:text-gray-400">{userToRender.isAcceptingRequests ? 'Visible on map' : 'Hidden from map'}</p>
                                     </div>
                                 </div>
                                 {isTogglingHost ? <SpinnerIcon className="w-5 h-5 animate-spin text-brand-blue" /> : 
-                                    <Toggle checked={userData.isAcceptingRequests} onChange={handleHostToggle} />
+                                    <Toggle checked={userToRender.isAcceptingRequests} onChange={handleHostToggle} />
                                 }
                             </div>
                             <div className="h-px bg-gray-100 dark:bg-gray-700/50 my-1 mx-3"></div>
