@@ -201,7 +201,7 @@ export const createInitialUser = async (uid: string, email: string, firstName: s
 
     // Notify admins of new user
     await notifyAdmins({
-        type: 'new_follower', // Reusing 'new_follower' for generic notification
+        type: 'new_user_registered',
         relatedId: uid,
         text: `New user registered: ${displayName} (${email})`,
         senderId: uid,

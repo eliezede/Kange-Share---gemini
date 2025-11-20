@@ -109,7 +109,7 @@ export interface WaterRequest {
   hostImage: string;
 }
 
-export type NotificationType = 'new_request' | 'request_accepted' | 'request_declined' | 'request_cancelled' | 'new_message' | 'new_follower' | 'review_left' | 'distributor_submitted' | 'distributor_approved' | 'distributor_rejected' | 'distributor_revoked' | 'user_blocked' | 'user_unblocked';
+export type NotificationType = 'new_request' | 'request_accepted' | 'request_declined' | 'request_cancelled' | 'new_message' | 'new_follower' | 'review_left' | 'distributor_submitted' | 'distributor_approved' | 'distributor_rejected' | 'distributor_revoked' | 'user_blocked' | 'user_unblocked' | 'new_user_registered';
 
 export interface Notification {
   id: string;
