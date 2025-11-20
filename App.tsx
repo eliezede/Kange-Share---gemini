@@ -22,6 +22,7 @@ import FollowListPage from './pages/FollowListPage';
 import AdminPage from './pages/AdminPage';
 import SignUpPage from './pages/SignUpPage';
 import OnboardingPage from './pages/OnboardingPage';
+import BecomeDistributorPage from './pages/BecomeDistributorPage';
 import { SpinnerIcon } from './components/Icons';
 import Header from './components/Header';
 import { ToastProvider } from './hooks/useToast';
@@ -269,6 +270,7 @@ const AppRoutes = () => {
                 <Route path="/profile/edit" element={<UserProfilePage />} />
                 <Route path="/host/:id" element={<HostProfilePage />} />
                 <Route path="/settings" element={<SettingsPage />} />
+                <Route path="/become-distributor" element={<BecomeDistributorPage />} />
                 <Route path="/profile/:userId/:followType" element={<FollowListPage />} />
                 <Route path="/request/:hostId" element={<RequestWaterPage />} />
                 <Route path="/request-detail/:requestId" element={<RequestDetailPage />} />

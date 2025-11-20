@@ -5,7 +5,7 @@ import * as api from '../api';
 import { 
     StarIcon, SearchIcon, AdjustmentsHorizontalIcon, CheckBadgeIcon, 
     SpinnerIcon, ProfilePicture, MapPinIcon, MapIcon, ListBulletIcon,
-    SparklesIcon, UserGroupIcon
+    SparklesIcon, UserGroupIcon, PresentationChartBarIcon, ClipboardDocumentListIcon
 } from '../components/Icons';
 import { User } from '../types';
 import { useAuth } from '../App';
@@ -13,7 +13,25 @@ import { useAuth } from '../App';
 // --- Leaflet Types Shim ---
 declare const L: any;
 
-// Mock function to generate coordinates based on string hash if they don't exist
+// Haversine formula for distance calculation (in km)
+function getDistanceFromLatLonInKm(lat1: number, lon1: number, lat2: number, lon2: number) {
+  const R = 6371; // Radius of the earth in km
+  const dLat = deg2rad(lat2-lat1);
+  const dLon = deg2rad(lon2-lon1); 
+  const a = 
+    Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) * 
+    Math.sin(dLon/2) * Math.sin(dLon/2); 
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); 
+  const d = R * c; // Distance in km
+  return d;
+}
+
+function deg2rad(deg: number) {
+  return deg * (Math.PI/180)
+}
+
+// Mock function to generate coordinates based on string hash if they don't exist (fallback)
 const getMockCoordinates = (id: string) => {
     const hash = id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
     const lat = 51.505 + (Math.sin(hash) * 0.1);
@@ -21,7 +39,7 @@ const getMockCoordinates = (id: string) => {
     return { lat, lng };
 };
 
-const HostCard: React.FC<{ host: User; isCompact?: boolean; onClick?: () => void }> = ({ host, isCompact, onClick }) => (
+const HostCard: React.FC<{ host: User; isCompact?: boolean; onClick?: () => void; distance?: number }> = ({ host, isCompact, onClick, distance }) => (
   <div 
     onClick={onClick}
     className={`
@@ -37,10 +55,17 @@ const HostCard: React.FC<{ host: User; isCompact?: boolean; onClick?: () => void
                 {host.distributorVerificationStatus === 'approved' && <CheckBadgeIcon className="w-5 h-5 text-brand-blue flex-shrink-0" />}
             </div>
             <p className="text-sm text-gray-500 dark:text-gray-400 truncate">{host.address.city}, {host.address.country}</p>
-            <div className="flex items-center mt-1">
-                <StarIcon className="w-4 h-4 text-yellow-400" />
-                <span className="ml-1 text-sm font-bold text-gray-800 dark:text-gray-200">{host.rating.toFixed(1)}</span>
-                <span className="ml-1 text-xs text-gray-500 dark:text-gray-400">({host.reviews})</span>
+            <div className="flex items-center mt-1 gap-3">
+                <div className="flex items-center">
+                    <StarIcon className="w-4 h-4 text-yellow-400" />
+                    <span className="ml-1 text-sm font-bold text-gray-800 dark:text-gray-200">{host.rating.toFixed(1)}</span>
+                </div>
+                {distance !== undefined && (
+                    <div className="flex items-center text-gray-500 dark:text-gray-400">
+                        <MapPinIcon className="w-3 h-3 mr-0.5" />
+                        <span className="text-xs">{distance.toFixed(1)} km</span>
+                    </div>
+                )}
             </div>
         </div>
     </div>
@@ -185,9 +210,10 @@ const CategorySection: React.FC<{ title: string; icon?: React.ReactNode; childre
 );
 
 export default function MapPage() {
-  const { userData } = useAuth();
+  const { userData, pendingHostRequestCount } = useAuth();
   const [hosts, setHosts] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
+  const [userLocation, setUserLocation] = useState<{lat: number, lng: number} | null>(null);
   
   // View State
   const [searchQuery, setSearchQuery] = useState('');
@@ -202,8 +228,21 @@ export default function MapPage() {
   const markersRef = useRef<{ [key: string]: any }>({});
   const userMarkerRef = useRef<any>(null);
 
-  // Fetch Data
+  // Fetch Data & Location
   useEffect(() => {
+      // 1. Get GPS
+      if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition((position) => {
+              setUserLocation({
+                  lat: position.coords.latitude,
+                  lng: position.coords.longitude
+              });
+          }, (err) => {
+              console.log("GPS permission denied or error:", err);
+          });
+      }
+
+      // 2. Get Hosts
       api.getHosts().then(data => {
           const hostsWithCoords = data.map(h => {
               if (!h.address.coordinates) {
@@ -216,9 +255,23 @@ export default function MapPage() {
       });
   }, []);
 
+  // Calculate Distances
+  const hostsWithDistance = useMemo(() => {
+    if (!userLocation) return hosts;
+    return hosts.map(host => {
+        const dist = getDistanceFromLatLonInKm(
+            userLocation.lat,
+            userLocation.lng,
+            host.address.coordinates?.lat || 0,
+            host.address.coordinates?.lng || 0
+        );
+        return { ...host, distance: dist };
+    });
+  }, [hosts, userLocation]);
+
   // Filter Logic
   const filteredHosts = useMemo(() => {
-    return hosts.filter(host => {
+    return hostsWithDistance.filter(host => {
       const matchesSearch = host.displayName.toLowerCase().includes(searchQuery.toLowerCase()) ||
                             host.address.city.toLowerCase().includes(searchQuery.toLowerCase());
       
@@ -234,15 +287,12 @@ export default function MapPage() {
 
       return matchesSearch && matchesPh && matchesRating && matchesAvailability;
     });
-  }, [searchQuery, hosts, filters]);
+  }, [searchQuery, hostsWithDistance, filters]);
 
   // View Mode Management
   useEffect(() => {
       if (searchQuery && viewMode === 'dashboard') {
           setViewMode('list');
-      } else if (!searchQuery && viewMode !== 'dashboard' && !filters.phLevels.length && filters.minRating === 0) {
-          // Optional: Auto-return to dashboard if query cleared, but might be annoying.
-          // Let's keep manual return or return if user hits "back" conceptually.
       }
   }, [searchQuery]);
 
@@ -285,18 +335,9 @@ export default function MapPage() {
         if (filteredHosts.length > 0 && !selectedHostId) {
             map.fitBounds(bounds, { padding: [50, 50] });
         }
-      }
-
-  }, [viewMode, filteredHosts, loading]);
-
-  const handleNearMe = () => {
-    if (!navigator.geolocation) return alert("Geolocation not supported");
-    
-    setViewMode('map');
-    
-    navigator.geolocation.getCurrentPosition((position) => {
-        const { latitude, longitude } = position.coords;
-        if (mapInstanceRef.current) {
+        
+        // Add user location marker if available
+        if (userLocation) {
             if (userMarkerRef.current) userMarkerRef.current.remove();
             const userIcon = L.divIcon({
                 className: 'user-location-icon',
@@ -304,21 +345,61 @@ export default function MapPage() {
                 iconSize: [16, 16],
                 iconAnchor: [8, 8]
             });
-            userMarkerRef.current = L.marker([latitude, longitude], { icon: userIcon }).addTo(mapInstanceRef.current);
-            mapInstanceRef.current.flyTo([latitude, longitude], 13);
+            userMarkerRef.current = L.marker([userLocation.lat, userLocation.lng], { icon: userIcon }).addTo(map);
+        }
+      }
+
+  }, [viewMode, filteredHosts, loading, userLocation]);
+
+  const handleNearMe = () => {
+    if (!navigator.geolocation) {
+        alert("Geolocation not supported");
+        return;
+    }
+    setViewMode('map');
+    navigator.geolocation.getCurrentPosition((position) => {
+        const { latitude, longitude } = position.coords;
+        setUserLocation({ lat: latitude, lng: longitude });
+        if (mapInstanceRef.current) {
+             mapInstanceRef.current.flyTo([latitude, longitude], 13);
         }
     }, () => alert("Location access denied"));
   };
 
   // Derived Lists for Dashboard
-  const topRatedHosts = useMemo(() => [...hosts].sort((a, b) => b.rating - a.rating).slice(0, 5), [hosts]);
-  const verifiedDistributors = useMemo(() => hosts.filter(h => h.distributorVerificationStatus === 'approved').slice(0, 5), [hosts]);
+  
+  // 1. Hosts Near You (Sorted by distance if location available)
+  const hostsNearYou = useMemo(() => {
+      const list = [...hostsWithDistance];
+      if (userLocation) {
+          // Sort by distance (ascending)
+          list.sort((a, b) => (a as any).distance - (b as any).distance);
+      } else {
+          // Fallback: maybe random or rating
+          // Just use list as is, maybe randomize or sort by rating for quality
+          list.sort((a, b) => b.rating - a.rating);
+      }
+      return list.slice(0, 5);
+  }, [hostsWithDistance, userLocation]);
+
+  // 2. Official Distributors (Filtered, then sorted by distance)
+  const officialDistributors = useMemo(() => {
+      const list = hostsWithDistance.filter(h => h.distributorVerificationStatus === 'approved');
+      if (userLocation) {
+          list.sort((a, b) => (a as any).distance - (b as any).distance);
+      } else {
+          list.sort((a, b) => b.rating - a.rating);
+      }
+      return list.slice(0, 5);
+  }, [hostsWithDistance, userLocation]);
+
 
   if (loading) {
       return <div className="flex justify-center items-center h-full"><SpinnerIcon className="w-10 h-10 text-brand-blue animate-spin" /></div>;
   }
 
   const activeFilterCount = filters.phLevels.length + (filters.minRating > 0 ? 1 : 0) + (filters.openToday ? 1 : 0);
+  const isDistributor = userData?.distributorVerificationStatus === 'approved';
 
   return (
     <div className="bg-white dark:bg-gray-900 min-h-full flex flex-col relative">
@@ -379,7 +460,7 @@ export default function MapPage() {
         {viewMode === 'dashboard' && (
             <div className="flex-1 overflow-y-auto pb-24 animate-fade-in-up">
                 {/* Hero */}
-                <div className="px-6 py-6 mb-6">
+                <div className="px-6 py-6 mb-4">
                     <h1 className="text-3xl font-bold text-gray-800 dark:text-white mb-2">
                         Hi, {userData?.firstName || 'there'}! 👋
                     </h1>
@@ -394,35 +475,60 @@ export default function MapPage() {
                     </button>
                 </div>
 
-                {/* Top Rated Carousel */}
+                {/* Contextual Recommendations */}
+                <div className="px-6 mb-8">
+                    {isDistributor ? (
+                        <div className="grid grid-cols-2 gap-4">
+                            <Link to="/profile/edit" className="bg-blue-50 dark:bg-blue-900/30 p-4 rounded-2xl border border-blue-100 dark:border-blue-800 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition">
+                                <PresentationChartBarIcon className="w-8 h-8 text-brand-blue mb-2" />
+                                <p className="font-bold text-gray-800 dark:text-gray-100 leading-tight">Manage Availability</p>
+                            </Link>
+                            <Link to="/requests" className="bg-purple-50 dark:bg-purple-900/30 p-4 rounded-2xl border border-purple-100 dark:border-purple-800 hover:bg-purple-100 dark:hover:bg-purple-900/50 transition relative">
+                                <ClipboardDocumentListIcon className="w-8 h-8 text-purple-600 mb-2" />
+                                <p className="font-bold text-gray-800 dark:text-gray-100 leading-tight">Requests Waiting</p>
+                                {pendingHostRequestCount > 0 && (
+                                    <span className="absolute top-3 right-3 bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+                                        {pendingHostRequestCount}
+                                    </span>
+                                )}
+                            </Link>
+                        </div>
+                    ) : (
+                        <Link to="/become-distributor" className="block bg-gradient-to-r from-brand-blue to-blue-600 p-5 rounded-2xl shadow-md text-white relative overflow-hidden group">
+                            <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full -mr-8 -mt-8 pointer-events-none"></div>
+                            <div className="relative z-10 flex items-center justify-between">
+                                <div>
+                                    <h3 className="font-bold text-lg">Become a Distributor</h3>
+                                    <p className="text-blue-100 text-sm">Verify your status to start hosting.</p>
+                                </div>
+                                <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
+                                    <CheckBadgeIcon className="w-6 h-6 text-white" />
+                                </div>
+                            </div>
+                        </Link>
+                    )}
+                </div>
+
+                {/* Hosts Near You */}
                 <CategorySection 
-                    title="Top Rated Hosts" 
-                    icon={<SparklesIcon className="w-6 h-6 text-yellow-400" />}
+                    title="Hosts Near You" 
+                    icon={<MapPinIcon className="w-6 h-6 text-red-500" />}
                 >
-                    {topRatedHosts.map(host => (
+                    {hostsNearYou.map(host => (
                         <div key={host.id} className="snap-start">
-                            <HostCard host={host} isCompact />
+                            <HostCard host={host} isCompact distance={(host as any).distance} />
                         </div>
                     ))}
                 </CategorySection>
 
-                {/* Verified Distributors Carousel */}
+                {/* Official Distributors */}
                 <CategorySection 
-                    title="Verified Distributors" 
+                    title="Official Enagic® Distributors" 
                     icon={<CheckBadgeIcon className="w-6 h-6 text-brand-blue" />}
                 >
-                     {verifiedDistributors.map(host => (
+                     {officialDistributors.map(host => (
                         <div key={host.id} className="snap-start">
-                            <HostCard host={host} isCompact />
-                        </div>
-                    ))}
-                </CategorySection>
-
-                {/* All Hosts (Just a peek) */}
-                <CategorySection title="Recently Joined" icon={<UserGroupIcon className="w-6 h-6 text-purple-500" />}>
-                     {hosts.slice(0, 5).map(host => (
-                        <div key={host.id} className="snap-start">
-                            <HostCard host={host} isCompact />
+                            <HostCard host={host} isCompact distance={(host as any).distance} />
                         </div>
                     ))}
                 </CategorySection>
@@ -437,7 +543,7 @@ export default function MapPage() {
                     {filteredHosts.length > 0 ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                             {filteredHosts.map(host => (
-                                <HostCard key={host.id} host={host} />
+                                <HostCard key={host.id} host={host} distance={(host as any).distance} />
                             ))}
                         </div>
                     ) : (
