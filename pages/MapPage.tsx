@@ -71,7 +71,7 @@ const HostCard: React.FC<{ host: User; isCompact?: boolean; onClick?: () => void
     </div>
     {!isCompact && (
         <div className="px-4 pb-4">
-             <Link to={`/host/${host.id}`} className="block w-full text-center py-2.5 bg-gray-50 dark:bg-gray-700 text-brand-blue dark:text-white font-bold rounded-xl hover:bg-brand-blue hover:text-white dark:hover:bg-brand-blue transition-colors">
+             <Link to={`/host/${host.id}`} className="block w-full text-center py-2.5 bg-gray-5 dark:bg-gray-700 text-brand-blue dark:text-white font-bold rounded-xl hover:bg-brand-blue hover:text-white dark:hover:bg-brand-blue transition-colors">
                 View Profile
              </Link>
         </div>
@@ -317,17 +317,51 @@ export default function MapPage() {
         markersRef.current = {};
 
         const customIcon = L.divIcon({
-            className: 'custom-div-icon',
-            html: `<div style="background-color: #2C8CF4; width: 24px; height: 24px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>`,
-            iconSize: [24, 24],
-            iconAnchor: [12, 12]
+            className: 'bg-transparent border-none',
+            html: `<div style="font-size: 40px; line-height: 1; filter: drop-shadow(0 3px 3px rgba(0,0,0,0.3)); transform: translateY(-5px);">💧</div>`,
+            iconSize: [40, 40],
+            iconAnchor: [20, 20], // Centered
+            popupAnchor: [0, -20]
         });
 
         const bounds = L.latLngBounds([]);
         filteredHosts.forEach(host => {
             if (host.address.coordinates) {
                 const marker = L.marker([host.address.coordinates.lat, host.address.coordinates.lng], { icon: customIcon }).addTo(map);
-                marker.bindPopup(`<b>${host.displayName}</b><br>${host.address.city}`);
+                
+                // Create interactive popup content
+                const popupContent = document.createElement('div');
+                // Tailwind utility classes work because CDN scans DOM
+                popupContent.className = "min-w-[160px] cursor-pointer -m-1"; 
+                
+                // Simple fallback for image
+                const imgSrc = host.profilePicture || `https://ui-avatars.com/api/?name=${encodeURIComponent(host.displayName)}&background=random`;
+
+                popupContent.innerHTML = `
+                    <div class="flex items-center gap-3 p-2 transition-colors hover:bg-gray-50 rounded-lg">
+                        <img src="${imgSrc}" class="w-10 h-10 rounded-full object-cover border border-gray-200 shadow-sm flex-shrink-0" alt="${host.displayName}" />
+                        <div class="flex-1 min-w-0">
+                            <h3 class="font-bold text-gray-900 text-sm truncate leading-tight">${host.displayName}</h3>
+                            <p class="text-xs text-gray-500 truncate">${host.address.city}</p>
+                            <div class="flex items-center mt-0.5">
+                                <svg class="w-3 h-3 text-yellow-400" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                                <span class="text-xs font-semibold text-gray-700 ml-1">${host.rating.toFixed(1)}</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                // Navigate on click
+                popupContent.addEventListener('click', (e) => {
+                    e.stopPropagation(); // Prevent map click
+                    navigate(`/host/${host.id}`);
+                });
+
+                marker.bindPopup(popupContent, {
+                    closeButton: false, // Cleaner look
+                    minWidth: 160
+                });
+                
                 markersRef.current[host.id] = marker;
                 bounds.extend([host.address.coordinates.lat, host.address.coordinates.lng]);
             }
