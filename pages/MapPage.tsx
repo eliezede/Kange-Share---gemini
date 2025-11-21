@@ -71,7 +71,7 @@ const HostCard: React.FC<{ host: User; isCompact?: boolean; onClick?: () => void
     </div>
     {!isCompact && (
         <div className="px-4 pb-4">
-             <Link to={`/host/${host.id}`} className="block w-full text-center py-2.5 bg-gray-5 dark:bg-gray-700 text-brand-blue dark:text-white font-bold rounded-xl hover:bg-brand-blue hover:text-white dark:hover:bg-brand-blue transition-colors">
+             <Link to={`/host/${host.id}`} className="block w-full text-center py-2.5 bg-gray-50 dark:bg-gray-700 text-brand-blue dark:text-white font-bold rounded-xl hover:bg-brand-blue hover:text-white dark:hover:bg-brand-blue transition-colors">
                 View Profile
              </Link>
         </div>
@@ -318,7 +318,7 @@ export default function MapPage() {
 
         const customIcon = L.divIcon({
             className: 'bg-transparent border-none',
-            html: `<div style="font-size: 40px; line-height: 1; filter: drop-shadow(0 3px 3px rgba(0,0,0,0.3)); transform: translateY(-5px);">💧</div>`,
+            html: `<div style="font-size: 40px; line-height: 1; filter: drop-shadow(0 3px 3px rgba(0,0,0,0.3)); transform: translateY(-5px); cursor: pointer;">💧</div>`,
             iconSize: [40, 40],
             iconAnchor: [20, 20], // Centered
             popupAnchor: [0, -20]
@@ -331,22 +331,52 @@ export default function MapPage() {
                 
                 // Create interactive popup content
                 const popupContent = document.createElement('div');
-                // Tailwind utility classes work because CDN scans DOM
-                popupContent.className = "min-w-[160px] cursor-pointer -m-1"; 
+                // Reset standard Leaflet popup padding to create a card
+                popupContent.className = "min-w-[240px] -m-[18px] rounded-2xl overflow-hidden shadow-lg font-sans"; 
                 
-                // Simple fallback for image
                 const imgSrc = host.profilePicture || `https://ui-avatars.com/api/?name=${encodeURIComponent(host.displayName)}&background=random`;
+                const isVerified = host.distributorVerificationStatus === 'approved';
+                const distanceStr = (host as any).distance ? `${(host as any).distance.toFixed(1)} km` : '';
+
+                // SVG Strings for inner HTML
+                const verifiedIcon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4 text-brand-blue"><path fill-rule="evenodd" d="M8.603 3.799A4.49 4.49 0 0 1 12 2.25c1.357 0 2.573.6 3.397 1.549a4.49 4.49 0 0 1 3.498 1.307 4.491 4.491 0 0 1 1.307 3.497A4.49 4.49 0 0 1 21.75 12c0 1.357-.6 2.573-1.549 3.397a4.49 4.49 0 0 1-1.307 3.498 4.491 4.491 0 0 1-3.497 1.307A4.49 4.49 0 0 1 12 21.75a4.49 4.49 0 0 1-3.397-1.549 4.49 4.49 0 0 1-3.498-1.306 4.491 4.491 0 0 1-1.307-3.498A4.49 4.49 0 0 1 2.25 12c0-1.357.6-2.573 1.549-3.397a4.49 4.49 0 0 1 1.307-3.497 4.491 4.491 0 0 1 3.497-1.307Zm7.007 6.387a.75.75 0 1 0-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 0 0-1.06 1.06l2.25 2.25a.75.75 0 0 0 1.14-.094l3.75-5.25Z" clip-rule="evenodd" /></svg>`;
+                const starIcon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-3.5 h-3.5 text-yellow-400"><path fill-rule="evenodd" d="M10.788 3.21c.448-1.077 1.976-1.077 2.424 0l2.082 5.006 5.404.434c1.164.093 1.636 1.545.749 2.305l-4.117 3.527 1.257 5.273c.271 1.136-.964 2.033-1.96 1.425L12 18.354 7.373 21.18c-.996.608-2.231-.29-1.96-1.425l1.257-5.273-4.117-3.527c-.887-.76-.415-2.212.749-2.305l5.404-.434 2.082-5.006z" clip-rule="evenodd" /></svg>`;
+                const arrowIcon = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" /></svg>`;
 
                 popupContent.innerHTML = `
-                    <div class="flex items-center gap-3 p-2 transition-colors hover:bg-gray-50 rounded-lg">
-                        <img src="${imgSrc}" class="w-10 h-10 rounded-full object-cover border border-gray-200 shadow-sm flex-shrink-0" alt="${host.displayName}" />
-                        <div class="flex-1 min-w-0">
-                            <h3 class="font-bold text-gray-900 text-sm truncate leading-tight">${host.displayName}</h3>
-                            <p class="text-xs text-gray-500 truncate">${host.address.city}</p>
-                            <div class="flex items-center mt-0.5">
-                                <svg class="w-3 h-3 text-yellow-400" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
-                                <span class="text-xs font-semibold text-gray-700 ml-1">${host.rating.toFixed(1)}</span>
+                    <div class="group bg-white dark:bg-gray-800 text-left cursor-pointer rounded-2xl overflow-hidden ring-1 ring-black/5 dark:ring-white/10">
+                        <!-- Top Section: Info -->
+                        <div class="p-4 flex items-start gap-3 relative">
+                            <!-- Avatar with Badge -->
+                            <div class="relative flex-shrink-0">
+                                <img src="${imgSrc}" class="w-12 h-12 rounded-full object-cover border-2 border-gray-50 dark:border-gray-700 shadow-sm" alt="${host.displayName}" />
+                                ${isVerified ? `<div class="absolute -bottom-1 -right-1 bg-white dark:bg-gray-800 rounded-full p-0.5 shadow-sm">${verifiedIcon}</div>` : ''}
                             </div>
+
+                            <!-- Info -->
+                            <div class="flex-1 min-w-0 pt-0.5">
+                                <h3 class="font-bold text-gray-900 dark:text-white text-base truncate leading-snug">${host.displayName}</h3>
+                                <p class="text-xs text-gray-500 dark:text-gray-400 truncate mb-1.5">${host.address.city}, ${host.address.country}</p>
+
+                                <!-- Metrics Row -->
+                                <div class="flex items-center gap-2">
+                                    <div class="flex items-center gap-1 bg-yellow-50 dark:bg-yellow-900/30 px-1.5 py-0.5 rounded-md">
+                                        ${starIcon}
+                                        <span class="text-xs font-bold text-yellow-700 dark:text-yellow-400">${host.rating.toFixed(1)}</span>
+                                    </div>
+                                    ${distanceStr ? `
+                                    <div class="flex items-center text-gray-400 dark:text-gray-500 text-xs">
+                                        <span>•</span>
+                                        <span class="ml-1 font-medium">${distanceStr}</span>
+                                    </div>` : ''}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Bottom Section: CTA -->
+                        <div class="bg-gray-50 dark:bg-gray-900/50 px-4 py-2.5 flex justify-between items-center border-t border-gray-100 dark:border-gray-700 group-hover:bg-blue-50 dark:group-hover:bg-blue-900/20 transition-colors duration-200">
+                            <span class="text-xs font-bold text-brand-blue tracking-wide uppercase">View Profile</span>
+                            <span class="text-brand-blue transform group-hover:translate-x-1 transition-transform duration-200">${arrowIcon}</span>
                         </div>
                     </div>
                 `;
@@ -358,8 +388,9 @@ export default function MapPage() {
                 });
 
                 marker.bindPopup(popupContent, {
-                    closeButton: false, // Cleaner look
-                    minWidth: 160
+                    closeButton: false, // Cleaner look without the X
+                    minWidth: 240,
+                    offset: [0, -10]
                 });
                 
                 markersRef.current[host.id] = marker;
@@ -412,17 +443,6 @@ export default function MapPage() {
       } else {
           // Fallback: maybe random or rating
           // Just use list as is, maybe randomize or sort by rating for quality
-          list.sort((a, b) => b.rating - a.rating);
-      }
-      return list.slice(0, 5);
-  }, [hostsWithDistance, userLocation]);
-
-  // 2. Official Distributors (Filtered, then sorted by distance)
-  const officialDistributors = useMemo(() => {
-      const list = hostsWithDistance.filter(h => h.distributorVerificationStatus === 'approved');
-      if (userLocation) {
-          list.sort((a, b) => (a as any).distance - (b as any).distance);
-      } else {
           list.sort((a, b) => b.rating - a.rating);
       }
       return list.slice(0, 5);
@@ -552,23 +572,6 @@ export default function MapPage() {
                     {hostsNearYou.map(host => (
                         <div key={host.id} className="snap-start">
                             <HostCard 
-                                host={host} 
-                                isCompact 
-                                distance={(host as any).distance} 
-                                onClick={() => navigate(`/host/${host.id}`)}
-                            />
-                        </div>
-                    ))}
-                </CategorySection>
-
-                {/* Official Distributors */}
-                <CategorySection 
-                    title="Official Enagic® Distributors" 
-                    icon={<CheckBadgeIcon className="w-6 h-6 text-brand-blue" />}
-                >
-                     {officialDistributors.map(host => (
-                        <div key={host.id} className="snap-start">
-                             <HostCard 
                                 host={host} 
                                 isCompact 
                                 distance={(host as any).distance} 
