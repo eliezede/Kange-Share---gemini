@@ -120,9 +120,9 @@ export default function LandingPage() {
   }, []);
 
   return (
-    <div className="bg-white dark:bg-gray-950 text-gray-800 dark:text-gray-200 antialiased font-sans overflow-x-hidden">
+    <div className="bg-white dark:bg-gray-950 text-gray-800 dark:text-gray-200 antialiased font-sans overflow-x-hidden h-full overflow-y-auto">
       {/* --- Navbar --- */}
-      <header className="fixed top-0 left-0 right-0 bg-white/80 dark:bg-gray-950/80 backdrop-blur-md z-50 border-b border-gray-100 dark:border-gray-800">
+      <header className="sticky top-0 left-0 right-0 bg-white/80 dark:bg-gray-950/80 backdrop-blur-md z-50 border-b border-gray-100 dark:border-gray-800">
         <div className="container mx-auto px-6 h-20 flex justify-between items-center">
           <div className="flex items-center gap-2">
             <DropletIcon className="w-8 h-8 text-brand-blue" />
@@ -141,7 +141,7 @@ export default function LandingPage() {
 
       <main>
         {/* --- Hero Section --- */}
-        <section className="pt-32 pb-20 lg:pt-48 lg:pb-32 relative overflow-hidden">
+        <section className="pt-12 pb-20 lg:pt-32 lg:pb-32 relative overflow-hidden">
             {/* Background Gradients */}
             <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[1000px] bg-blue-100/50 dark:bg-blue-900/10 rounded-full blur-3xl -z-10 pointer-events-none"></div>
             

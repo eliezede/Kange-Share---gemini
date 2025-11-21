@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import * as api from '../api';
@@ -59,7 +60,7 @@ export default function SignUpPage() {
     };
 
     return (
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex flex-col justify-center items-center p-4">
+        <div className="h-full overflow-y-auto bg-gray-50 dark:bg-gray-900 flex flex-col justify-center items-center p-4">
              <div className="absolute top-4 left-4">
                 <Link to="/" className="flex items-center gap-2 text-gray-600 dark:text-gray-300 hover:text-black dark:hover:text-white font-semibold">
                     <ChevronLeftIcon className="w-5 h-5" />

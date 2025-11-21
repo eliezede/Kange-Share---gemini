@@ -1,3 +1,4 @@
+
 import React, { useState, useContext, createContext, useCallback, useEffect, useMemo } from 'react';
 import { HashRouter, Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom';
 import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
@@ -207,7 +208,7 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
 };
 
 const MainLayout: React.FC = () => (
-    <div className="flex flex-col h-screen">
+    <div className="flex flex-col h-full">
         <Header />
         <main className="flex-1 overflow-y-auto">
              <div className="pb-28">
@@ -292,7 +293,7 @@ const AppContent = () => {
     const { isLoginModalOpen, closeLoginModal } = useAuth();
     return (
         <HashRouter>
-            <div className="max-w-4xl mx-auto bg-white dark:bg-gray-900 min-h-screen shadow-2xl shadow-gray-300/20 dark:shadow-black/20">
+            <div className="max-w-4xl mx-auto bg-white dark:bg-gray-900 h-full overflow-hidden relative shadow-2xl shadow-gray-300/20 dark:shadow-black/20">
                 <LoginModal isOpen={isLoginModalOpen} onClose={closeLoginModal} />
                 <AppRoutes />
                 <ToastContainer />
