@@ -54,6 +54,12 @@ export const MapPinIcon = (props: React.SVGProps<SVGSVGElement>) => (
   </svg>
 );
 
+export const CurrentLocationIcon = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M15.042 21.672 13.684 16.6m0 0-2.51 2.225.569-9.47 5.227 7.917-3.286-.672ZM12 2.25V4.5m5.834 1.666-1.591 1.591M20.25 10.5H18M7.757 14.743l-1.59 1.59M6 10.5H3.75m4.007-4.243-1.59-1.59" />
+  </svg>
+);
+
 export const DropletIcon = (props: React.SVGProps<SVGSVGElement>) => (
   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
     <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.8c0 2.3-1.85 4.14-4.14 4.14-1.37 0-2.58-.66-3.36-1.69l-1.3 1.54-.001.001-1.29 1.55c-.78 1.02-1.99 1.68-3.36 1.68C5.35 14.94 3.5 13.09 3.5 10.8c0-2.29 1.85-4.15 4.14-4.15 1.3 0 2.45.6 3.25 1.55L12 9.5l1.11-1.3c.8-.95 1.95-1.55 3.25-1.55 2.29 0 4.14 1.86 4.14 4.15Z" />

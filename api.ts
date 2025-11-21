@@ -710,3 +710,26 @@ export const deleteUser = (userId: string): Promise<void> => {
         isBlocked: true, // Also block them as part of deletion
     });
 };
+
+// --- GEOCODING API (OpenStreetMap Nominatim) ---
+
+export const searchAddress = async (query: string): Promise<any[]> => {
+    if (!query || query.length < 3) return [];
+    try {
+        const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&addressdetails=1&limit=5`);
+        return await response.json();
+    } catch (error) {
+        console.error("Address search failed:", error);
+        return [];
+    }
+};
+
+export const reverseGeocode = async (lat: number, lon: number): Promise<any | null> => {
+    try {
+        const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&addressdetails=1`);
+        return await response.json();
+    } catch (error) {
+        console.error("Reverse geocode failed:", error);
+        return null;
+    }
+};

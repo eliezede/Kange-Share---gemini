@@ -1,8 +1,9 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import * as api from '../api';
 import { User, DistributorVerificationStatus, DistributorProofDocument } from '../types';
-import { ChevronLeftIcon, CameraIcon, ArrowLeftOnRectangleIcon, TrashIcon, ShieldCheckIcon, SpinnerIcon, SunIcon, MoonIcon, ProfilePicture, VideoCameraIcon, ArrowUpTrayIcon, DocumentTextIcon, CheckCircleIcon, ShieldExclamationIcon } from '../components/Icons';
+import { ChevronLeftIcon, CameraIcon, ArrowLeftOnRectangleIcon, TrashIcon, ShieldCheckIcon, SpinnerIcon, SunIcon, MoonIcon, ProfilePicture, VideoCameraIcon, ArrowUpTrayIcon, DocumentTextIcon, CheckCircleIcon, ShieldExclamationIcon, CurrentLocationIcon, SearchIcon } from '../components/Icons';
 import { useAuth, useTheme } from '../App';
 import { useToast } from '../hooks/useToast';
 
@@ -169,6 +170,13 @@ export default function UserProfilePage() {
   const [isUploadingDocument, setIsUploadingDocument] = useState(false);
   const [deletingDocId, setDeletingDocId] = useState<string | null>(null);
   const [isSubmittingVerification, setIsSubmittingVerification] = useState(false);
+  
+  // Address State
+  const [addressQuery, setAddressQuery] = useState('');
+  const [addressSuggestions, setAddressSuggestions] = useState<any[]>([]);
+  const [isSearchingAddress, setIsSearchingAddress] = useState(false);
+  const [showManualAddress, setShowManualAddress] = useState(false);
+  const [isLocating, setIsLocating] = useState(false);
 
   const ALL_PH_LEVELS = [2.5, 8.5, 9.0, 9.5, 11.5];
   const DAYS_OF_WEEK = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
@@ -179,6 +187,10 @@ export default function UserProfilePage() {
       setUser(userCopy);
       setOriginalUser(userCopy);
       setPhoneParts(parsePhoneNumber(userCopy.phone));
+      
+      // Check if address has meaningful data to decide if we show manual fields initially
+      const hasAddressData = userCopy.address && (userCopy.address.street || userCopy.address.city);
+      setShowManualAddress(!!hasAddressData);
     }
   }, [userData]);
 
@@ -187,6 +199,21 @@ export default function UserProfilePage() {
         setIsDirty(JSON.stringify(user) !== JSON.stringify(originalUser));
     }
   }, [user, originalUser]);
+
+  // Debounce search for address
+  useEffect(() => {
+      const timer = setTimeout(async () => {
+          if (addressQuery.length > 2) {
+              setIsSearchingAddress(true);
+              const results = await api.searchAddress(addressQuery);
+              setAddressSuggestions(results);
+              setIsSearchingAddress(false);
+          } else {
+              setAddressSuggestions([]);
+          }
+      }, 500);
+      return () => clearTimeout(timer);
+  }, [addressQuery]);
   
   const handlePhoneChange = (part: 'countryCode' | 'number', value: string) => {
     if (!user) return;
@@ -380,6 +407,74 @@ export default function UserProfilePage() {
       }
   };
 
+  // --- GEOCODING LOGIC ---
+
+  const applyAddressData = (address: any, lat?: number, lng?: number) => {
+      if (!user) return;
+      
+      // Nominatim returns different structures for 'city'. Can be city, town, village, county...
+      const city = address.city || address.town || address.village || address.municipality || address.county || '';
+      const street = address.road || address.street || '';
+      const number = address.house_number || '';
+      const postalCode = address.postcode || '';
+      const country = address.country || '';
+
+      setUser(prev => {
+          if (!prev) return null;
+          return {
+              ...prev,
+              address: {
+                  street,
+                  number,
+                  postalCode,
+                  city,
+                  country,
+                  coordinates: (lat && lng) ? { lat, lng } : prev.address.coordinates
+              }
+          };
+      });
+      // Reveal fields so user can edit if needed
+      setShowManualAddress(true);
+      // Clear suggestions
+      setAddressSuggestions([]);
+      setAddressQuery('');
+  };
+
+  const handleSelectSuggestion = (suggestion: any) => {
+      const lat = parseFloat(suggestion.lat);
+      const lng = parseFloat(suggestion.lon);
+      applyAddressData(suggestion.address, lat, lng);
+  };
+
+  const handleUseCurrentLocation = () => {
+      if (!navigator.geolocation) {
+          showToast('Geolocation is not supported by your browser.', 'error');
+          return;
+      }
+      setIsLocating(true);
+      navigator.geolocation.getCurrentPosition(async (position) => {
+          const { latitude, longitude } = position.coords;
+          try {
+              const data = await api.reverseGeocode(latitude, longitude);
+              if (data && data.address) {
+                  applyAddressData(data.address, latitude, longitude);
+                  showToast('Address found from your location!', 'success');
+              } else {
+                  showToast('Could not find address for this location.', 'error');
+              }
+          } catch (error) {
+              showToast('Failed to lookup address.', 'error');
+          } finally {
+              setIsLocating(false);
+          }
+      }, (error) => {
+          console.error(error);
+          showToast('Location permission denied or unavailable.', 'error');
+          setIsLocating(false);
+      });
+  };
+
+
   if (!user) {
     return (
         <div className="flex justify-center items-center h-screen bg-gray-50 dark:bg-gray-900">
@@ -478,6 +573,81 @@ export default function UserProfilePage() {
                     </div>
                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Shared only after you accept a water request.</p>
                     </div>
+                </FormSection>
+
+                <FormSection title="Address">
+                     {/* 1. Country (Top) */}
+                     <InputField label="Country" id="address.country" name="address.country" value={user.address.country} onChange={handleInputChange} placeholder="e.g. United Kingdom" />
+
+                     {/* 2. Autocomplete Search */}
+                     <div className="relative mt-4">
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Search your address</label>
+                        <div className="relative">
+                             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <SearchIcon className="h-5 w-5 text-gray-400" />
+                             </div>
+                             <input
+                                type="text"
+                                value={addressQuery}
+                                onChange={(e) => setAddressQuery(e.target.value)}
+                                placeholder="Start typing street, postcode, city..."
+                                className="w-full pl-10 p-3 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-brand-blue outline-none"
+                             />
+                             {isSearchingAddress && (
+                                 <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
+                                     <SpinnerIcon className="h-5 w-5 text-brand-blue animate-spin" />
+                                 </div>
+                             )}
+                        </div>
+                        {addressSuggestions.length > 0 && (
+                            <ul className="absolute z-20 w-full bg-white dark:bg-gray-800 mt-1 rounded-lg shadow-lg max-h-60 overflow-auto border border-gray-200 dark:border-gray-700">
+                                {addressSuggestions.map((suggestion, idx) => (
+                                    <li 
+                                        key={idx} 
+                                        onClick={() => handleSelectSuggestion(suggestion)}
+                                        className="px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer border-b last:border-b-0 border-gray-100 dark:border-gray-700 text-sm dark:text-gray-200"
+                                    >
+                                        {suggestion.display_name}
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
+                     </div>
+
+                     {/* 3. Use Current Location Button */}
+                     <button 
+                        type="button"
+                        onClick={handleUseCurrentLocation}
+                        disabled={isLocating}
+                        className="w-full mt-2 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 text-brand-blue font-semibold py-3 px-4 rounded-xl transition-colors flex items-center justify-center gap-2"
+                     >
+                         {isLocating ? <SpinnerIcon className="w-5 h-5 animate-spin" /> : <CurrentLocationIcon className="w-5 h-5" />}
+                         Use my current location
+                     </button>
+                     
+                     {/* 5. Link to Toggle Manual Fields */}
+                     <div className="text-center my-2">
+                        <button 
+                            type="button" 
+                            onClick={() => setShowManualAddress(!showManualAddress)} 
+                            className="text-sm text-gray-500 dark:text-gray-400 underline hover:text-brand-blue dark:hover:text-white transition-colors"
+                        >
+                            {showManualAddress ? "Hide address fields" : "Enter address manually"}
+                        </button>
+                     </div>
+
+                     {/* 4. Manual Fields (Conditionally Rendered) */}
+                     {showManualAddress && (
+                         <div className="space-y-4 pt-2 animate-fade-in-up">
+                            <InputField label="Street" id="address.street" name="address.street" value={user.address.street} onChange={handleInputChange} />
+                            <InputField label="Number" id="address.number" name="address.number" value={user.address.number} onChange={handleInputChange} placeholder="Apt, suite, etc." />
+                            <div className="grid grid-cols-2 gap-4">
+                                <InputField label="Postal Code" id="address.postalCode" name="address.postalCode" value={user.address.postalCode} onChange={handleInputChange} />
+                                <InputField label="City" id="address.city" name="address.city" value={user.address.city} onChange={handleInputChange} />
+                            </div>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 !mt-2">Your street and number will only be visible to users with an accepted request. Other address details are public.</p>
+                         </div>
+                     )}
                 </FormSection>
 
                 <FormSection title="Social Links">
@@ -614,15 +784,6 @@ export default function UserProfilePage() {
                             </button>
                         </>
                     )}
-                </FormSection>
-
-                <FormSection title="Address">
-                    <InputField label="Street" id="address.street" name="address.street" value={user.address.street} onChange={handleInputChange} />
-                    <InputField label="Number" id="address.number" name="address.number" value={user.address.number} onChange={handleInputChange} placeholder="Apt, suite, etc." />
-                    <InputField label="Postal Code" id="address.postalCode" name="address.postalCode" value={user.address.postalCode} onChange={handleInputChange} />
-                    <InputField label="City" id="address.city" name="address.city" value={user.address.city} onChange={handleInputChange} />
-                    <InputField label="Country" id="address.country" name="address.country" value={user.address.country} onChange={handleInputChange} />
-                    <p className="text-xs text-gray-500 dark:text-gray-400 !mt-2">Your street and number will only be visible to users with an accepted request. Other address details are public.</p>
                 </FormSection>
             </form>
         </fieldset>
