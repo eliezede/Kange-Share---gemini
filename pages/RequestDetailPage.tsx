@@ -1,8 +1,9 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import * as api from '../api';
 import { WaterRequest, RequestStatus, User } from '../types';
-import { ChevronLeftIcon, DropletIcon, CalendarDaysIcon, ClockIcon, ChatBubbleOvalLeftEllipsisIcon, SpinnerIcon, CheckBadgeIcon, QrCodeIcon } from '../components/Icons';
+import { ChevronLeftIcon, DropletIcon, CalendarDaysIcon, ClockIcon, ChatBubbleOvalLeftEllipsisIcon, SpinnerIcon, CheckBadgeIcon, QrCodeIcon, StarIcon } from '../components/Icons';
 import { useAuth } from '../App';
 import { QRCodeDisplayModal, QRScannerModal } from '../components/QRModals';
 import { useToast } from '../hooks/useToast';
@@ -95,8 +96,12 @@ export default function RequestDetailPage() {
                 
                 // Update local state
                 if(request) setRequest({ ...request, status: 'completed' });
-                // Navigate to rate page
-                setTimeout(() => navigate(`/rate/${requestId}`), 1000);
+                
+                // Close the scanner modal
+                setShowQRScanner(false);
+                
+                // NOTE: Removed automatic navigation to rate page because it's the HOST scanning.
+                // The host should not rate themselves.
             } else {
                 showToast("Invalid QR Code for this request.", "error");
             }
@@ -139,7 +144,7 @@ export default function RequestDetailPage() {
                 <div className="w-6"></div>
             </header>
             
-            <div className="p-4 md:p-6 space-y-6">
+            <div className="p-4 md:p-6 space-y-6 pb-32">
                 <StatusBadge status={request.status} />
 
                 {/* QR Actions */}
@@ -233,22 +238,35 @@ export default function RequestDetailPage() {
             </div>
             
             <div className="fixed bottom-16 left-0 right-0 p-4 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border-t border-gray-200 dark:border-gray-700 max-w-4xl mx-auto space-y-2">
+                 {/* Chat Button - Visible during active stages */}
                  {(request.status === 'accepted' || request.status === 'chatting' || request.status === 'pending') && (
                     <Link to={`/chat/${request.id}`} className="w-full flex items-center justify-center gap-2 bg-brand-blue text-white font-bold py-3 px-4 rounded-xl hover:bg-blue-600 transition-colors text-center">
                        <ChatBubbleOvalLeftEllipsisIcon className="w-5 h-5"/>
                        <span>Chat with {otherParty.displayName.split(' ')[0]}</span>
                     </Link>
                  )}
+
+                 {/* Host Actions: Accept/Decline */}
                  {isUserTheHost && request.status === 'pending' && (
                     <div className="flex gap-3">
                         <button onClick={() => updateRequestStatus('declined')} className="flex-1 bg-red-500 text-white font-bold py-3 px-4 rounded-xl hover:bg-red-600 transition-colors">Decline</button>
                         <button onClick={() => updateRequestStatus('accepted')} className="flex-1 bg-green-500 text-white font-bold py-3 px-4 rounded-xl hover:bg-green-600 transition-colors">Accept</button>
                     </div>
                  )}
+
+                 {/* Requester Actions: Cancel */}
                  {!isUserTheHost && canCancel && (
                     <button onClick={() => updateRequestStatus('cancelled')} className="w-full bg-gray-200 text-gray-800 dark:bg-gray-700 dark:text-gray-200 font-bold py-3 px-4 rounded-xl hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors">
                         Cancel Request
                     </button>
+                 )}
+
+                 {/* Requester Actions: Rate (Only when completed) */}
+                 {!isUserTheHost && request.status === 'completed' && (
+                    <Link to={`/rate/${request.id}`} className="w-full flex items-center justify-center gap-2 bg-yellow-400 text-yellow-900 font-bold py-3 px-4 rounded-xl hover:bg-yellow-500 transition-colors shadow-md">
+                        <StarIcon className="w-5 h-5" />
+                        Rate Experience
+                    </Link>
                  )}
             </div>
             
