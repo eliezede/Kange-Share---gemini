@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import * as api from '../api';
 import { WaterRequest, RequestStatus, User } from '../types';
-import { ChevronLeftIcon, DropletIcon, CalendarDaysIcon, ClockIcon, ChatBubbleOvalLeftEllipsisIcon, SpinnerIcon, CheckBadgeIcon, QrCodeIcon, StarIcon } from '../components/Icons';
+import { ChevronLeftIcon, DropletIcon, CalendarDaysIcon, ClockIcon, ChatBubbleOvalLeftEllipsisIcon, SpinnerIcon, CheckBadgeIcon, QrCodeIcon, StarIcon, ChevronRightIcon } from '../components/Icons';
 import { useAuth } from '../App';
 import { QRCodeDisplayModal, QRScannerModal } from '../components/QRModals';
 import { useToast } from '../hooks/useToast';
@@ -202,15 +202,18 @@ export default function RequestDetailPage() {
                     <h2 className="text-lg font-bold mb-4 dark:text-gray-100">
                         {isUserTheHost ? "Requester Info" : "Host Info"}
                     </h2>
-                    <div className="flex items-center gap-4">
+                    <div 
+                        onClick={() => navigate(`/host/${otherParty.id}`)}
+                        className="flex items-center gap-4 cursor-pointer group p-3 -m-3 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+                    >
                         <img 
                             src={otherParty.profilePicture} 
                             alt={otherParty.displayName} 
-                            className="w-16 h-16 rounded-full object-cover"
+                            className="w-16 h-16 rounded-full object-cover transition-transform group-hover:scale-105"
                         />
-                        <div>
+                        <div className="flex-1">
                             <div className="flex items-center gap-2">
-                                <p className="font-bold text-xl dark:text-gray-100">{otherParty.displayName}</p>
+                                <p className="font-bold text-xl dark:text-gray-100 group-hover:text-brand-blue transition-colors">{otherParty.displayName}</p>
                                 {!isUserTheHost && host.distributorVerificationStatus === 'approved' && <CheckBadgeIcon className="w-5 h-5 text-brand-blue" />}
                             </div>
                             {!isUserTheHost && host.distributorVerificationStatus === 'approved' && (
@@ -218,6 +221,7 @@ export default function RequestDetailPage() {
                             )}
                              <p className="text-gray-600 dark:text-gray-400">{isUserTheHost ? 'Requester' : 'Host'}</p>
                         </div>
+                        <ChevronRightIcon className="w-5 h-5 text-gray-400 group-hover:text-brand-blue transition-colors" />
                     </div>
                     {request.status === 'accepted' && (
                         <div className="mt-4 pt-4 border-t dark:border-gray-700">

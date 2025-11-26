@@ -16,13 +16,13 @@ const RatingStars: React.FC<{ rating: number; className?: string }> = ({ rating,
 );
 
 const ReviewCard: React.FC<{ review: Review }> = ({ review }) => (
-    <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-100 dark:border-gray-700/50">
+    <Link to={`/host/${review.reviewerId}`} className="block bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-100 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
         <div className="flex items-start gap-4">
             <ProfilePicture src={review.reviewerImage} alt={review.reviewerName} className="w-12 h-12 rounded-full object-cover" />
             <div className="flex-1">
                 <div className="flex justify-between items-center">
                     <div>
-                        <h4 className="font-semibold text-gray-900 dark:text-gray-100">{review.reviewerName}</h4>
+                        <h4 className="font-semibold text-gray-900 dark:text-gray-100 hover:text-brand-blue transition-colors">{review.reviewerName}</h4>
                         <p className="text-sm text-gray-500 dark:text-gray-400">{new Date(review.date).toLocaleDateString()}</p>
                     </div>
                     <RatingStars rating={review.rating} className="w-4 h-4" />
@@ -30,7 +30,7 @@ const ReviewCard: React.FC<{ review: Review }> = ({ review }) => (
                 <p className="mt-2 text-gray-700 dark:text-gray-300">{review.comment}</p>
             </div>
         </div>
-    </div>
+    </Link>
 );
 
 const Metric: React.FC<{ icon: React.ReactNode; value: string; label: string; linkTo?: string }> = ({ icon, value, label, linkTo }) => {
@@ -56,6 +56,12 @@ export default function HostProfilePage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Reset scroll to top of the main container whenever the ID changes
+    const mainContainer = document.querySelector('main');
+    if (mainContainer) {
+        mainContainer.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
     if (!id) return;
     const fetchData = async () => {
         setLoading(true);
