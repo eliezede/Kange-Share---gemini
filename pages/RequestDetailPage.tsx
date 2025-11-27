@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import * as api from '../api';
 import { WaterRequest, RequestStatus, User } from '../types';
-import { ChevronLeftIcon, DropletIcon, CalendarDaysIcon, ClockIcon, ChatBubbleOvalLeftEllipsisIcon, SpinnerIcon, CheckBadgeIcon, QrCodeIcon, StarIcon, ChevronRightIcon } from '../components/Icons';
+import { ChevronLeftIcon, DropletIcon, CalendarDaysIcon, ClockIcon, ChatBubbleOvalLeftEllipsisIcon, SpinnerIcon, CheckBadgeIcon, QrCodeIcon, StarIcon, ChevronRightIcon, ExclamationTriangleIcon, CheckCircleIcon, XCircleIcon } from '../components/Icons';
 import { useAuth } from '../App';
 import { QRCodeDisplayModal, QRScannerModal } from '../components/QRModals';
 import { useToast } from '../hooks/useToast';
@@ -45,6 +45,7 @@ export default function RequestDetailPage() {
     const [host, setHost] = useState<User | null>(null);
     const [requester, setRequester] = useState<User | null>(null);
     const [loading, setLoading] = useState(true);
+    const [isUpdating, setIsUpdating] = useState(false);
 
     // QR Modal States
     const [showQRDisplay, setShowQRDisplay] = useState(false);
@@ -73,9 +74,21 @@ export default function RequestDetailPage() {
 
     const updateRequestStatus = async (newStatus: RequestStatus) => {
         if (!requestId) return;
-        await api.updateRequestStatus(requestId, newStatus);
-        if(request) {
-            setRequest({ ...request, status: newStatus });
+        setIsUpdating(true);
+        try {
+            await api.updateRequestStatus(requestId, newStatus);
+            if(request) {
+                setRequest({ ...request, status: newStatus });
+            }
+            if (newStatus === 'completed') {
+                showToast("Request completed successfully.", "success");
+            } else if (newStatus === 'cancelled') {
+                showToast("Request marked as cancelled.", "info");
+            }
+        } catch (e) {
+            showToast("Failed to update status", "error");
+        } finally {
+            setIsUpdating(false);
         }
     };
 
@@ -99,9 +112,6 @@ export default function RequestDetailPage() {
                 
                 // Close the scanner modal
                 setShowQRScanner(false);
-                
-                // NOTE: Removed automatic navigation to rate page because it's the HOST scanning.
-                // The host should not rate themselves.
             } else {
                 showToast("Invalid QR Code for this request.", "error");
             }
@@ -130,9 +140,16 @@ export default function RequestDetailPage() {
     });
     
     const canCancel = request.status === 'pending' || request.status === 'accepted';
-
     const otherParty = isUserTheHost ? requester : host;
 
+    // --- Time Logic ---
+    const now = new Date();
+    // Use a simple comparison. Construct date from strings.
+    const pickupDateTime = new Date(`${request.pickupDate}T${request.pickupTime}`);
+    // Add buffer of 1 hour after the slot
+    const isPastPickupTime = now > new Date(pickupDateTime.getTime() + 60 * 60 * 1000); 
+
+    const showManualCheck = isUserTheHost && request.status === 'accepted' && isPastPickupTime;
 
     return (
         <div className="bg-gray-50 dark:bg-gray-900 min-h-screen">
@@ -147,8 +164,39 @@ export default function RequestDetailPage() {
             <div className="p-4 md:p-6 space-y-6 pb-32">
                 <StatusBadge status={request.status} />
 
-                {/* QR Actions */}
-                {request.status === 'accepted' && (
+                {/* --- Post-Pickup Check Logic --- */}
+                {showManualCheck && (
+                    <div className="bg-orange-50 dark:bg-orange-900/20 border-2 border-orange-200 dark:border-orange-800/50 p-5 rounded-2xl shadow-sm animate-fade-in-up">
+                        <div className="flex items-start gap-3 mb-4">
+                            <ExclamationTriangleIcon className="w-6 h-6 text-orange-500 flex-shrink-0 mt-0.5" />
+                            <div>
+                                <h3 className="font-bold text-lg text-gray-900 dark:text-gray-100">Pickup Verification Needed</h3>
+                                <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
+                                    The scheduled time has passed and no QR scan was recorded. Did {requester.displayName.split(' ')[0]} pick up the water?
+                                </p>
+                            </div>
+                        </div>
+                        <div className="flex flex-col gap-3">
+                            <button 
+                                onClick={() => updateRequestStatus('completed')}
+                                disabled={isUpdating}
+                                className="w-full flex items-center justify-center gap-2 bg-green-600 text-white font-bold py-3 px-4 rounded-xl hover:bg-green-700 transition-colors shadow-sm"
+                            >
+                                {isUpdating ? <SpinnerIcon className="w-5 h-5 animate-spin" /> : <><CheckCircleIcon className="w-5 h-5" /> Yes, Completed Manually</>}
+                            </button>
+                            <button 
+                                onClick={() => updateRequestStatus('cancelled')}
+                                disabled={isUpdating}
+                                className="w-full flex items-center justify-center gap-2 bg-white dark:bg-gray-800 text-red-600 border border-red-200 dark:border-red-800 font-bold py-3 px-4 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                            >
+                                <XCircleIcon className="w-5 h-5" /> No Show (Did not arrive)
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                {/* --- Standard QR Logic (Only show if NOT in manual check mode to avoid clutter) --- */}
+                {!showManualCheck && request.status === 'accepted' && (
                     <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 text-center">
                         <div className="w-12 h-12 bg-blue-50 dark:bg-blue-900/30 rounded-full flex items-center justify-center mx-auto mb-3">
                             <QrCodeIcon className="w-6 h-6 text-brand-blue" />
@@ -242,8 +290,8 @@ export default function RequestDetailPage() {
             </div>
             
             <div className="fixed bottom-16 left-0 right-0 p-4 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border-t border-gray-200 dark:border-gray-700 max-w-4xl mx-auto space-y-2">
-                 {/* Chat Button - Visible during active stages */}
-                 {(request.status === 'accepted' || request.status === 'chatting' || request.status === 'pending') && (
+                 {/* Chat Button - Visible during active stages BUT hidden if manual check is required */}
+                 {!showManualCheck && (request.status === 'accepted' || request.status === 'chatting' || request.status === 'pending') && (
                     <Link to={`/chat/${request.id}`} className="w-full flex items-center justify-center gap-2 bg-brand-blue text-white font-bold py-3 px-4 rounded-xl hover:bg-blue-600 transition-colors text-center">
                        <ChatBubbleOvalLeftEllipsisIcon className="w-5 h-5"/>
                        <span>Chat with {otherParty.displayName.split(' ')[0]}</span>
@@ -253,14 +301,14 @@ export default function RequestDetailPage() {
                  {/* Host Actions: Accept/Decline */}
                  {isUserTheHost && request.status === 'pending' && (
                     <div className="flex gap-3">
-                        <button onClick={() => updateRequestStatus('declined')} className="flex-1 bg-red-500 text-white font-bold py-3 px-4 rounded-xl hover:bg-red-600 transition-colors">Decline</button>
-                        <button onClick={() => updateRequestStatus('accepted')} className="flex-1 bg-green-500 text-white font-bold py-3 px-4 rounded-xl hover:bg-green-600 transition-colors">Accept</button>
+                        <button onClick={() => updateRequestStatus('declined')} disabled={isUpdating} className="flex-1 bg-red-500 text-white font-bold py-3 px-4 rounded-xl hover:bg-red-600 transition-colors">Decline</button>
+                        <button onClick={() => updateRequestStatus('accepted')} disabled={isUpdating} className="flex-1 bg-green-500 text-white font-bold py-3 px-4 rounded-xl hover:bg-green-600 transition-colors">Accept</button>
                     </div>
                  )}
 
                  {/* Requester Actions: Cancel */}
                  {!isUserTheHost && canCancel && (
-                    <button onClick={() => updateRequestStatus('cancelled')} className="w-full bg-gray-200 text-gray-800 dark:bg-gray-700 dark:text-gray-200 font-bold py-3 px-4 rounded-xl hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors">
+                    <button onClick={() => updateRequestStatus('cancelled')} disabled={isUpdating} className="w-full bg-gray-200 text-gray-800 dark:bg-gray-700 dark:text-gray-200 font-bold py-3 px-4 rounded-xl hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors">
                         Cancel Request
                     </button>
                  )}

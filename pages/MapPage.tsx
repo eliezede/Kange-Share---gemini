@@ -4,11 +4,14 @@ import { Link, useNavigate } from 'react-router-dom';
 import * as api from '../api';
 import { 
     StarIcon, SearchIcon, AdjustmentsHorizontalIcon, CheckBadgeIcon, 
-    SpinnerIcon, ProfilePicture, MapPinIcon, MapIcon, ListBulletIcon,
-    SparklesIcon, UserGroupIcon, PresentationChartBarIcon, ClipboardDocumentListIcon
+    ProfilePicture, MapPinIcon, MapIcon, ListBulletIcon,
+    PresentationChartBarIcon, ClipboardDocumentListIcon, ClockIcon,
+    UserIcon, DropletIcon
 } from '../components/Icons';
-import { User } from '../types';
+import { User, WaterRequest } from '../types';
 import { useAuth } from '../App';
+import { useDebounce } from '../hooks/useDebounce';
+import { HostCardSkeleton, Skeleton } from '../components/Skeleton';
 
 // --- Leaflet Types Shim ---
 declare const L: any;
@@ -78,6 +81,40 @@ const HostCard: React.FC<{ host: User; isCompact?: boolean; onClick?: () => void
     )}
   </div>
 );
+
+const ScheduleCard: React.FC<{ request: WaterRequest; currentUserId: string }> = ({ request, currentUserId }) => {
+    const isHost = request.hostId === currentUserId;
+    const otherName = isHost ? request.requesterName : request.hostName;
+    const otherImage = isHost ? request.requesterImage : request.hostImage;
+    const navigate = useNavigate();
+
+    return (
+        <div 
+            onClick={() => navigate(`/request-detail/${request.id}`)}
+            className="w-72 flex-shrink-0 bg-white dark:bg-gray-800 border-l-4 border-brand-blue rounded-r-xl rounded-l-md shadow-sm p-4 mr-4 cursor-pointer hover:shadow-md transition-all relative overflow-hidden"
+        >
+            <div className="flex justify-between items-start mb-2">
+                <div className="flex items-center gap-2 text-brand-blue font-bold text-sm bg-blue-50 dark:bg-blue-900/30 px-2 py-1 rounded-md">
+                    <ClockIcon className="w-4 h-4" />
+                    {request.pickupTime}
+                </div>
+                <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    {isHost ? 'Hosting' : 'Pickup'}
+                </span>
+            </div>
+            
+            <div className="flex items-center gap-3">
+                <ProfilePicture src={otherImage} alt={otherName} className="w-10 h-10 rounded-full" />
+                <div className="flex-1 min-w-0">
+                    <p className="font-bold text-gray-900 dark:text-white truncate">{otherName}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                        <DropletIcon className="w-3 h-3" /> {request.liters}L • pH {request.phLevel}
+                    </p>
+                </div>
+            </div>
+        </div>
+    );
+};
 
 interface FilterState {
     phLevels: number[];
@@ -216,8 +253,12 @@ export default function MapPage() {
   const [loading, setLoading] = useState(true);
   const [userLocation, setUserLocation] = useState<{lat: number, lng: number} | null>(null);
   
+  // Dashboard Schedule State
+  const [todaysSchedule, setTodaysSchedule] = useState<WaterRequest[]>([]);
+  
   // View State
   const [searchQuery, setSearchQuery] = useState('');
+  const debouncedSearchQuery = useDebounce(searchQuery, 300); // 300ms debounce
   const [viewMode, setViewMode] = useState<'dashboard' | 'list' | 'map'>('dashboard');
   const [filters, setFilters] = useState<FilterState>({ phLevels: [], minRating: 0, openToday: false });
   const [isFilterOpen, setIsFilterOpen] = useState(false);
@@ -243,18 +284,43 @@ export default function MapPage() {
           });
       }
 
-      // 2. Get Hosts
-      api.getHosts().then(data => {
-          const hostsWithCoords = data.map(h => {
-              if (!h.address.coordinates) {
-                  return { ...h, address: { ...h.address, coordinates: getMockCoordinates(h.id) } };
+      // 2. Fetch Hosts
+      const loadData = async () => {
+          try {
+              const hostsData = await api.getHosts();
+              const hostsWithCoords = hostsData.map(h => {
+                  if (!h.address.coordinates) {
+                      return { ...h, address: { ...h.address, coordinates: getMockCoordinates(h.id) } };
+                  }
+                  return h;
+              });
+              setHosts(hostsWithCoords);
+
+              // 3. Fetch Schedule if logged in
+              if (userData) {
+                  const [myReqs, hostReqs] = await Promise.all([
+                      api.getRequestsByUserId(userData.id),
+                      api.getRequestsByHostId(userData.id)
+                  ]);
+                  
+                  const today = new Date().toISOString().split('T')[0];
+                  const allActive = [...myReqs, ...hostReqs].filter(r => 
+                      r.status === 'accepted' && r.pickupDate === today
+                  );
+                  
+                  // Sort by time
+                  allActive.sort((a, b) => a.pickupTime.localeCompare(b.pickupTime));
+                  setTodaysSchedule(allActive);
               }
-              return h;
-          });
-          setHosts(hostsWithCoords);
-          setLoading(false);
-      });
-  }, []);
+          } catch (e) {
+              console.error("Error loading map data", e);
+          } finally {
+              setLoading(false);
+          }
+      };
+      
+      loadData();
+  }, [userData]);
 
   // Calculate Distances
   const hostsWithDistance = useMemo(() => {
@@ -270,11 +336,11 @@ export default function MapPage() {
     });
   }, [hosts, userLocation]);
 
-  // Filter Logic
+  // Filter Logic - Depends on Debounced Query
   const filteredHosts = useMemo(() => {
     return hostsWithDistance.filter(host => {
-      const matchesSearch = host.displayName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                            host.address.city.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesSearch = host.displayName.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
+                            host.address.city.toLowerCase().includes(debouncedSearchQuery.toLowerCase());
       
       const matchesPh = filters.phLevels.length === 0 || filters.phLevels.some(ph => host.phLevels.includes(ph));
       const matchesRating = host.rating >= filters.minRating;
@@ -288,7 +354,7 @@ export default function MapPage() {
 
       return matchesSearch && matchesPh && matchesRating && matchesAvailability;
     });
-  }, [searchQuery, hostsWithDistance, filters]);
+  }, [debouncedSearchQuery, hostsWithDistance, filters]);
 
   // View Mode Management
   useEffect(() => {
@@ -311,10 +377,19 @@ export default function MapPage() {
       if (mapInstanceRef.current) {
         setTimeout(() => mapInstanceRef.current.invalidateSize(), 200);
 
-        // Update Markers
+        // Update Markers efficiently
         const map = mapInstanceRef.current;
-        Object.values(markersRef.current).forEach((marker: any) => marker.remove());
-        markersRef.current = {};
+        const currentMarkers = markersRef.current;
+        const existingIds = new Set(Object.keys(currentMarkers));
+        const newIds = new Set(filteredHosts.map(h => h.id));
+
+        // Remove old markers
+        existingIds.forEach(id => {
+            if (!newIds.has(id)) {
+                currentMarkers[id].remove();
+                delete currentMarkers[id];
+            }
+        });
 
         const customIcon = L.divIcon({
             className: 'bg-transparent border-none',
@@ -325,80 +400,86 @@ export default function MapPage() {
         });
 
         const bounds = L.latLngBounds([]);
+        let hasBounds = false;
+
         filteredHosts.forEach(host => {
             if (host.address.coordinates) {
-                const marker = L.marker([host.address.coordinates.lat, host.address.coordinates.lng], { icon: customIcon }).addTo(map);
-                
-                // Create interactive popup content
-                const popupContent = document.createElement('div');
-                // Reset standard Leaflet popup padding to create a card
-                popupContent.className = "min-w-[240px] -m-[18px] rounded-2xl overflow-hidden shadow-lg font-sans"; 
-                
-                const imgSrc = host.profilePicture || `https://ui-avatars.com/api/?name=${encodeURIComponent(host.displayName)}&background=random`;
-                const isVerified = host.distributorVerificationStatus === 'approved';
-                const distanceStr = (host as any).distance ? `${(host as any).distance.toFixed(1)} km` : '';
+                hasBounds = true;
+                bounds.extend([host.address.coordinates.lat, host.address.coordinates.lng]);
 
-                // SVG Strings for inner HTML
-                const verifiedIcon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4 text-brand-blue"><path fill-rule="evenodd" d="M8.603 3.799A4.49 4.49 0 0 1 12 2.25c1.357 0 2.573.6 3.397 1.549a4.49 4.49 0 0 1 3.498 1.307 4.491 4.491 0 0 1 1.307 3.497A4.49 4.49 0 0 1 21.75 12c0 1.357-.6 2.573-1.549 3.397a4.49 4.49 0 0 1-1.307 3.498 4.491 4.491 0 0 1-3.497 1.307A4.49 4.49 0 0 1 12 21.75a4.49 4.49 0 0 1-3.397-1.549 4.49 4.49 0 0 1-3.498-1.306 4.491 4.491 0 0 1-1.307-3.498A4.49 4.49 0 0 1 2.25 12c0-1.357.6-2.573 1.549-3.397a4.49 4.49 0 0 1 1.307-3.497 4.491 4.491 0 0 1 3.497-1.307Zm7.007 6.387a.75.75 0 1 0-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 0 0-1.06 1.06l2.25 2.25a.75.75 0 0 0 1.14-.094l3.75-5.25Z" clip-rule="evenodd" /></svg>`;
-                const starIcon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-3.5 h-3.5 text-yellow-400"><path fill-rule="evenodd" d="M10.788 3.21c.448-1.077 1.976-1.077 2.424 0l2.082 5.006 5.404.434c1.164.093 1.636 1.545.749 2.305l-4.117 3.527 1.257 5.273c.271 1.136-.964 2.033-1.96 1.425L12 18.354 7.373 21.18c-.996.608-2.231-.29-1.96-1.425l1.257-5.273-4.117-3.527c-.887-.76-.415-2.212.749-2.305l5.404-.434 2.082-5.006z" clip-rule="evenodd" /></svg>`;
-                const arrowIcon = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" /></svg>`;
+                // Only add if not already exists
+                if (!currentMarkers[host.id]) {
+                    const marker = L.marker([host.address.coordinates.lat, host.address.coordinates.lng], { icon: customIcon }).addTo(map);
+                    
+                    // Create interactive popup content
+                    const popupContent = document.createElement('div');
+                    popupContent.className = "min-w-[240px] -m-[18px] rounded-2xl overflow-hidden shadow-lg font-sans"; 
+                    
+                    const imgSrc = host.profilePicture || `https://ui-avatars.com/api/?name=${encodeURIComponent(host.displayName)}&background=random`;
+                    const isVerified = host.distributorVerificationStatus === 'approved';
+                    const distanceStr = (host as any).distance ? `${(host as any).distance.toFixed(1)} km` : '';
 
-                popupContent.innerHTML = `
-                    <div class="group bg-white dark:bg-gray-800 text-left cursor-pointer rounded-2xl overflow-hidden ring-1 ring-black/5 dark:ring-white/10">
-                        <!-- Top Section: Info -->
-                        <div class="p-4 flex items-start gap-3 relative">
-                            <!-- Avatar with Badge -->
-                            <div class="relative flex-shrink-0">
-                                <img src="${imgSrc}" class="w-12 h-12 rounded-full object-cover border-2 border-gray-50 dark:border-gray-700 shadow-sm" alt="${host.displayName}" />
-                                ${isVerified ? `<div class="absolute -bottom-1 -right-1 bg-white dark:bg-gray-800 rounded-full p-0.5 shadow-sm">${verifiedIcon}</div>` : ''}
-                            </div>
+                    // SVG Strings for inner HTML
+                    const verifiedIcon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4 text-brand-blue"><path fill-rule="evenodd" d="M8.603 3.799A4.49 4.49 0 0 1 12 2.25c1.357 0 2.573.6 3.397 1.549a4.49 4.49 0 0 1 3.498 1.307 4.491 4.491 0 0 1 1.307 3.497A4.49 4.49 0 0 1 21.75 12c0 1.357-.6 2.573-1.549 3.397a4.49 4.49 0 0 1-1.307 3.498 4.491 4.491 0 0 1-3.497 1.307A4.49 4.49 0 0 1 12 21.75a4.49 4.49 0 0 1-3.397-1.549 4.49 4.49 0 0 1-3.498-1.306 4.491 4.491 0 0 1-1.307-3.498A4.49 4.49 0 0 1 2.25 12c0-1.357.6-2.573 1.549-3.397a4.49 4.49 0 0 1 1.307-3.497 4.491 4.491 0 0 1 3.497-1.307Zm7.007 6.387a.75.75 0 1 0-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 0 0-1.06 1.06l2.25 2.25a.75.75 0 0 0 1.14-.094l3.75-5.25Z" clip-rule="evenodd" /></svg>`;
+                    const starIcon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-3.5 h-3.5 text-yellow-400"><path fill-rule="evenodd" d="M10.788 3.21c.448-1.077 1.976-1.077 2.424 0l2.082 5.006 5.404.434c1.164.093 1.636 1.545.749 2.305l-4.117 3.527 1.257 5.273c.271 1.136-.964 2.033-1.96 1.425L12 18.354 7.373 21.18c-.996.608-2.231-.29-1.96-1.425l1.257-5.273-4.117-3.527c-.887-.76-.415-2.212.749-2.305l5.404-.434 2.082-5.006z" clip-rule="evenodd" /></svg>`;
+                    const arrowIcon = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" /></svg>`;
 
-                            <!-- Info -->
-                            <div class="flex-1 min-w-0 pt-0.5">
-                                <h3 class="font-bold text-gray-900 dark:text-white text-base truncate leading-snug">${host.displayName}</h3>
-                                <p class="text-xs text-gray-500 dark:text-gray-400 truncate mb-1.5">${host.address.city}, ${host.address.country}</p>
+                    popupContent.innerHTML = `
+                        <div class="group bg-white dark:bg-gray-800 text-left cursor-pointer rounded-2xl overflow-hidden ring-1 ring-black/5 dark:ring-white/10">
+                            <!-- Top Section: Info -->
+                            <div class="p-4 flex items-start gap-3 relative">
+                                <!-- Avatar with Badge -->
+                                <div class="relative flex-shrink-0">
+                                    <img src="${imgSrc}" class="w-12 h-12 rounded-full object-cover border-2 border-gray-50 dark:border-gray-700 shadow-sm" alt="${host.displayName}" />
+                                    ${isVerified ? `<div class="absolute -bottom-1 -right-1 bg-white dark:bg-gray-800 rounded-full p-0.5 shadow-sm">${verifiedIcon}</div>` : ''}
+                                </div>
 
-                                <!-- Metrics Row -->
-                                <div class="flex items-center gap-2">
-                                    <div class="flex items-center gap-1 bg-yellow-50 dark:bg-yellow-900/30 px-1.5 py-0.5 rounded-md">
-                                        ${starIcon}
-                                        <span class="text-xs font-bold text-yellow-700 dark:text-yellow-400">${host.rating.toFixed(1)}</span>
+                                <!-- Info -->
+                                <div class="flex-1 min-w-0 pt-0.5">
+                                    <h3 class="font-bold text-gray-900 dark:text-white text-base truncate leading-snug">${host.displayName}</h3>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400 truncate mb-1.5">${host.address.city}, ${host.address.country}</p>
+
+                                    <!-- Metrics Row -->
+                                    <div class="flex items-center gap-2">
+                                        <div class="flex items-center gap-1 bg-yellow-50 dark:bg-yellow-900/30 px-1.5 py-0.5 rounded-md">
+                                            ${starIcon}
+                                            <span class="text-xs font-bold text-yellow-700 dark:text-yellow-400">${host.rating.toFixed(1)}</span>
+                                        </div>
+                                        ${distanceStr ? `
+                                        <div class="flex items-center text-gray-400 dark:text-gray-500 text-xs">
+                                            <span>•</span>
+                                            <span class="ml-1 font-medium">${distanceStr}</span>
+                                        </div>` : ''}
                                     </div>
-                                    ${distanceStr ? `
-                                    <div class="flex items-center text-gray-400 dark:text-gray-500 text-xs">
-                                        <span>•</span>
-                                        <span class="ml-1 font-medium">${distanceStr}</span>
-                                    </div>` : ''}
                                 </div>
                             </div>
-                        </div>
 
-                        <!-- Bottom Section: CTA -->
-                        <div class="bg-gray-50 dark:bg-gray-900/50 px-4 py-2.5 flex justify-between items-center border-t border-gray-100 dark:border-gray-700 group-hover:bg-blue-50 dark:group-hover:bg-blue-900/20 transition-colors duration-200">
-                            <span class="text-xs font-bold text-brand-blue tracking-wide uppercase">View Profile</span>
-                            <span class="text-brand-blue transform group-hover:translate-x-1 transition-transform duration-200">${arrowIcon}</span>
+                            <!-- Bottom Section: CTA -->
+                            <div class="bg-gray-50 dark:bg-gray-900/50 px-4 py-2.5 flex justify-between items-center border-t border-gray-100 dark:border-gray-700 group-hover:bg-blue-50 dark:group-hover:bg-blue-900/20 transition-colors duration-200">
+                                <span class="text-xs font-bold text-brand-blue tracking-wide uppercase">View Profile</span>
+                                <span class="text-brand-blue transform group-hover:translate-x-1 transition-transform duration-200">${arrowIcon}</span>
+                            </div>
                         </div>
-                    </div>
-                `;
-                
-                // Navigate on click
-                popupContent.addEventListener('click', (e) => {
-                    e.stopPropagation(); // Prevent map click
-                    navigate(`/host/${host.id}`);
-                });
+                    `;
+                    
+                    // Navigate on click
+                    popupContent.addEventListener('click', (e) => {
+                        e.stopPropagation(); // Prevent map click
+                        navigate(`/host/${host.id}`);
+                    });
 
-                marker.bindPopup(popupContent, {
-                    closeButton: false, // Cleaner look without the X
-                    minWidth: 240,
-                    offset: [0, -10]
-                });
-                
-                markersRef.current[host.id] = marker;
-                bounds.extend([host.address.coordinates.lat, host.address.coordinates.lng]);
+                    marker.bindPopup(popupContent, {
+                        closeButton: false, // Cleaner look without the X
+                        minWidth: 240,
+                        offset: [0, -10]
+                    });
+                    
+                    markersRef.current[host.id] = marker;
+                }
             }
         });
 
-        if (filteredHosts.length > 0 && !selectedHostId) {
+        if (hasBounds && !selectedHostId) {
             map.fitBounds(bounds, { padding: [50, 50] });
         }
         
@@ -415,7 +496,7 @@ export default function MapPage() {
         }
       }
 
-  }, [viewMode, filteredHosts, loading, userLocation]);
+  }, [viewMode, filteredHosts, userLocation]); 
 
   const handleNearMe = () => {
     if (!navigator.geolocation) {
@@ -433,25 +514,15 @@ export default function MapPage() {
   };
 
   // Derived Lists for Dashboard
-  
-  // 1. Hosts Near You (Sorted by distance if location available)
   const hostsNearYou = useMemo(() => {
       const list = [...hostsWithDistance];
       if (userLocation) {
-          // Sort by distance (ascending)
           list.sort((a, b) => (a as any).distance - (b as any).distance);
       } else {
-          // Fallback: maybe random or rating
-          // Just use list as is, maybe randomize or sort by rating for quality
           list.sort((a, b) => b.rating - a.rating);
       }
       return list.slice(0, 5);
   }, [hostsWithDistance, userLocation]);
-
-
-  if (loading) {
-      return <div className="flex justify-center items-center h-full"><SpinnerIcon className="w-10 h-10 text-brand-blue animate-spin" /></div>;
-  }
 
   const activeFilterCount = filters.phLevels.length + (filters.minRating > 0 ? 1 : 0) + (filters.openToday ? 1 : 0);
   const isDistributor = userData?.distributorVerificationStatus === 'approved';
@@ -505,7 +576,7 @@ export default function MapPage() {
                         </button>
                     )}
                     <div className="px-2 text-sm text-gray-500 flex items-center">
-                        {filteredHosts.length} results
+                        {loading ? 'Loading...' : `${filteredHosts.length} results`}
                     </div>
                  </div>
             )}
@@ -529,6 +600,20 @@ export default function MapPage() {
                         Use my current location
                     </button>
                 </div>
+
+                {/* Today's Schedule (New) */}
+                {todaysSchedule.length > 0 && (
+                    <CategorySection 
+                        title="Today's Schedule"
+                        icon={<ClockIcon className="w-6 h-6 text-orange-500" />}
+                    >
+                        {todaysSchedule.map(req => (
+                            <div key={req.id} className="snap-start">
+                                <ScheduleCard request={req} currentUserId={userData?.id || ''} />
+                            </div>
+                        ))}
+                    </CategorySection>
+                )}
 
                 {/* Contextual Recommendations */}
                 <div className="px-6 mb-8">
@@ -569,16 +654,24 @@ export default function MapPage() {
                     title="Hosts Near You" 
                     icon={<MapPinIcon className="w-6 h-6 text-red-500" />}
                 >
-                    {hostsNearYou.map(host => (
-                        <div key={host.id} className="snap-start">
-                            <HostCard 
-                                host={host} 
-                                isCompact 
-                                distance={(host as any).distance} 
-                                onClick={() => navigate(`/host/${host.id}`)}
-                            />
-                        </div>
-                    ))}
+                    {loading ? (
+                        <>
+                            <div className="snap-start"><HostCardSkeleton isCompact /></div>
+                            <div className="snap-start"><HostCardSkeleton isCompact /></div>
+                            <div className="snap-start"><HostCardSkeleton isCompact /></div>
+                        </>
+                    ) : (
+                        hostsNearYou.map(host => (
+                            <div key={host.id} className="snap-start">
+                                <HostCard 
+                                    host={host} 
+                                    isCompact 
+                                    distance={(host as any).distance} 
+                                    onClick={() => navigate(`/host/${host.id}`)}
+                                />
+                            </div>
+                        ))
+                    )}
                 </CategorySection>
             </div>
         )}
@@ -588,7 +681,11 @@ export default function MapPage() {
             <div className="flex-1 relative h-full">
                 {/* List View Content */}
                 <div className={`h-full overflow-y-auto p-4 pb-28 space-y-4 ${viewMode === 'list' ? 'block' : 'hidden'}`}>
-                    {filteredHosts.length > 0 ? (
+                    {loading ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                             {[...Array(6)].map((_, i) => <HostCardSkeleton key={i} />)}
+                        </div>
+                    ) : filteredHosts.length > 0 ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                             {filteredHosts.map(host => (
                                 <HostCard 

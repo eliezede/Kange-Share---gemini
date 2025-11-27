@@ -1,35 +1,36 @@
 
-import React, { useState, useContext, createContext, useCallback, useEffect, useMemo } from 'react';
+import React, { useState, useContext, createContext, useCallback, useEffect, useMemo, Suspense, lazy } from 'react';
 import { HashRouter, Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom';
 import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { auth } from './firebase';
 import * as api from './api';
 import { User, Notification } from './types';
-
-import LoginModal from './pages/LoginPage';
-import MapPage from './pages/MapPage';
-import HostProfilePage from './pages/HostProfilePage';
-import RequestWaterPage from './pages/RequestWaterPage';
-import ChatPage from './pages/ChatPage';
-import RateHostPage from './pages/RateHostPage';
-import LandingPage from './pages/LandingPage';
-import UserProfilePage from './pages/UserProfilePage';
-import UserDashboardPage from './pages/UserDashboardPage';
-import RequestsPage from './pages/RequestsPage';
-import RequestDetailPage from './pages/RequestDetailPage';
-import BottomNav from './components/BottomNav';
-import MessagesPage from './pages/MessagesPage';
-import FollowListPage from './pages/FollowListPage';
-import AdminPage from './pages/AdminPage';
-import SignUpPage from './pages/SignUpPage';
-import OnboardingPage from './pages/OnboardingPage';
-import BecomeDistributorPage from './pages/BecomeDistributorPage';
 import { SpinnerIcon } from './components/Icons';
 import Header from './components/Header';
+import BottomNav from './components/BottomNav';
 import { ToastProvider } from './hooks/useToast';
 import { ToastContainer } from './components/Toast';
-import SettingsPage from './pages/SettingsPage';
-import AdminHostVerificationsPage from './pages/AdminHostVerificationsPage';
+import LoginModal from './pages/LoginPage'; // Keep critical path eager
+import LandingPage from './pages/LandingPage'; // Keep critical path eager
+
+// Lazy load non-critical pages
+const MapPage = lazy(() => import('./pages/MapPage'));
+const HostProfilePage = lazy(() => import('./pages/HostProfilePage'));
+const RequestWaterPage = lazy(() => import('./pages/RequestWaterPage'));
+const ChatPage = lazy(() => import('./pages/ChatPage'));
+const RateHostPage = lazy(() => import('./pages/RateHostPage'));
+const UserProfilePage = lazy(() => import('./pages/UserProfilePage'));
+const UserDashboardPage = lazy(() => import('./pages/UserDashboardPage'));
+const RequestsPage = lazy(() => import('./pages/RequestsPage'));
+const RequestDetailPage = lazy(() => import('./pages/RequestDetailPage'));
+const MessagesPage = lazy(() => import('./pages/MessagesPage'));
+const FollowListPage = lazy(() => import('./pages/FollowListPage'));
+const AdminPage = lazy(() => import('./pages/AdminPage'));
+const SignUpPage = lazy(() => import('./pages/SignUpPage'));
+const OnboardingPage = lazy(() => import('./pages/OnboardingPage'));
+const BecomeDistributorPage = lazy(() => import('./pages/BecomeDistributorPage'));
+const SettingsPage = lazy(() => import('./pages/SettingsPage'));
+const AdminHostVerificationsPage = lazy(() => import('./pages/AdminHostVerificationsPage'));
 
 type Theme = 'light' | 'dark';
 
@@ -126,7 +127,6 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
             setUser(firebaseUser);
             let dbUser = await api.getUserById(firebaseUser.uid);
             if (!dbUser) {
-              // New user (e.g., via Google Sign-In for the first time)
               const nameParts = (firebaseUser.displayName || 'New User').split(' ');
               await api.createInitialUser(
                   firebaseUser.uid,
@@ -145,7 +145,6 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
           }
       } catch (error) {
           console.error("Error fetching user data:", error);
-          // Ensure loading is false even on error
       } finally {
           setLoading(false);
       }
@@ -207,26 +206,31 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
   );
 };
 
+const LoadingFallback = () => (
+    <div className="w-full h-full flex justify-center items-center">
+        <SpinnerIcon className="w-8 h-8 text-brand-blue animate-spin" />
+    </div>
+);
+
 const MainLayout: React.FC = () => (
     <div className="flex flex-col h-full">
         <Header />
         <main className="flex-1 overflow-y-auto">
              <div className="pb-28">
-                <Outlet />
+                <Suspense fallback={<LoadingFallback />}>
+                    <Outlet />
+                </Suspense>
             </div>
         </main>
         <BottomNav />
     </div>
 );
 
-
 const AppRoutes = () => {
     const { isAuthenticated, userData, loading, openLoginModal } = useAuth();
     const location = useLocation();
 
     useEffect(() => {
-        // If user is not authenticated and tries to access a protected page, open login modal.
-        // This handles deep links.
         if (!loading && !isAuthenticated && location.pathname !== '/' && location.pathname !== '/signup') {
             openLoginModal();
         }
@@ -242,25 +246,27 @@ const AppRoutes = () => {
 
     if (!isAuthenticated) {
         return (
-            <Routes>
-                <Route path="/signup" element={<SignUpPage />} />
-                <Route path="/" element={<LandingPage />} />
-                <Route path="/*" element={<Navigate to="/" replace />} />
-            </Routes>
+            <Suspense fallback={<LoadingFallback />}>
+                <Routes>
+                    <Route path="/signup" element={<SignUpPage />} />
+                    <Route path="/" element={<LandingPage />} />
+                    <Route path="/*" element={<Navigate to="/" replace />} />
+                </Routes>
+            </Suspense>
         );
     }
     
-    // User is authenticated
     if (userData && !userData.onboardingCompleted) {
         return (
-             <Routes>
-                <Route path="/onboarding/:step" element={<OnboardingPage />} />
-                <Route path="/*" element={<Navigate to={`/onboarding/${userData.onboardingStep || 'welcome'}`} replace />} />
-            </Routes>
+             <Suspense fallback={<LoadingFallback />}>
+                 <Routes>
+                    <Route path="/onboarding/:step" element={<OnboardingPage />} />
+                    <Route path="/*" element={<Navigate to={`/onboarding/${userData.onboardingStep || 'welcome'}`} replace />} />
+                </Routes>
+             </Suspense>
         );
     }
 
-    // User is authenticated and onboarding is complete
     return (
         <Routes>
             <Route element={<MainLayout />}>
