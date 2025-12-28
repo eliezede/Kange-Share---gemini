@@ -6,7 +6,7 @@ import {
     StarIcon, SearchIcon, AdjustmentsHorizontalIcon, CheckBadgeIcon, 
     ProfilePicture, MapPinIcon, MapIcon, ListBulletIcon,
     PresentationChartBarIcon, ClipboardDocumentListIcon, ClockIcon,
-    UserIcon, DropletIcon
+    UserIcon, DropletIcon, BuildingStorefrontIcon, SparklesIcon
 } from '../components/Icons';
 import { User, WaterRequest } from '../types';
 import { useAuth } from '../App';
@@ -48,16 +48,28 @@ const HostCard: React.FC<{ host: User; isCompact?: boolean; onClick?: () => void
     className={`
         group relative bg-white dark:bg-gray-800 rounded-2xl overflow-hidden transition-all duration-300 cursor-pointer
         ${isCompact ? 'w-64 flex-shrink-0 border border-gray-100 dark:border-gray-700 shadow-sm mr-4' : 'w-full border border-gray-100 dark:border-gray-700 shadow-sm hover:shadow-md'}
+        ${host.isBusiness ? 'ring-2 ring-amber-500/10' : ''}
     `}
   >
     <div className="p-4 flex items-center gap-4">
-        <ProfilePicture src={host.profilePicture} alt={host.displayName} className="w-16 h-16 rounded-full object-cover flex-shrink-0 border-2 border-white dark:border-gray-700 shadow-sm" />
+        <div className="relative flex-shrink-0">
+            <ProfilePicture src={host.profilePicture} alt={host.displayName} className="w-16 h-16 rounded-full object-cover border-2 border-white dark:border-gray-700 shadow-sm" />
+            {host.isBusiness && (
+                <div className="absolute -bottom-1 -right-1 bg-amber-500 text-white p-1 rounded-full shadow-lg">
+                    <BuildingStorefrontIcon className="w-3 h-3" />
+                </div>
+            )}
+        </div>
         <div className="flex-1 min-w-0">
-            <div className="flex items-center justify-between">
-                <h3 className="font-bold text-gray-900 dark:text-gray-100 truncate text-lg">{host.displayName}</h3>
-                {host.distributorVerificationStatus === 'approved' && <CheckBadgeIcon className="w-5 h-5 text-brand-blue flex-shrink-0" />}
+            <div className="flex items-center justify-between gap-1">
+                <h3 className="font-bold text-gray-900 dark:text-gray-100 truncate text-lg leading-tight">{host.displayName}</h3>
+                {host.isBusiness ? <SparklesIcon className="w-5 h-5 text-amber-500 flex-shrink-0" /> : host.distributorVerificationStatus === 'approved' && <CheckBadgeIcon className="w-5 h-5 text-brand-blue flex-shrink-0" />}
             </div>
-            <p className="text-sm text-gray-500 dark:text-gray-400 truncate">{host.address.city}, {host.address.country}</p>
+            {host.isBusiness && host.businessCategory ? (
+                <p className="text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-widest mb-0.5">{host.businessCategory}</p>
+            ) : (
+                <p className="text-sm text-gray-500 dark:text-gray-400 truncate">{host.address.city}, {host.address.country}</p>
+            )}
             <div className="flex items-center mt-1 gap-3">
                 <div className="flex items-center">
                     <StarIcon className="w-4 h-4 text-yellow-400" />
@@ -74,7 +86,7 @@ const HostCard: React.FC<{ host: User; isCompact?: boolean; onClick?: () => void
     </div>
     {!isCompact && (
         <div className="px-4 pb-4">
-             <Link to={`/host/${host.id}`} className="block w-full text-center py-2.5 bg-gray-50 dark:bg-gray-700 text-brand-blue dark:text-white font-bold rounded-xl hover:bg-brand-blue hover:text-white dark:hover:bg-brand-blue transition-colors">
+             <Link to={`/host/${host.id}`} className={`block w-full text-center py-2.5 font-bold rounded-xl transition-colors ${host.isBusiness ? 'bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 hover:bg-amber-500 hover:text-white' : 'bg-gray-50 dark:bg-gray-700 text-brand-blue dark:text-white hover:bg-brand-blue hover:text-white'}`}>
                 View Profile
              </Link>
         </div>
@@ -120,6 +132,7 @@ interface FilterState {
     phLevels: number[];
     minRating: number;
     openToday: boolean;
+    businessOnly: boolean;
 }
 
 const FilterModal: React.FC<{
@@ -160,6 +173,20 @@ const FilterModal: React.FC<{
                 </div>
                 
                 <div className="p-6 space-y-8 overflow-y-auto">
+                    {/* Wellness Centers Only */}
+                    <div className="flex items-center justify-between">
+                         <label className="text-sm font-bold text-amber-600 dark:text-amber-400 flex items-center gap-2">
+                             <BuildingStorefrontIcon className="w-5 h-5" />
+                             Businesses Only
+                         </label>
+                         <button 
+                            onClick={() => setLocalFilters(prev => ({ ...prev, businessOnly: !prev.businessOnly }))}
+                            className={`relative inline-flex items-center h-6 rounded-full w-11 transition-colors ${localFilters.businessOnly ? 'bg-amber-500' : 'bg-gray-300 dark:bg-gray-600'}`}
+                         >
+                            <span className={`inline-block w-4 h-4 transform bg-white rounded-full transition-transform ${localFilters.businessOnly ? 'translate-x-6' : 'translate-x-1'}`} />
+                         </button>
+                     </div>
+
                     {/* pH Levels */}
                     <div>
                         <label className="block text-sm font-bold text-gray-900 dark:text-gray-100 mb-3">Water Types (pH)</label>
@@ -215,7 +242,7 @@ const FilterModal: React.FC<{
                 <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex gap-3 pb-8 sm:pb-4">
                     <button 
                         onClick={() => {
-                            onApply({ phLevels: [], minRating: 0, openToday: false });
+                            onApply({ phLevels: [], minRating: 0, openToday: false, businessOnly: false });
                             onClose();
                         }}
                         className="flex-1 py-3 rounded-xl font-semibold text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition"
@@ -260,7 +287,7 @@ export default function MapPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const debouncedSearchQuery = useDebounce(searchQuery, 300); // 300ms debounce
   const [viewMode, setViewMode] = useState<'dashboard' | 'list' | 'map'>('dashboard');
-  const [filters, setFilters] = useState<FilterState>({ phLevels: [], minRating: 0, openToday: false });
+  const [filters, setFilters] = useState<FilterState>({ phLevels: [], minRating: 0, openToday: false, businessOnly: false });
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [selectedHostId, setSelectedHostId] = useState<string | null>(null);
 
@@ -344,6 +371,7 @@ export default function MapPage() {
       
       const matchesPh = filters.phLevels.length === 0 || filters.phLevels.some(ph => host.phLevels.includes(ph));
       const matchesRating = host.rating >= filters.minRating;
+      const matchesBusiness = !filters.businessOnly || host.isBusiness;
 
       let matchesAvailability = true;
       if (filters.openToday) {
@@ -352,7 +380,7 @@ export default function MapPage() {
           matchesAvailability = schedule && schedule.enabled;
       }
 
-      return matchesSearch && matchesPh && matchesRating && matchesAvailability;
+      return matchesSearch && matchesPh && matchesRating && matchesAvailability && matchesBusiness;
     });
   }, [debouncedSearchQuery, hostsWithDistance, filters]);
 
@@ -391,9 +419,9 @@ export default function MapPage() {
             }
         });
 
-        const customIcon = L.divIcon({
+        const customIcon = (isBusiness: boolean) => L.divIcon({
             className: 'bg-transparent border-none',
-            html: `<div style="font-size: 40px; line-height: 1; filter: drop-shadow(0 3px 3px rgba(0,0,0,0.3)); transform: translateY(-5px); cursor: pointer;">💧</div>`,
+            html: `<div style="font-size: 40px; line-height: 1; filter: drop-shadow(0 3px 3px rgba(0,0,0,0.3)); transform: translateY(-5px); cursor: pointer;">${isBusiness ? '🏢' : '💧'}</div>`,
             iconSize: [40, 40],
             iconAnchor: [20, 20], // Centered
             popupAnchor: [0, -20]
@@ -409,7 +437,7 @@ export default function MapPage() {
 
                 // Only add if not already exists
                 if (!currentMarkers[host.id]) {
-                    const marker = L.marker([host.address.coordinates.lat, host.address.coordinates.lng], { icon: customIcon }).addTo(map);
+                    const marker = L.marker([host.address.coordinates.lat, host.address.coordinates.lng], { icon: customIcon(!!host.isBusiness) }).addTo(map);
                     
                     // Create interactive popup content
                     const popupContent = document.createElement('div');
@@ -421,26 +449,27 @@ export default function MapPage() {
 
                     // SVG Strings for inner HTML
                     const verifiedIcon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4 text-brand-blue"><path fill-rule="evenodd" d="M8.603 3.799A4.49 4.49 0 0 1 12 2.25c1.357 0 2.573.6 3.397 1.549a4.49 4.49 0 0 1 3.498 1.307 4.491 4.491 0 0 1 1.307 3.497A4.49 4.49 0 0 1 21.75 12c0 1.357-.6 2.573-1.549 3.397a4.49 4.49 0 0 1-1.307 3.498 4.491 4.491 0 0 1-3.497 1.307A4.49 4.49 0 0 1 12 21.75a4.49 4.49 0 0 1-3.397-1.549 4.49 4.49 0 0 1-3.498-1.306 4.491 4.491 0 0 1-1.307-3.498A4.49 4.49 0 0 1 2.25 12c0-1.357.6-2.573 1.549-3.397a4.49 4.49 0 0 1 1.307-3.497 4.491 4.491 0 0 1 3.497-1.307Zm7.007 6.387a.75.75 0 1 0-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 0 0-1.06 1.06l2.25 2.25a.75.75 0 0 0 1.14-.094l3.75-5.25Z" clip-rule="evenodd" /></svg>`;
+                    const goldIcon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4 text-amber-500"><path fill-rule="evenodd" d="M10.788 3.21c.448-1.077 1.976-1.077 2.424 0l2.082 5.006 5.404.434c1.164.093 1.636 1.545.749 2.305l-4.117 3.527 1.257 5.273c.271 1.136-.964 2.033-1.96 1.425L12 18.354 7.373 21.18c-.996.608-2.231-.29-1.96-1.425l1.257-5.273-4.117-3.527c-.887-.76-.415-2.212.749-2.305l5.404-.434 2.082-5.006z" clip-rule="evenodd" /></svg>`;
                     const starIcon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-3.5 h-3.5 text-yellow-400"><path fill-rule="evenodd" d="M10.788 3.21c.448-1.077 1.976-1.077 2.424 0l2.082 5.006 5.404.434c1.164.093 1.636 1.545.749 2.305l-4.117 3.527 1.257 5.273c.271 1.136-.964 2.033-1.96 1.425L12 18.354 7.373 21.18c-.996.608-2.231-.29-1.96-1.425l1.257-5.273-4.117-3.527c-.887-.76-.415-2.212.749-2.305l5.404-.434 2.082-5.006z" clip-rule="evenodd" /></svg>`;
                     const arrowIcon = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" /></svg>`;
 
                     popupContent.innerHTML = `
-                        <div class="group bg-white dark:bg-gray-800 text-left cursor-pointer rounded-2xl overflow-hidden ring-1 ring-black/5 dark:ring-white/10">
+                        <div class="group bg-white dark:bg-gray-800 text-left cursor-pointer rounded-2xl overflow-hidden ring-1 ring-black/5 dark:ring-white/10 ${host.isBusiness ? 'border-b-4 border-amber-500' : ''}">
                             <!-- Top Section: Info -->
                             <div class="p-4 flex items-start gap-3 relative">
                                 <!-- Avatar with Badge -->
                                 <div class="relative flex-shrink-0">
                                     <img src="${imgSrc}" class="w-12 h-12 rounded-full object-cover border-2 border-gray-50 dark:border-gray-700 shadow-sm" alt="${host.displayName}" />
-                                    ${isVerified ? `<div class="absolute -bottom-1 -right-1 bg-white dark:bg-gray-800 rounded-full p-0.5 shadow-sm">${verifiedIcon}</div>` : ''}
+                                    ${host.isBusiness ? `<div class="absolute -bottom-1 -right-1 bg-amber-500 rounded-full p-1 shadow-sm"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="white" class="w-2 h-2"><path d="M1 8.25V14.5A1.5 1.5 0 0 0 2.5 16h15a1.5 1.5 0 0 0 1.5-1.5V8.25m-18 0V7.5a1.5 1.5 0 0 1 1.5-1.5h15A1.5 1.5 0 0 1 19 7.5v.75m-18 0h18M5 12v1.5m10-1.5v1.5m-7.5-1.5v1.5m5-1.5v1.5" /></svg></div>` : (isVerified ? `<div class="absolute -bottom-1 -right-1 bg-white dark:bg-gray-800 rounded-full p-0.5 shadow-sm">${verifiedIcon}</div>` : '')}
                                 </div>
 
                                 <!-- Info -->
                                 <div class="flex-1 min-w-0 pt-0.5">
                                     <h3 class="font-bold text-gray-900 dark:text-white text-base truncate leading-snug">${host.displayName}</h3>
-                                    <p class="text-xs text-gray-500 dark:text-gray-400 truncate mb-1.5">${host.address.city}, ${host.address.country}</p>
+                                    ${host.isBusiness ? `<p class="text-[9px] font-bold text-amber-600 uppercase tracking-widest">${host.businessCategory || 'WELLNESS PARTNER'}</p>` : `<p class="text-xs text-gray-500 dark:text-gray-400 truncate mb-1.5">${host.address.city}, ${host.address.country}</p>`}
 
                                     <!-- Metrics Row -->
-                                    <div class="flex items-center gap-2">
+                                    <div class="flex items-center gap-2 mt-1">
                                         <div class="flex items-center gap-1 bg-yellow-50 dark:bg-yellow-900/30 px-1.5 py-0.5 rounded-md">
                                             ${starIcon}
                                             <span class="text-xs font-bold text-yellow-700 dark:text-yellow-400">${host.rating.toFixed(1)}</span>
@@ -456,8 +485,8 @@ export default function MapPage() {
 
                             <!-- Bottom Section: CTA -->
                             <div class="bg-gray-50 dark:bg-gray-900/50 px-4 py-2.5 flex justify-between items-center border-t border-gray-100 dark:border-gray-700 group-hover:bg-blue-50 dark:group-hover:bg-blue-900/20 transition-colors duration-200">
-                                <span class="text-xs font-bold text-brand-blue tracking-wide uppercase">View Profile</span>
-                                <span class="text-brand-blue transform group-hover:translate-x-1 transition-transform duration-200">${arrowIcon}</span>
+                                <span class="text-xs font-bold ${host.isBusiness ? 'text-amber-600' : 'text-brand-blue'} tracking-wide uppercase">View Profile</span>
+                                <span class="${host.isBusiness ? 'text-amber-600' : 'text-brand-blue'} transform group-hover:translate-x-1 transition-transform duration-200">${arrowIcon}</span>
                             </div>
                         </div>
                     `;
@@ -524,14 +553,18 @@ export default function MapPage() {
       return list.slice(0, 5);
   }, [hostsWithDistance, userLocation]);
 
-  const activeFilterCount = filters.phLevels.length + (filters.minRating > 0 ? 1 : 0) + (filters.openToday ? 1 : 0);
+  const wellnessPartners = useMemo(() => {
+    return hostsWithDistance.filter(h => h.isBusiness).sort((a, b) => b.rating - a.rating).slice(0, 5);
+  }, [hostsWithDistance]);
+
+  const activeFilterCount = filters.phLevels.length + (filters.minRating > 0 ? 1 : 0) + (filters.openToday ? 1 : 0) + (filters.businessOnly ? 1 : 0);
   const isDistributor = userData?.distributorVerificationStatus === 'approved';
 
   return (
     <div className="bg-white dark:bg-gray-900 min-h-full flex flex-col relative">
         
         {/* Sticky Header with Search */}
-        <div className={`sticky top-0 z-20 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md transition-all duration-300 ${viewMode === 'dashboard' ? 'py-4 border-b-0' : 'py-3 border-b border-gray-200 dark:border-gray-800'}`}>
+        <div className={`sticky top-0 fz-20 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md transition-all duration-300 ${viewMode === 'dashboard' ? 'py-4 border-b-0' : 'py-3 border-b border-gray-200 dark:border-gray-800'}`}>
             <div className="px-4 max-w-2xl mx-auto w-full">
                  <div className="relative group">
                     <div className={`absolute inset-0 bg-brand-blue/5 rounded-full transition-transform group-hover:scale-105 duration-300 ${viewMode === 'dashboard' ? 'opacity-100' : 'opacity-0'}`}></div>
@@ -556,7 +589,7 @@ export default function MapPage() {
                             onClick={() => setIsFilterOpen(true)}
                             className="pr-2 mr-2"
                         >
-                            <div className={`p-2 rounded-full transition-colors ${activeFilterCount > 0 ? 'bg-brand-blue text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'}`}>
+                            <div className={`p-2 rounded-full transition-colors ${activeFilterCount > 0 ? 'bg-amber-500 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'}`}>
                                 <AdjustmentsHorizontalIcon className="w-5 h-5" />
                             </div>
                         </button>
@@ -570,8 +603,13 @@ export default function MapPage() {
                     <button onClick={() => setViewMode('dashboard')} className="whitespace-nowrap px-3 py-1.5 text-sm font-medium bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 rounded-full">
                         &larr; Back
                     </button>
+                    {filters.businessOnly && (
+                        <div className="whitespace-nowrap px-3 py-1.5 text-sm font-bold bg-amber-100 text-amber-700 rounded-full flex items-center gap-1">
+                            <BuildingStorefrontIcon className="w-3.5 h-3.5" /> Businesses
+                        </div>
+                    )}
                     {activeFilterCount > 0 && (
-                        <button onClick={() => setFilters({ phLevels: [], minRating: 0, openToday: false })} className="whitespace-nowrap px-3 py-1.5 text-sm font-medium bg-red-50 text-red-600 rounded-full">
+                        <button onClick={() => setFilters({ phLevels: [], minRating: 0, openToday: false, businessOnly: false })} className="whitespace-nowrap px-3 py-1.5 text-sm font-medium bg-red-50 text-red-600 rounded-full">
                             Clear Filters
                         </button>
                     )}
@@ -610,6 +648,25 @@ export default function MapPage() {
                         {todaysSchedule.map(req => (
                             <div key={req.id} className="snap-start">
                                 <ScheduleCard request={req} currentUserId={userData?.id || ''} />
+                            </div>
+                        ))}
+                    </CategorySection>
+                )}
+
+                {/* Wellness Partners Section (New) */}
+                {wellnessPartners.length > 0 && (
+                    <CategorySection 
+                        title="Wellness Partners" 
+                        icon={<BuildingStorefrontIcon className="w-6 h-6 text-amber-500" />}
+                    >
+                         {wellnessPartners.map(host => (
+                            <div key={host.id} className="snap-start">
+                                <HostCard 
+                                    host={host} 
+                                    isCompact 
+                                    distance={(host as any).distance} 
+                                    onClick={() => navigate(`/host/${host.id}`)}
+                                />
                             </div>
                         ))}
                     </CategorySection>
@@ -699,7 +756,7 @@ export default function MapPage() {
                     ) : (
                         <div className="text-center py-20">
                             <p className="text-gray-500 dark:text-gray-400 text-lg">No hosts found matching your criteria.</p>
-                            <button onClick={() => setFilters({ phLevels: [], minRating: 0, openToday: false })} className="mt-4 text-brand-blue font-bold">Clear Filters</button>
+                            <button onClick={() => setFilters({ phLevels: [], minRating: 0, openToday: false, businessOnly: false })} className="mt-4 text-brand-blue font-bold">Clear Filters</button>
                         </div>
                     )}
                 </div>

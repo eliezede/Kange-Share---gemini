@@ -14,7 +14,8 @@ import {
     SearchIcon,
     UserGroupIcon,
     SparklesIcon,
-    ChevronRightIcon
+    ChevronRightIcon,
+    BuildingStorefrontIcon
 } from '../components/Icons';
 
 // --- Components ---
@@ -40,6 +41,30 @@ const TestimonialCard: React.FC<{ quote: string; author: string; role: string; l
                 <p className="font-bold text-gray-900 dark:text-white text-sm">{author}</p>
                 <p className="text-xs text-gray-500 dark:text-gray-400">{role} • {location}</p>
             </div>
+        </div>
+    </div>
+);
+
+const WellnessPartnerCard: React.FC<{ name: string, category: string, location: string, rating: number, image: string }> = ({ name, category, location, rating, image }) => (
+    <div className="bg-white dark:bg-gray-800 rounded-3xl overflow-hidden shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col h-full group hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+        <div className="relative aspect-[4/3] overflow-hidden">
+            <img src={image} alt={name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+            <div className="absolute top-4 left-4 bg-amber-500 text-white px-3 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-widest shadow-lg">
+                Certified Partner
+            </div>
+        </div>
+        <div className="p-5 flex-1">
+            <div className="flex justify-between items-start mb-1">
+                <p className="text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-widest">{category}</p>
+                <div className="flex items-center gap-1">
+                    <StarIcon className="w-3 h-3 text-yellow-400" />
+                    <span className="text-xs font-bold dark:text-gray-200">{rating}</span>
+                </div>
+            </div>
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white leading-tight mb-1">{name}</h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                <MapPinIcon className="w-3.5 h-3.5" /> {location}
+            </p>
         </div>
     </div>
 );
@@ -190,12 +215,12 @@ export default function LandingPage() {
 
                         {/* Floating Badge 2 */}
                         <div className="absolute bottom-32 -right-4 lg:right-10 bg-white dark:bg-gray-800 p-3 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700 flex items-center gap-3 animate-bounce" style={{ animationDuration: '4s', animationDelay: '1s' }}>
-                            <div className="bg-blue-100 dark:bg-blue-900/50 p-2 rounded-full">
-                                <DropletIcon className="w-5 h-5 text-brand-blue" />
+                            <div className="bg-amber-100 dark:bg-amber-900/50 p-2 rounded-full">
+                                <BuildingStorefrontIcon className="w-5 h-5 text-amber-600" />
                             </div>
                             <div>
-                                <p className="font-bold text-xs dark:text-white">pH 9.5 Ready</p>
-                                <p className="text-[10px] text-gray-500">2km away</p>
+                                <p className="font-bold text-xs dark:text-white">Wellness Partner</p>
+                                <p className="text-[10px] text-gray-500">Official Hub</p>
                             </div>
                         </div>
                     </div>
@@ -211,6 +236,56 @@ export default function LandingPage() {
                     <StatCard value="1k+" label="Verified Hosts" />
                     <StatCard value="10k+" label="Liters Shared" />
                     <StatCard value="4.9" label="Avg Rating" />
+                </div>
+            </div>
+        </section>
+
+        {/* --- Wellness Partners Section (New) --- */}
+        <section className="py-24 bg-gray-50/50 dark:bg-gray-900/30">
+            <div className="container mx-auto px-6">
+                <div className="flex flex-col md:flex-row justify-between items-end gap-6 mb-12">
+                    <div className="max-w-xl">
+                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-50 dark:bg-amber-900/30 border border-amber-100 dark:border-amber-800 text-amber-600 dark:text-amber-400 font-bold text-xs uppercase tracking-widest mb-4">
+                            Certified Wellness Partners
+                        </div>
+                        <h2 className="text-3xl md:text-5xl font-extrabold text-gray-900 dark:text-white leading-tight">
+                            Hydrate at your favorite <br/> <span className="text-amber-500">Wellness Hubs.</span>
+                        </h2>
+                    </div>
+                    <Link to="/signup" className="text-amber-600 font-bold flex items-center gap-1 hover:underline">
+                        View All Partners <ChevronRightIcon className="w-5 h-5" />
+                    </Link>
+                </div>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+                    <WellnessPartnerCard 
+                        name="Leafy Greens Cafe"
+                        category="Organic Cafe"
+                        location="Austin, TX"
+                        rating={4.9}
+                        image="https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&q=80&w=400"
+                    />
+                    <WellnessPartnerCard 
+                        name="Pure Life Yoga"
+                        category="Yoga Studio"
+                        location="San Diego, CA"
+                        rating={5.0}
+                        image="https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?auto=format&fit=crop&q=80&w=400"
+                    />
+                    <WellnessPartnerCard 
+                        name="Holistic Harmony"
+                        category="Wellness Clinic"
+                        location="London, UK"
+                        rating={4.8}
+                        image="https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?auto=format&fit=crop&q=80&w=400"
+                    />
+                    <WellnessPartnerCard 
+                        name="Zen Garden Spa"
+                        category="Day Spa"
+                        location="Bali, Indonesia"
+                        rating={4.9}
+                        image="https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&q=80&w=400"
+                    />
                 </div>
             </div>
         </section>

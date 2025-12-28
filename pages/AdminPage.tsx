@@ -2,7 +2,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import * as api from '../api';
-import { User, WaterRequest, RequestStatus } from '../types';
 import {
     ChevronLeftIcon,
     UserGroupIcon,
@@ -20,10 +19,13 @@ import {
     DocumentTextIcon,
     TrashIcon,
     CheckCircleIcon,
-    XCircleIcon as XCircleIconSolid
+    XCircleIcon as XCircleIconSolid,
+    BuildingStorefrontIcon,
+    SparklesIcon
 } from '../components/Icons';
 import { useToast } from '../hooks/useToast';
 import { useAuth } from '../App';
+import { User, WaterRequest, RequestStatus, BusinessCategory } from '../types';
 
 const MetricCard: React.FC<{ icon: React.ReactNode; label: string; value: number | string }> = ({ icon, label, value }) => (
     <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 flex items-center gap-4">
@@ -57,6 +59,9 @@ const UserStatusBadge: React.FC<{ user: User }> = ({ user }) => {
     if (user.isBlocked) {
         return <span className="px-2.5 py-0.5 text-xs font-semibold rounded-full bg-gray-200 text-gray-800 dark:bg-gray-600 dark:text-gray-200">Blocked</span>;
     }
+    if (user.isBusiness) {
+        return <span className="px-2.5 py-0.5 text-xs font-bold rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-400 flex items-center gap-1"><SparklesIcon className="w-3 h-3" /> Partner</span>;
+    }
     switch (user.distributorVerificationStatus) {
         case 'pending':
             return <span className="px-2.5 py-0.5 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300">Pending</span>;
@@ -75,7 +80,7 @@ const ConfirmationModal: React.FC<{ isOpen: boolean; title: string; message: str
     if (!isOpen) return null;
     return (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={onCancel}>
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-sm m-4 p-6 text-center" onClick={e => e.stopPropagation()}>
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-sm m-4 p-6 text-center" onClick={e => e.stopPropagation()}>
                 <h2 className="text-xl font-bold mb-2 dark:text-white">{title}</h2>
                 <p className="text-gray-600 dark:text-gray-400 mb-6">{message}</p>
                 <div className="flex gap-3">
@@ -108,6 +113,8 @@ const UserDetailModal: React.FC<UserDetailModalProps> = ({ user, onClose, onUpda
     const [isProcessing, setIsProcessing] = useState<string | null>(null);
     const [rejectionNote, setRejectionNote] = useState('');
     const [showRejectionInput, setShowRejectionInput] = useState(false);
+    const [selectedCategory, setSelectedCategory] = useState<BusinessCategory>(user.businessCategory || 'Other');
+    
     const [actionToConfirm, setActionToConfirm] = useState<(() => void) | null>(null);
     const [confirmationDetails, setConfirmationDetails] = useState({ title: '', message: '', confirmText: 'Confirm', isDestructive: false });
     const { userData: adminUser } = useAuth();
@@ -128,6 +135,8 @@ const UserDetailModal: React.FC<UserDetailModalProps> = ({ user, onClose, onUpda
     };
     
     const handleApprove = () => handleAction('approved', () => api.approveDistributorVerification(user.id, adminUser!.id));
+    const handlePartnerToggle = () => handleAction(user.isBusiness ? 'demoted from partner' : 'promoted to partner', () => api.updateUser(user.id, { isBusiness: !user.isBusiness, businessCategory: selectedCategory }));
+    
     const handleReject = () => {
         if (!rejectionNote.trim()) { showToast('Rejection reason cannot be empty.', 'error'); return; }
         handleAction('rejected', () => api.rejectDistributorVerification(user.id, adminUser!.id, rejectionNote)).then(() => setShowRejectionInput(false));
@@ -141,6 +150,8 @@ const UserDetailModal: React.FC<UserDetailModalProps> = ({ user, onClose, onUpda
         setConfirmationDetails({ title: "Delete User", message: `Are you sure you want to permanently delete ${user.displayName}? This action cannot be undone.`, confirmText: 'Delete', isDestructive: true });
         setActionToConfirm(() => () => handleAction('deleted', () => api.deleteUser(user.id)).then(() => onClose()));
     };
+
+    const categories: BusinessCategory[] = ['Cafe', 'Clinic', 'Gym', 'Spa', 'Yoga Studio', 'Other'];
 
     return (
         <>
@@ -166,6 +177,36 @@ const UserDetailModal: React.FC<UserDetailModalProps> = ({ user, onClose, onUpda
                         </div>
                     </div>
                     
+                    {/* Wellness Partner Section */}
+                    <div className="bg-amber-50 dark:bg-amber-900/20 p-4 rounded-xl border border-amber-100 dark:border-amber-800 space-y-4">
+                        <div className="flex items-center gap-2">
+                            <BuildingStorefrontIcon className="w-6 h-6 text-amber-600" />
+                            <h4 className="font-bold text-amber-800 dark:text-amber-200">Wellness Partner Status</h4>
+                        </div>
+                        
+                        <div className="space-y-3">
+                            <div>
+                                <label className="block text-xs font-bold text-amber-700 dark:text-amber-300 uppercase tracking-wider mb-1">Business Category</label>
+                                <select 
+                                    value={selectedCategory}
+                                    onChange={(e) => setSelectedCategory(e.target.value as BusinessCategory)}
+                                    className="w-full p-2 text-sm bg-white dark:bg-gray-800 border border-amber-200 dark:border-amber-700 rounded-lg outline-none focus:ring-2 focus:ring-amber-500"
+                                >
+                                    {categories.map(c => <option key={c} value={c}>{c}</option>)}
+                                </select>
+                            </div>
+                            
+                            <button 
+                                onClick={handlePartnerToggle}
+                                disabled={!!isProcessing}
+                                className={`w-full py-2.5 rounded-xl font-bold text-sm transition-all shadow-sm flex items-center justify-center gap-2 ${user.isBusiness ? 'bg-white dark:bg-gray-800 text-amber-600 border border-amber-200 dark:border-amber-700' : 'bg-amber-500 text-white'}`}
+                            >
+                                {isProcessing === 'promoted to partner' || isProcessing === 'demoted from partner' ? <SpinnerIcon className="w-4 h-4 animate-spin"/> : <SparklesIcon className="w-4 h-4" />}
+                                {user.isBusiness ? 'Demote from Partner' : 'Promote to Wellness Partner'}
+                            </button>
+                        </div>
+                    </div>
+
                     {/* Verification Section */}
                     <div className="bg-gray-50 dark:bg-gray-900/50 p-4 rounded-lg space-y-3">
                         <h4 className="font-semibold dark:text-gray-200">Verification Management</h4>
@@ -261,7 +302,7 @@ export default function AdminPage() {
     const [users, setUsers] = useState<User[]>([]);
     const [requests, setRequests] = useState<WaterRequest[]>([]);
     const [loading, setLoading] = useState(true);
-    const [userFilter, setUserFilter] = useState<'all' | 'pending' | 'verified' | 'blocked'>('all');
+    const [userFilter, setUserFilter] = useState<'all' | 'pending' | 'verified' | 'blocked' | 'partners'>('all');
     const [userSearchQuery, setUserSearchQuery] = useState('');
     const [selectedUser, setSelectedUser] = useState<User | null>(null);
 
@@ -286,10 +327,12 @@ export default function AdminPage() {
     
     const metrics = useMemo(() => {
         const verifiedHosts = users.filter(u => u.distributorVerificationStatus === 'approved');
+        const wellnessPartners = users.filter(u => u.isBusiness);
         return {
             totalUsers: users.length,
             totalRequests: requests.filter(r => r.status !== 'chatting').length,
             verifiedHosts: verifiedHosts.length,
+            wellnessPartners: wellnessPartners.length,
             pendingRequests: requests.filter(r => r.status === 'pending').length,
             pendingVerifications: users.filter(u => u.distributorVerificationStatus === 'pending').length,
         };
@@ -300,7 +343,8 @@ export default function AdminPage() {
             .filter(user => {
                 switch(userFilter) {
                     case 'pending': return user.distributorVerificationStatus === 'pending';
-                    case 'verified': return user.distributorVerificationStatus === 'approved';
+                    case 'verified': return user.distributorVerificationStatus === 'approved' && !user.isBusiness;
+                    case 'partners': return user.isBusiness;
                     case 'blocked': return user.isBlocked;
                     case 'all':
                     default:
@@ -350,17 +394,18 @@ export default function AdminPage() {
                         <h2 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-3">Key Metrics</h2>
                         <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-4">
                             <MetricCard icon={<UserGroupIcon className="w-6 h-6 text-brand-blue" />} label="Total Users" value={metrics.totalUsers} />
-                            <MetricCard icon={<ClipboardDocumentListIcon className="w-6 h-6 text-brand-blue" />} label="Total Requests" value={metrics.totalRequests} />
-                            <MetricCard icon={<CheckBadgeIcon className="w-6 h-6 text-green-500" />} label="Verified Hosts" value={metrics.verifiedHosts} />
+                            <MetricCard icon={<CheckBadgeIcon className="w-6 h-6 text-brand-blue" />} label="Verified Hosts" value={metrics.verifiedHosts} />
+                            <MetricCard icon={<SparklesIcon className="w-6 h-6 text-amber-500" />} label="Wellness Partners" value={metrics.wellnessPartners} />
+                            <MetricCard icon={<ClipboardDocumentListIcon className="w-6 h-6 text-purple-500" />} label="Total Requests" value={metrics.totalRequests} />
                             <MetricCard icon={<ClockIcon className="w-6 h-6 text-yellow-500" />} label="Pending Requests" value={metrics.pendingRequests} />
-                            <Link to="/admin/distributor-verifications" className="block col-span-2 lg:col-span-1">
+                            <Link to="/admin/distributor-verifications" className="block">
                                 <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 flex items-center gap-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors h-full">
                                     <div className="p-3 bg-orange-100 dark:bg-orange-900/50 rounded-full">
                                         <ShieldExclamationIcon className="w-6 h-6 text-orange-500" />
                                     </div>
                                     <div>
                                         <p className="text-2xl font-bold text-gray-800 dark:text-gray-100">{metrics.pendingVerifications}</p>
-                                        <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Pending Verifications</p>
+                                        <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Verifications</p>
                                     </div>
                                 </div>
                             </Link>
@@ -379,11 +424,11 @@ export default function AdminPage() {
                                     className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-brand-blue outline-none transition"
                                 />
                             </div>
-                            <div className="flex items-center gap-2 bg-gray-100 dark:bg-gray-700 p-1 rounded-lg">
-                                {(['all', 'pending', 'verified', 'blocked'] as const).map(filter => (
+                            <div className="flex items-center gap-2 bg-gray-100 dark:bg-gray-700 p-1 rounded-lg overflow-x-auto no-scrollbar">
+                                {(['all', 'partners', 'pending', 'verified', 'blocked'] as const).map(filter => (
                                     <button
                                         key={filter} onClick={() => setUserFilter(filter)}
-                                        className={`px-3 py-1.5 text-sm font-semibold rounded-md capitalize transition-colors flex-1 md:flex-none ${userFilter === filter ? 'bg-white dark:bg-gray-800 text-brand-blue shadow-sm' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'}`}
+                                        className={`px-3 py-1.5 text-xs font-bold rounded-md capitalize transition-colors flex-1 md:flex-none whitespace-nowrap ${userFilter === filter ? 'bg-white dark:bg-gray-800 text-brand-blue shadow-sm' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'}`}
                                     >
                                         {filter}
                                     </button>

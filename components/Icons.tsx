@@ -72,6 +72,12 @@ export const ShieldCheckIcon = (props: React.SVGProps<SVGSVGElement>) => (
   </svg>
 );
 
+export const BuildingStorefrontIcon = (props: React.SVGProps<SVGSVGElement>) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 21V10.5m0 10.5h9M13.5 21H3m10.5-10.5V3.75M13.5 10.5H21m-7.5 0H3m18 0V21m-18 0V10.5m18 0V3.75a.75.75 0 0 0-.75-.75h-16.5a.75.75 0 0 0-.75.75V10.5m18 0H3M8.25 6.75h.008v.008H8.25V6.75Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0ZM8.25 13.5h.008v.008H8.25V13.5Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 3.375h.008v.008H8.625v-.008Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0ZM14.25 6.75h.008v.008h-.008V6.75Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0ZM14.25 13.5h.008v.008h-.008V13.5Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 3.375h.008v.008h-.008v-.008Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
+    </svg>
+);
+
 export const DevicePhoneMobileIcon = (props: React.SVGProps<SVGSVGElement>) => (
   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
     <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 1.5H8.25A2.25 2.25 0 0 0 6 3.75v16.5a2.25 2.25 0 0 0 2.25 2.25h7.5A2.25 2.25 0 0 0 18 20.25V3.75A2.25 2.25 0 0 0 15.75 1.5h-2.25m-3.75 0h3.75M12 18.75h.008v.015H12v-.015Z" />
