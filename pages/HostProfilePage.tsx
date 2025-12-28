@@ -2,7 +2,25 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import * as api from '../api';
-import { StarIcon, CheckBadgeIcon, MapPinIcon, ChatBubbleOvalLeftEllipsisIcon, SpinnerIcon, ProfilePicture, UserGroupIcon, DropletIcon, SparklesIcon, BuildingStorefrontIcon, ChevronRightIcon, XMarkIcon } from '../components/Icons';
+import { 
+    StarIcon, 
+    CheckBadgeIcon, 
+    MapPinIcon, 
+    ChatBubbleOvalLeftEllipsisIcon, 
+    SpinnerIcon, 
+    ProfilePicture, 
+    UserGroupIcon, 
+    DropletIcon, 
+    SparklesIcon, 
+    BuildingStorefrontIcon, 
+    ChevronRightIcon, 
+    XMarkIcon,
+    GlobeAltIcon,
+    DevicePhoneMobileIcon,
+    InstagramIcon,
+    FacebookIcon,
+    LinkedInIcon
+} from '../components/Icons';
 import { Review, User } from '../types';
 import { useAuth } from '../App';
 import { useToast } from '../hooks/useToast';
@@ -349,6 +367,54 @@ export default function HostProfilePage() {
                             </button>
                         )
                     )}
+                </div>
+            )}
+
+            {/* Contact & Social Row (NEW) */}
+            {(host.phone || host.website || host.instagram || host.facebook || host.linkedin) && (
+                <div className="mt-8 flex flex-wrap items-center justify-center sm:justify-start gap-6">
+                    {/* Website Button */}
+                    {host.website && (
+                        <a 
+                            href={host.website.startsWith('http') ? host.website : `https://${host.website}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-2 px-5 py-2.5 bg-gray-50 dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 hover:bg-brand-blue hover:text-white transition-all text-sm font-black uppercase tracking-widest shadow-sm group"
+                        >
+                            <GlobeAltIcon className="w-5 h-5 text-brand-blue group-hover:text-white" />
+                            <span>Visit Website</span>
+                        </a>
+                    )}
+
+                    {/* Phone Button */}
+                    {host.phone && (
+                        <a 
+                            href={`tel:${host.phone}`}
+                            className="flex items-center gap-2 text-gray-700 dark:text-gray-300 hover:text-brand-blue transition-colors group"
+                        >
+                            <DevicePhoneMobileIcon className="w-5 h-5 text-gray-400 group-hover:text-brand-blue" />
+                            <span className="text-sm font-bold">{host.phone}</span>
+                        </a>
+                    )}
+
+                    {/* Social Icons Container */}
+                    <div className="flex items-center gap-4 px-4 py-2 bg-gray-50/50 dark:bg-gray-800/30 rounded-2xl border border-gray-100/50 dark:border-gray-700/50">
+                        {host.instagram && (
+                            <a href={host.instagram.startsWith('http') ? host.instagram : `https://${host.instagram}`} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-pink-600 transition-colors">
+                                <InstagramIcon className="w-6 h-6" />
+                            </a>
+                        )}
+                        {host.facebook && (
+                            <a href={host.facebook.startsWith('http') ? host.facebook : `https://${host.facebook}`} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-blue-600 transition-colors">
+                                <FacebookIcon className="w-6 h-6" />
+                            </a>
+                        )}
+                        {host.linkedin && (
+                            <a href={host.linkedin.startsWith('http') ? host.linkedin : `https://${host.linkedin}`} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-blue-800 transition-colors">
+                                <LinkedInIcon className="w-6 h-6" />
+                            </a>
+                        )}
+                    </div>
                 </div>
             )}
             
