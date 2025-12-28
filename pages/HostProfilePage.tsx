@@ -19,11 +19,14 @@ import {
     DevicePhoneMobileIcon,
     InstagramIcon,
     FacebookIcon,
-    LinkedInIcon
+    LinkedInIcon,
+    HeartIcon
 } from '../components/Icons';
 import { Review, User } from '../types';
 import { useAuth } from '../App';
 import { useToast } from '../hooks/useToast';
+import { useLanguage } from '../contexts/LanguageContext';
+import { GoogleGenAI } from "@google/genai";
 
 const RatingStars: React.FC<{ rating: number; className?: string; onClick?: (rating: number) => void; hoverRating?: number; onHover?: (rating: number) => void }> = ({ rating, className = 'w-5 h-5', onClick, hoverRating = 0, onHover }) => (
     <div className="flex items-center">
@@ -48,6 +51,7 @@ const ReviewFormModal: React.FC<{ isOpen: boolean; onClose: () => void; hostName
     const [hoverRating, setHoverRating] = useState(0);
     const [comment, setComment] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const { t } = useLanguage();
 
     if (!isOpen) return null;
 
@@ -66,7 +70,7 @@ const ReviewFormModal: React.FC<{ isOpen: boolean; onClose: () => void; hostName
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={onClose}>
             <div className="bg-white dark:bg-gray-800 rounded-[2.5rem] shadow-2xl w-full max-w-md p-8 animate-fade-in-up" onClick={e => e.stopPropagation()}>
                 <div className="flex justify-between items-start mb-6">
-                    <h3 className="text-2xl font-black text-gray-900 dark:text-white leading-tight">Write a Review<br/><span className="text-brand-blue">for {hostName}</span></h3>
+                    <h3 className="text-2xl font-black text-gray-900 dark:text-white leading-tight">{t('write_review')}<br/><span className="text-brand-blue">for {hostName}</span></h3>
                     <button onClick={onClose} className="p-2 bg-gray-100 dark:bg-gray-700 rounded-full text-gray-500">
                         <XMarkIcon className="w-5 h-5" />
                     </button>
@@ -143,12 +147,18 @@ export default function HostProfilePage() {
   const navigate = useNavigate();
   const { userData: currentUser, setUserData } = useAuth();
   const { showToast } = useToast();
+  const { t, language } = useLanguage();
   
   const [host, setHost] = useState<User | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [watersSharedCount, setWatersSharedCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [showReviewModal, setShowReviewModal] = useState(false);
+  const [isFavoriting, setIsFavoriting] = useState(false);
+
+  // Translation states
+  const [translatedBio, setTranslatedBio] = useState<string | null>(null);
+  const [isTranslating, setIsTranslating] = useState(false);
 
   const fetchData = async () => {
     if (!id) return;
@@ -176,8 +186,34 @@ export default function HostProfilePage() {
         mainContainer.scrollTo({ top: 0, behavior: 'smooth' });
     }
     fetchData();
+    // Reset translation when changing profile
+    setTranslatedBio(null);
   }, [id, showToast]);
   
+  const handleTranslateBio = async () => {
+      if (!host?.bio || isTranslating) return;
+      if (translatedBio) {
+          setTranslatedBio(null); // Toggle back to original
+          return;
+      }
+
+      setIsTranslating(true);
+      try {
+          const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+          const targetLang = language === 'pt' ? 'Portuguese' : 'English';
+          const response = await ai.models.generateContent({
+              model: 'gemini-3-flash-preview',
+              contents: `Translate the following Kangen Share host bio to ${targetLang}. Keep it natural, friendly, and preserve all emojis: ${host.bio}`,
+          });
+          setTranslatedBio(response.text || null);
+      } catch (err) {
+          console.error("Gemini translation failed:", err);
+          showToast("Translation failed. Try again later.", "error");
+      } finally {
+          setIsTranslating(false);
+      }
+  };
+
   const handleFollowToggle = async () => {
     if (!host || !currentUser) return;
 
@@ -201,8 +237,31 @@ export default function HostProfilePage() {
         console.error("Failed to toggle follow:", error);
         setUserData(previousUserData);
         setHost(previousHostData);
-        showToast("Could not update follow status. Please try again.", "error");
+        showToast("Could not update follow status.", "error");
     }
+  };
+
+  const handleFavoriteToggle = async () => {
+      if (!host || !currentUser || isFavoriting) return;
+      setIsFavoriting(true);
+      
+      const isFavorited = currentUser.favorites?.includes(host.id);
+      const updatedFavorites = isFavorited 
+        ? currentUser.favorites.filter(id => id !== host.id)
+        : [...(currentUser.favorites || []), host.id];
+      
+      const previousUserData = currentUser;
+      setUserData({ ...currentUser, favorites: updatedFavorites });
+
+      try {
+          await api.toggleFavoriteHost(currentUser.id, host.id);
+          showToast(isFavorited ? "Removed from saved places." : "Saved to your places!", "success");
+      } catch (error) {
+          setUserData(previousUserData);
+          showToast("Failed to update saved places.", "error");
+      } finally {
+          setIsFavoriting(false);
+      }
   };
 
   const handleChat = async () => {
@@ -212,7 +271,7 @@ export default function HostProfilePage() {
         navigate(`/chat/${requestId}`);
     } catch(err) {
         console.error("Failed to start chat:", err);
-        showToast("Could not start a conversation. Please try again.", "error");
+        showToast("Could not start a conversation.", "error");
     }
   };
 
@@ -229,7 +288,7 @@ export default function HostProfilePage() {
           };
           await api.addReview(host.id, newReview);
           showToast("Feedback posted! Thank you.", "success");
-          fetchData(); // Refresh reviews
+          fetchData(); 
       } catch (error) {
           showToast("Failed to post review.", "error");
       }
@@ -248,6 +307,7 @@ export default function HostProfilePage() {
   }
   
   const isFollowing = currentUser.following?.includes(host.id);
+  const isFavorited = currentUser.favorites?.includes(host.id);
   const isCurrentUserProfile = currentUser.id === host.id;
   const isOfficialDistributor = host.distributorVerificationStatus === 'approved';
   const isBusiness = host.isBusiness;
@@ -259,7 +319,19 @@ export default function HostProfilePage() {
     <div className={`bg-white dark:bg-gray-950 min-h-full ${isBusiness ? 'border-t-[12px] border-amber-500' : ''}`}>
         <div className="p-6 md:p-10">
             {/* Profile Header */}
-            <div className="flex flex-col sm:flex-row items-center sm:items-start gap-8">
+            <div className="flex flex-col sm:flex-row items-center sm:items-start gap-8 relative">
+                
+                {/* Favorite Toggle */}
+                {!isCurrentUserProfile && (
+                    <button 
+                        onClick={handleFavoriteToggle}
+                        disabled={isFavoriting}
+                        className="absolute top-0 right-0 p-3 bg-white dark:bg-gray-800 rounded-full shadow-lg border border-gray-100 dark:border-gray-700 hover:scale-110 active:scale-95 transition-all z-10"
+                    >
+                        <HeartIcon className={`w-6 h-6 ${isFavorited ? 'text-red-500 fill-red-500' : 'text-gray-400'}`} solid={isFavorited} />
+                    </button>
+                )}
+
                 <div className="relative">
                     <div className={`rounded-full p-1 shadow-2xl ${isBusiness ? 'bg-amber-500' : 'bg-gray-100 dark:bg-gray-800'}`}>
                         <ProfilePicture src={host.profilePicture} alt={host.displayName} className={`w-36 h-36 rounded-full object-cover border-4 border-white dark:border-gray-900 shadow-inner`} />
@@ -284,7 +356,7 @@ export default function HostProfilePage() {
                             {isOfficialDistributor && <span className="text-[10px] font-black text-brand-blue bg-blue-50 dark:bg-blue-900/30 px-3 py-1.5 rounded-full uppercase tracking-widest border border-blue-100 dark:border-blue-900/50 shadow-sm">Certified</span>}
                         </div>
                     ) : isOfficialDistributor && (
-                        <p className="text-sm font-extrabold text-brand-blue mt-2 tracking-wide uppercase">Official Distributor</p>
+                        <p className="text-sm font-extrabold text-brand-blue mt-2 tracking-wide uppercase">{t('verified_host')}</p>
                     )}
                     
                     <div className="flex items-center justify-center sm:justify-start gap-2 mt-4 text-gray-500 dark:text-gray-400">
@@ -293,21 +365,6 @@ export default function HostProfilePage() {
                     </div>
                 </div>
             </div>
-
-            {/* Business Highlight Banner */}
-            {isBusiness && (
-                <div className="mt-8 p-6 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/10 rounded-[2rem] border border-amber-100 dark:border-amber-800 flex items-center justify-between gap-4 animate-fade-in-up">
-                    <div className="flex items-center gap-4">
-                        <div className="bg-white dark:bg-gray-800 p-3 rounded-2xl shadow-sm">
-                            <DropletIcon className="w-8 h-8 text-amber-500" />
-                        </div>
-                        <div>
-                            <h4 className="font-black text-amber-800 dark:text-amber-200 uppercase tracking-widest text-xs mb-1">On-Site Wellness</h4>
-                            <p className="text-sm font-bold text-gray-700 dark:text-gray-300">Free Kangen Water for all guests & customers. ✨</p>
-                        </div>
-                    </div>
-                </div>
-            )}
 
             {/* Metrics Row */}
             <div className="grid grid-cols-3 gap-4 py-8 my-8 border-y border-gray-100 dark:border-gray-800">
@@ -319,7 +376,7 @@ export default function HostProfilePage() {
                 <Metric
                     icon={<UserGroupIcon className="w-6 h-6 mx-auto text-blue-400" />}
                     value={String(host.followers.length)}
-                    label="Community"
+                    label={t('followers')}
                     linkTo={`/profile/${host.id}/followers`}
                 />
                 <Metric
@@ -355,7 +412,7 @@ export default function HostProfilePage() {
                             className="flex-[1.5] text-white font-black px-8 py-4 rounded-2xl text-xs uppercase tracking-[0.2em] transition-all shadow-xl active:scale-95 bg-amber-500 hover:bg-amber-600 shadow-amber-200 dark:shadow-none flex items-center justify-center gap-2"
                         >
                             <MapPinIcon className="w-5 h-5" />
-                            Get Directions
+                            {t('get_directions')}
                         </a>
                     ) : (
                         host.isAcceptingRequests && isOfficialDistributor && (
@@ -363,75 +420,50 @@ export default function HostProfilePage() {
                                 onClick={() => navigate(`/request/${id}`)}
                                 className="flex-[1.5] text-white font-black px-8 py-4 rounded-2xl text-xs uppercase tracking-[0.2em] transition-all shadow-xl active:scale-95 bg-brand-blue hover:bg-blue-600 shadow-blue-200 dark:shadow-none"
                             >
-                                Request Water
+                                {t('request_water')}
                             </button>
                         )
                     )}
-                </div>
-            )}
-
-            {/* Contact & Social Row (NEW) */}
-            {(host.phone || host.website || host.instagram || host.facebook || host.linkedin) && (
-                <div className="mt-8 flex flex-wrap items-center justify-center sm:justify-start gap-6">
-                    {/* Website Button */}
-                    {host.website && (
-                        <a 
-                            href={host.website.startsWith('http') ? host.website : `https://${host.website}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center gap-2 px-5 py-2.5 bg-gray-50 dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 hover:bg-brand-blue hover:text-white transition-all text-sm font-black uppercase tracking-widest shadow-sm group"
-                        >
-                            <GlobeAltIcon className="w-5 h-5 text-brand-blue group-hover:text-white" />
-                            <span>Visit Website</span>
-                        </a>
-                    )}
-
-                    {/* Phone Button */}
-                    {host.phone && (
-                        <a 
-                            href={`tel:${host.phone}`}
-                            className="flex items-center gap-2 text-gray-700 dark:text-gray-300 hover:text-brand-blue transition-colors group"
-                        >
-                            <DevicePhoneMobileIcon className="w-5 h-5 text-gray-400 group-hover:text-brand-blue" />
-                            <span className="text-sm font-bold">{host.phone}</span>
-                        </a>
-                    )}
-
-                    {/* Social Icons Container */}
-                    <div className="flex items-center gap-4 px-4 py-2 bg-gray-50/50 dark:bg-gray-800/30 rounded-2xl border border-gray-100/50 dark:border-gray-700/50">
-                        {host.instagram && (
-                            <a href={host.instagram.startsWith('http') ? host.instagram : `https://${host.instagram}`} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-pink-600 transition-colors">
-                                <InstagramIcon className="w-6 h-6" />
-                            </a>
-                        )}
-                        {host.facebook && (
-                            <a href={host.facebook.startsWith('http') ? host.facebook : `https://${host.facebook}`} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-blue-600 transition-colors">
-                                <FacebookIcon className="w-6 h-6" />
-                            </a>
-                        )}
-                        {host.linkedin && (
-                            <a href={host.linkedin.startsWith('http') ? host.linkedin : `https://${host.linkedin}`} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-blue-800 transition-colors">
-                                <LinkedInIcon className="w-6 h-6" />
-                            </a>
-                        )}
-                    </div>
                 </div>
             )}
             
             {/* Bio Section */}
             <div className="my-10 space-y-8">
                 <div>
-                    <h3 className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.3em] mb-4">The Story</h3>
-                    <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap text-lg leading-relaxed font-medium">
-                        {host.bio ? host.bio : isBusiness 
-                            ? `Welcome to our ${host.businessCategory || 'Wellness Space'}. We are proud to serve Kangen Water to our valued guests to support a healthy lifestyle. Come visit us!` 
-                            : `Welcome to our space. We share Kangen Water to promote conscious hydration and global well-being. ✨`}
-                    </p>
+                    <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.3em]">{t('the_story')}</h3>
+                        {host.bio && (
+                            <button 
+                                onClick={handleTranslateBio}
+                                disabled={isTranslating}
+                                className="text-[10px] font-black text-brand-blue uppercase tracking-widest flex items-center gap-1.5 hover:opacity-70 transition-opacity"
+                            >
+                                {isTranslating ? (
+                                    <>
+                                        <SpinnerIcon className="w-3 h-3 animate-spin" />
+                                        {t('translating')}
+                                    </>
+                                ) : (
+                                    <>
+                                        <SparklesIcon className="w-3 h-3" />
+                                        {translatedBio ? t('original_story') : t('translate_story')}
+                                    </>
+                                )}
+                            </button>
+                        )}
+                    </div>
+                    <div className="relative group">
+                         <p className={`text-gray-700 dark:text-gray-300 whitespace-pre-wrap text-lg leading-relaxed font-medium transition-all ${isTranslating ? 'blur-sm opacity-50' : 'blur-0 opacity-100'}`}>
+                            {translatedBio || (host.bio ? host.bio : isBusiness 
+                                ? `Welcome to our ${host.businessCategory || 'Wellness Space'}. We are proud to serve Kangen Water to our valued guests.` 
+                                : `Welcome to our space. We share Kangen Water to promote conscious hydration. ✨`)}
+                        </p>
+                    </div>
                 </div>
                 
                 {isBusiness && host.businessAmenities && host.businessAmenities.length > 0 && (
                     <div>
-                        <h3 className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.3em] mb-4">Amenities</h3>
+                        <h3 className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.3em] mb-4">{t('amenities')}</h3>
                         <div className="flex flex-wrap gap-3">
                             {host.businessAmenities.map(amenity => (
                                 <span key={amenity} className="px-5 py-2 bg-amber-50 dark:bg-amber-900/20 rounded-2xl text-xs font-black text-amber-700 dark:text-amber-400 border border-amber-100 dark:border-amber-800/50 shadow-sm">
@@ -441,25 +473,13 @@ export default function HostProfilePage() {
                         </div>
                     </div>
                 )}
-
-                {/* Social Proof Placeholder for Businesses */}
-                {isBusiness && (
-                     <div className="bg-gray-50 dark:bg-gray-900/50 p-6 rounded-[2rem] border border-gray-100 dark:border-gray-800 flex items-center justify-between">
-                        <div>
-                            <h4 className="font-black text-gray-900 dark:text-white mb-1">Official Hub</h4>
-                            <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">This establishment is a verified Kangen hydration node.</p>
-                        </div>
-                        <CheckBadgeIcon className="w-10 h-10 text-amber-500" />
-                     </div>
-                )}
             </div>
         </div>
 
-      {/* Reviews Grid */}
       <div className={`p-6 md:p-10 border-t border-gray-100 dark:border-gray-800 ${isBusiness ? 'bg-amber-50/20 dark:bg-amber-900/5' : 'bg-gray-50/30 dark:bg-gray-900/10'}`}>
          <div className="flex justify-between items-end mb-8">
             <div>
-                <h3 className="text-2xl font-black text-gray-900 dark:text-white leading-none mb-1">{isBusiness ? 'Guest Feedback' : 'Host Reviews'}</h3>
+                <h3 className="text-2xl font-black text-gray-900 dark:text-white leading-none mb-1">{isBusiness ? t('guest_feedback') : 'Host Reviews'}</h3>
                 <p className="text-xs text-gray-400 font-bold uppercase tracking-widest">Based on {reviews.length} experiences</p>
             </div>
             
@@ -469,28 +489,16 @@ export default function HostProfilePage() {
                         onClick={() => setShowReviewModal(true)}
                         className={`text-[10px] font-black uppercase tracking-widest px-4 py-2.5 rounded-xl transition-all shadow-sm ${isBusiness ? 'bg-amber-500 text-white hover:bg-amber-600' : 'bg-brand-blue text-white hover:bg-blue-600'}`}
                     >
-                        Write a Review
+                        {t('write_review')}
                     </button>
                 )}
-                <div className="flex items-center gap-2 bg-white dark:bg-gray-800 px-4 py-2 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
-                    <StarIcon className="w-5 h-5 text-yellow-400" />
-                    <span className="font-black text-xl dark:text-gray-100 leading-none">{host.rating.toFixed(1)}</span>
-                </div>
             </div>
          </div>
          
          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {reviews.length > 0 ? reviews.map(r => <ReviewCard key={r.id} review={r} isBusiness={isBusiness} />) : (
                 <div className="col-span-full py-16 text-center bg-white dark:bg-gray-800/50 rounded-3xl border-2 border-dashed border-gray-200 dark:border-gray-800">
-                    <p className="text-gray-400 dark:text-gray-500 font-bold uppercase tracking-widest text-sm mb-4">No reviews yet. Be the first!</p>
-                    {!isCurrentUserProfile && (
-                        <button 
-                            onClick={() => setShowReviewModal(true)}
-                            className="text-brand-blue font-black uppercase tracking-widest text-xs"
-                        >
-                            Leave Feedback &rarr;
-                        </button>
-                    )}
+                    <p className="text-gray-400 dark:text-gray-500 font-bold uppercase tracking-widest text-sm mb-4">No reviews yet.</p>
                 </div>
             )}
          </div>

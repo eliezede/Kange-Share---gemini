@@ -80,6 +80,7 @@ export interface User {
   // Social fields
   followers: string[]; // array of user UIDs
   following: string[]; // array of user UIDs
+  favorites: string[]; // array of saved host UIDs
 
   // Admin and status fields
   isBlocked?: boolean;

@@ -1,17 +1,21 @@
+
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { MapIcon, ClipboardDocumentListIcon, UserIcon, ChatBubbleOvalLeftEllipsisIcon } from './Icons';
 import { useAuth } from '../App';
-
-const navItems = [
-  { path: '/map', label: 'Home', icon: MapIcon },
-  { path: '/requests', label: 'Requests', icon: ClipboardDocumentListIcon },
-  { path: '/messages', label: 'Messages', icon: ChatBubbleOvalLeftEllipsisIcon },
-  { path: '/profile', label: 'You', icon: UserIcon },
-];
+import { useLanguage } from '../contexts/LanguageContext';
 
 export default function BottomNav() {
   const { pendingHostRequestCount, unreadMessagesCount } = useAuth();
+  const { t } = useLanguage();
+  
+  const navItems = [
+    { path: '/map', label: t('home'), icon: MapIcon },
+    { path: '/requests', label: t('requests'), icon: ClipboardDocumentListIcon },
+    { path: '/messages', label: t('messages'), icon: ChatBubbleOvalLeftEllipsisIcon },
+    { path: '/profile', label: t('you'), icon: UserIcon },
+  ];
+
   const activeLinkClass = 'text-brand-blue';
   const inactiveLinkClass = 'text-gray-500 dark:text-gray-400 hover:text-brand-blue';
 
@@ -23,16 +27,16 @@ export default function BottomNav() {
             key={path}
             to={path}
             className={({ isActive }) => 
-                `flex flex-col items-center justify-center w-full text-xs font-medium transition-colors ${isActive ? activeLinkClass : inactiveLinkClass}`
+                `flex flex-col items-center justify-center w-full text-[10px] font-bold uppercase tracking-widest transition-all ${isActive ? activeLinkClass : inactiveLinkClass}`
             }
           >
             <div className="relative">
               <Icon className="w-6 h-6 mb-0.5" />
               {path === '/requests' && pendingHostRequestCount > 0 && (
-                <span className="absolute -top-1 -right-2 bg-red-500 text-white text-xs font-bold rounded-full h-4 w-4 flex items-center justify-center">{pendingHostRequestCount}</span>
+                <span className="absolute -top-1 -right-2 bg-red-500 text-white text-[10px] font-black rounded-full h-4 w-4 flex items-center justify-center">{pendingHostRequestCount}</span>
               )}
               {path === '/messages' && unreadMessagesCount > 0 && (
-                <span className="absolute -top-1 -right-2 bg-red-500 text-white text-xs font-bold rounded-full h-4 w-4 flex items-center justify-center">{unreadMessagesCount}</span>
+                <span className="absolute -top-1 -right-2 bg-red-500 text-white text-[10px] font-black rounded-full h-4 w-4 flex items-center justify-center">{unreadMessagesCount}</span>
               )}
             </div>
             <span>{label}</span>

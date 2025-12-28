@@ -81,6 +81,7 @@ const fromDoc = <T>(docSnap: DocumentSnapshot): T => {
 
         data.followers = data.followers || [];
         data.following = data.following || [];
+        data.favorites = data.favorites || [];
         data.phLevels = data.phLevels || [];
         data.phone = data.phone || '';
         data.bio = data.bio || '';
@@ -209,7 +210,7 @@ export const createInitialUser = async (uid: string, email: string, firstName: s
         distributorVerificationStatus: 'none',
         distributorProofDocuments: [],
         interestedInDistributor: false,
-        followers: [], following: [],
+        followers: [], following: [], favorites: [],
         isBusiness: false,
     };
     const userDocRef = doc(db, 'users', uid);
@@ -257,6 +258,7 @@ export const createWellnessPartner = async (partnerData: {
         reviews: 0,
         followers: [],
         following: [],
+        favorites: [],
         availability: fullAvailability,
         maintenance: { lastFilterChange: new Date().toISOString(), lastECleaning: new Date().toISOString() },
         interestedInDistributor: false,
@@ -317,6 +319,18 @@ export const toggleFollowHost = async (currentUserId: string, targetHostId: stri
         }
     }
     return batch.commit();
+};
+
+export const toggleFavoriteHost = async (currentUserId: string, targetHostId: string): Promise<void> => {
+    const currentUserRef = doc(db, 'users', currentUserId);
+    const currentUserDoc = await getDoc(currentUserRef);
+    const isFavorited = (currentUserDoc.data() as User)?.favorites?.includes(targetHostId);
+
+    if (isFavorited) {
+        return updateDoc(currentUserRef, { favorites: arrayRemove(targetHostId) });
+    } else {
+        return updateDoc(currentUserRef, { favorites: arrayUnion(targetHostId) });
+    }
 };
 
 export const uploadDistributorProofDocument = async (userId: string, file: File): Promise<DistributorProofDocument> => {

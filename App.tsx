@@ -10,8 +10,9 @@ import Header from './components/Header';
 import BottomNav from './components/BottomNav';
 import { ToastProvider } from './hooks/useToast';
 import { ToastContainer } from './components/Toast';
-import LoginModal from './pages/LoginPage'; // Keep critical path eager
-import LandingPage from './pages/LandingPage'; // Keep critical path eager
+import { LanguageProvider } from './contexts/LanguageContext';
+import LoginModal from './pages/LoginPage'; 
+import LandingPage from './pages/LandingPage'; 
 
 // Lazy load non-critical pages
 const MapPage = lazy(() => import('./pages/MapPage'));
@@ -310,12 +311,14 @@ const AppContent = () => {
 
 export default function App() {
   return (
-    <ThemeProvider>
-      <ToastProvider>
-        <AuthProvider>
-            <AppContent />
-        </AuthProvider>
-      </ToastProvider>
-    </ThemeProvider>
+    <LanguageProvider>
+        <ThemeProvider>
+        <ToastProvider>
+            <AuthProvider>
+                <AppContent />
+            </AuthProvider>
+        </ToastProvider>
+        </ThemeProvider>
+    </LanguageProvider>
   );
 }

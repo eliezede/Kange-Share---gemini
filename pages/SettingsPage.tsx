@@ -1,14 +1,30 @@
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth, useTheme } from '../App';
-import { ChevronLeftIcon, ChevronRightIcon, KeyIcon, EnvelopeIcon, TrashIcon, BellIcon, MoonIcon, SunIcon, DocumentTextIcon, ShieldExclamationIcon, LifebuoyIcon, XMarkIcon, SpinnerIcon } from '../components/Icons';
+import { useLanguage, Language } from '../contexts/LanguageContext';
+import { 
+    ChevronLeftIcon, 
+    ChevronRightIcon, 
+    KeyIcon, 
+    EnvelopeIcon, 
+    TrashIcon, 
+    BellIcon, 
+    MoonIcon, 
+    SunIcon, 
+    DocumentTextIcon, 
+    ShieldExclamationIcon, 
+    LifebuoyIcon, 
+    GlobeAltIcon,
+    CheckCircleIcon
+} from '../components/Icons';
 import { useToast } from '../hooks/useToast';
 
 
 const Section: React.FC<{ title: string; children: React.ReactNode; }> = ({ title, children }) => (
     <div>
-        <h2 className="px-4 text-lg font-bold text-gray-800 dark:text-gray-100 mb-2">{title}</h2>
-        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
+        <h2 className="px-4 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] mb-3">{title}</h2>
+        <div className="bg-white dark:bg-gray-800 rounded-[2rem] border border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm">
             {children}
         </div>
     </div>
@@ -23,47 +39,47 @@ const Toggle: React.FC<{ checked: boolean; onChange: (checked: boolean) => void 
   </button>
 );
 
-const SettingsItem: React.FC<{ icon: React.ReactNode; title: string; onClick: () => void; isDestructive?: boolean }> = ({ icon, title, onClick, isDestructive }) => (
+const SettingsItem: React.FC<{ icon: React.ReactNode; title: string; onClick: () => void; isDestructive?: boolean; badge?: string }> = ({ icon, title, onClick, isDestructive, badge }) => (
   <button 
     onClick={onClick} 
-    className={`w-full flex justify-between items-center text-left p-4 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700/50 transition-colors ${
+    className={`w-full flex justify-between items-center text-left p-5 transition-colors hover:bg-gray-50 dark:hover:bg-gray-700/50 ${
         isDestructive ? 'text-red-600 dark:text-red-400' : 'text-gray-800 dark:text-gray-200'
     }`}
 >
     <div className="flex items-center gap-4">
-      <div className={`w-6 h-6 ${isDestructive ? '' : 'text-gray-600 dark:text-gray-300'}`}>{icon}</div>
-      <span className="font-medium">{title}</span>
+      <div className={`w-5 h-5 ${isDestructive ? '' : 'text-gray-500 dark:text-gray-400'}`}>{icon}</div>
+      <span className="font-bold text-sm tracking-tight">{title}</span>
     </div>
-    {!isDestructive && <ChevronRightIcon className="w-5 h-5 text-gray-400 dark:text-gray-500" />}
+    <div className="flex items-center gap-2">
+        {badge && <span className="text-[10px] font-black bg-brand-light dark:bg-blue-900/30 text-brand-blue px-2 py-0.5 rounded-full uppercase tracking-widest">{badge}</span>}
+        {!isDestructive && <ChevronRightIcon className="w-5 h-5 text-gray-300" />}
+    </div>
   </button>
 );
 
+const LanguageSelector: React.FC = () => {
+    const { language, setLanguage } = useLanguage();
+    const langs: { id: Language, name: string, flag: string }[] = [
+        { id: 'en', name: 'English', flag: '🇺🇸' },
+        { id: 'pt', name: 'Português', flag: '🇧🇷' }
+    ];
 
-const SettingsToggle: React.FC<{ icon: React.ReactNode; title: string; checked: boolean; onChange: (checked: boolean) => void; }> = ({ icon, title, checked, onChange }) => (
-    <div className="w-full flex justify-between items-center p-4">
-        <div className="flex items-center gap-4">
-             <div className="w-6 h-6 text-gray-600 dark:text-gray-300">{icon}</div>
-            <span className="font-medium text-gray-800 dark:text-gray-200">{title}</span>
-        </div>
-        <Toggle checked={checked} onChange={onChange} />
-    </div>
-);
-
-const DeleteAccountModal: React.FC<{ isOpen: boolean; onClose: () => void; onConfirm: () => void; }> = ({ isOpen, onClose, onConfirm }) => {
-    if (!isOpen) return null;
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-sm m-4 p-6 text-center" onClick={e => e.stopPropagation()}>
-                <div className="w-12 h-12 bg-red-100 dark:bg-red-900/50 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <TrashIcon className="w-6 h-6 text-red-600" />
-                </div>
-                <h2 className="text-xl font-bold mb-2 dark:text-white">Delete Account</h2>
-                <p className="text-gray-600 dark:text-gray-400 mb-6">Are you sure you want to delete your account? This action is permanent and cannot be undone.</p>
-                <div className="flex gap-3">
-                    <button onClick={onClose} className="flex-1 px-4 py-2.5 font-semibold rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 transition">Cancel</button>
-                    <button onClick={onConfirm} className="flex-1 px-4 py-2.5 font-semibold rounded-lg bg-red-600 text-white hover:bg-red-700 transition">Delete</button>
-                </div>
-            </div>
+        <div className="p-2 bg-gray-50 dark:bg-gray-900/50 m-4 rounded-2xl flex gap-1">
+            {langs.map(l => (
+                <button
+                    key={l.id}
+                    onClick={() => setLanguage(l.id)}
+                    className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-sm transition-all ${
+                        language === l.id 
+                        ? 'bg-white dark:bg-gray-800 shadow-md text-brand-blue scale-100' 
+                        : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 scale-95'
+                    }`}
+                >
+                    <span className="text-base">{l.flag}</span>
+                    {l.name}
+                </button>
+            ))}
         </div>
     );
 };
@@ -72,22 +88,11 @@ export default function SettingsPage() {
     const navigate = useNavigate();
     const { logout } = useAuth();
     const { theme, toggleTheme } = useTheme();
+    const { t } = useLanguage();
     const { showToast } = useToast();
     
     const [pushNotifs, setPushNotifs] = useState(true);
-    const [emailNotifs, setEmailNotifs] = useState(false);
     const [isDeleteModalOpen, setDeleteModalOpen] = useState(false);
-
-    const handleNotImplemented = () => {
-        showToast('This feature is not yet implemented.', 'info');
-    };
-
-    const handleDelete = () => {
-        setDeleteModalOpen(false);
-        showToast('Account deleted.', 'info');
-        logout();
-        navigate('/');
-    };
 
     return (
         <div className="pb-6 bg-gray-50 dark:bg-gray-950 min-h-screen">
@@ -95,48 +100,51 @@ export default function SettingsPage() {
                 <button onClick={() => navigate(-1)} className="p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800">
                     <ChevronLeftIcon className="w-6 h-6 text-gray-800 dark:text-gray-200" />
                 </button>
-                <h1 className="text-xl font-bold flex-1 text-center dark:text-gray-100">Settings</h1>
-                <div className="w-6 h-6"></div> {/* Spacer */}
+                <h1 className="text-xl font-black flex-1 text-center dark:text-gray-100 uppercase tracking-widest">{t('settings')}</h1>
+                <div className="w-6 h-6"></div>
             </header>
 
-            <div className="p-4 md:p-6 space-y-8">
-                <Section title="Account">
-                    <SettingsItem icon={<EnvelopeIcon />} title="Change Email" onClick={handleNotImplemented} />
-                    <div className="h-px bg-gray-200 dark:bg-gray-700 mx-4"></div>
-                    <SettingsItem icon={<KeyIcon />} title="Change Password" onClick={handleNotImplemented} />
-                     <div className="h-px bg-gray-200 dark:bg-gray-700 mx-4"></div>
-                    <SettingsItem icon={<TrashIcon />} title="Delete Account" onClick={() => setDeleteModalOpen(true)} isDestructive />
+            <div className="p-4 md:p-6 space-y-8 animate-fade-in-up">
+                
+                <Section title={t('language')}>
+                    <LanguageSelector />
                 </Section>
 
-                <Section title="Notifications">
-                    <SettingsToggle icon={<BellIcon />} title="Push Notifications" checked={pushNotifs} onChange={setPushNotifs} />
-                    <div className="h-px bg-gray-200 dark:bg-gray-700 mx-4"></div>
-                    <SettingsToggle icon={<EnvelopeIcon />} title="Email Notifications" checked={emailNotifs} onChange={setEmailNotifs} />
+                <Section title="Account">
+                    <SettingsItem icon={<EnvelopeIcon />} title="Change Email" onClick={() => {}} />
+                    <div className="h-px bg-gray-100 dark:bg-gray-700"></div>
+                    <SettingsItem icon={<KeyIcon />} title="Change Password" onClick={() => {}} />
                 </Section>
-                
+
                 <Section title="Appearance">
-                    <SettingsToggle 
-                        icon={theme === 'dark' ? <MoonIcon /> : <SunIcon />} 
-                        title="Dark Mode" 
-                        checked={theme === 'dark'} 
-                        onChange={toggleTheme} 
-                    />
+                    <div className="w-full flex justify-between items-center p-5">
+                        <div className="flex items-center gap-4">
+                            <div className="w-5 h-5 text-gray-500 dark:text-gray-400">
+                                {theme === 'dark' ? <MoonIcon /> : <SunIcon />}
+                            </div>
+                            <span className="font-bold text-sm tracking-tight">{t('dark_mode')}</span>
+                        </div>
+                        <Toggle checked={theme === 'dark'} onChange={toggleTheme} />
+                    </div>
                 </Section>
 
                 <Section title="Help & Legal">
-                    <SettingsItem icon={<ShieldExclamationIcon />} title="Privacy Policy" onClick={handleNotImplemented} />
-                    <div className="h-px bg-gray-200 dark:bg-gray-700 mx-4"></div>
-                    <SettingsItem icon={<DocumentTextIcon />} title="Terms of Service" onClick={handleNotImplemented} />
-                    <div className="h-px bg-gray-200 dark:bg-gray-700 mx-4"></div>
-                    <SettingsItem icon={<LifebuoyIcon />} title="Report a Problem / Support" onClick={handleNotImplemented} />
+                    <SettingsItem icon={<ShieldExclamationIcon />} title="Privacy Policy" onClick={() => {}} />
+                    <div className="h-px bg-gray-100 dark:bg-gray-700"></div>
+                    <SettingsItem icon={<DocumentTextIcon />} title="Terms of Service" onClick={() => {}} />
+                    <div className="h-px bg-gray-100 dark:bg-gray-700"></div>
+                    <SettingsItem icon={<LifebuoyIcon />} title="Support" onClick={() => {}} />
                 </Section>
+                
+                <div className="px-4 pt-4">
+                    <button 
+                        onClick={() => { logout(); navigate('/'); }}
+                        className="w-full py-4 bg-red-50 dark:bg-red-900/10 text-red-600 font-black uppercase tracking-widest text-xs rounded-2xl border border-red-100 dark:border-red-900/30 hover:bg-red-100 transition-colors"
+                    >
+                        Logout
+                    </button>
+                </div>
             </div>
-            
-            <DeleteAccountModal 
-                isOpen={isDeleteModalOpen}
-                onClose={() => setDeleteModalOpen(false)}
-                onConfirm={handleDelete}
-            />
         </div>
     );
 }
