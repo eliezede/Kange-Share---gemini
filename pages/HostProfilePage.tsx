@@ -2,18 +2,92 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import * as api from '../api';
-import { StarIcon, CheckBadgeIcon, MapPinIcon, ChatBubbleOvalLeftEllipsisIcon, SpinnerIcon, ProfilePicture, UserGroupIcon, DropletIcon, SparklesIcon, BuildingStorefrontIcon } from '../components/Icons';
+import { StarIcon, CheckBadgeIcon, MapPinIcon, ChatBubbleOvalLeftEllipsisIcon, SpinnerIcon, ProfilePicture, UserGroupIcon, DropletIcon, SparklesIcon, BuildingStorefrontIcon, ChevronRightIcon, XMarkIcon } from '../components/Icons';
 import { Review, User } from '../types';
 import { useAuth } from '../App';
 import { useToast } from '../hooks/useToast';
 
-const RatingStars: React.FC<{ rating: number; className?: string }> = ({ rating, className = 'w-5 h-5' }) => (
+const RatingStars: React.FC<{ rating: number; className?: string; onClick?: (rating: number) => void; hoverRating?: number; onHover?: (rating: number) => void }> = ({ rating, className = 'w-5 h-5', onClick, hoverRating = 0, onHover }) => (
     <div className="flex items-center">
-        {[...Array(5)].map((_, i) => (
-            <StarIcon key={i} className={`${className} ${i < rating ? 'text-yellow-400' : 'text-gray-200 dark:text-gray-700'}`} />
-        ))}
+        {[...Array(5)].map((_, i) => {
+            const starValue = i + 1;
+            const isActive = (hoverRating || rating) >= starValue;
+            return (
+                <StarIcon 
+                    key={i} 
+                    onClick={() => onClick?.(starValue)}
+                    onMouseEnter={() => onHover?.(starValue)}
+                    onMouseLeave={() => onHover?.(0)}
+                    className={`${className} ${isActive ? 'text-yellow-400' : 'text-gray-200 dark:text-gray-700'} ${onClick ? 'cursor-pointer' : ''}`} 
+                />
+            );
+        })}
     </div>
 );
+
+const ReviewFormModal: React.FC<{ isOpen: boolean; onClose: () => void; hostName: string; onSubmit: (rating: number, comment: string) => Promise<void> }> = ({ isOpen, onClose, hostName, onSubmit }) => {
+    const [rating, setRating] = useState(0);
+    const [hoverRating, setHoverRating] = useState(0);
+    const [comment, setComment] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    if (!isOpen) return null;
+
+    const handleFormSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (rating === 0) return;
+        setIsSubmitting(true);
+        await onSubmit(rating, comment);
+        setIsSubmitting(false);
+        setRating(0);
+        setComment('');
+        onClose();
+    };
+
+    return (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={onClose}>
+            <div className="bg-white dark:bg-gray-800 rounded-[2.5rem] shadow-2xl w-full max-w-md p-8 animate-fade-in-up" onClick={e => e.stopPropagation()}>
+                <div className="flex justify-between items-start mb-6">
+                    <h3 className="text-2xl font-black text-gray-900 dark:text-white leading-tight">Write a Review<br/><span className="text-brand-blue">for {hostName}</span></h3>
+                    <button onClick={onClose} className="p-2 bg-gray-100 dark:bg-gray-700 rounded-full text-gray-500">
+                        <XMarkIcon className="w-5 h-5" />
+                    </button>
+                </div>
+                
+                <form onSubmit={handleFormSubmit} className="space-y-6">
+                    <div className="flex flex-col items-center gap-2">
+                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Overall Rating</p>
+                        <RatingStars 
+                            rating={rating} 
+                            hoverRating={hoverRating} 
+                            className="w-10 h-10" 
+                            onClick={setRating} 
+                            onHover={setHoverRating} 
+                        />
+                    </div>
+
+                    <div>
+                        <label className="block text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-2 ml-1">Your Experience</label>
+                        <textarea 
+                            value={comment}
+                            onChange={e => setComment(e.target.value)}
+                            className="w-full p-4 bg-gray-50 dark:bg-gray-700 border-none rounded-2xl text-gray-800 dark:text-white placeholder-gray-400 min-h-[120px] focus:ring-2 focus:ring-brand-blue outline-none transition"
+                            placeholder="Share some details about your visit..."
+                        />
+                    </div>
+
+                    <button 
+                        type="submit"
+                        disabled={rating === 0 || isSubmitting}
+                        className="w-full py-4 bg-brand-blue text-white font-black uppercase tracking-widest rounded-2xl shadow-xl shadow-blue-200 dark:shadow-none hover:bg-blue-600 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                    >
+                        {isSubmitting ? <SpinnerIcon className="w-5 h-5 animate-spin" /> : 'Submit Feedback'}
+                    </button>
+                </form>
+            </div>
+        </div>
+    );
+};
 
 const ReviewCard: React.FC<{ review: Review; isBusiness?: boolean }> = ({ review, isBusiness }) => (
     <div className={`bg-white dark:bg-gray-800 p-6 rounded-3xl border border-gray-100 dark:border-gray-700 shadow-sm hover:shadow-md transition-all ${isBusiness ? 'border-amber-100 dark:border-amber-900/30' : ''}`}>
@@ -56,35 +130,33 @@ export default function HostProfilePage() {
   const [reviews, setReviews] = useState<Review[]>([]);
   const [watersSharedCount, setWatersSharedCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [showReviewModal, setShowReviewModal] = useState(false);
+
+  const fetchData = async () => {
+    if (!id) return;
+    try {
+        const [hostData, reviewsData, hostRequestsData] = await Promise.all([
+            api.getUserById(id),
+            api.getReviewsForHost(id),
+            api.getRequestsByHostId(id)
+        ]);
+        
+        if (hostData) setHost(hostData);
+        setReviews(reviewsData);
+        setWatersSharedCount(hostRequestsData.filter(r => r.status === 'completed').length);
+    } catch (err) {
+        console.error("Failed to load host profile:", err);
+        showToast("Could not load profile.", "error");
+    } finally {
+        setLoading(false);
+    }
+  };
 
   useEffect(() => {
     const mainContainer = document.querySelector('main');
     if (mainContainer) {
         mainContainer.scrollTo({ top: 0, behavior: 'smooth' });
     }
-
-    if (!id) return;
-    const fetchData = async () => {
-        setLoading(true);
-        try {
-            const [hostData, reviewsData, hostRequestsData] = await Promise.all([
-                api.getUserById(id),
-                api.getReviewsForHost(id),
-                api.getRequestsByHostId(id)
-            ]);
-            
-            if (hostData) {
-                setHost(hostData);
-            }
-            setReviews(reviewsData);
-            setWatersSharedCount(hostRequestsData.filter(r => r.status === 'completed').length);
-        } catch (err) {
-            console.error("Failed to load host profile:", err);
-            showToast("Could not load profile.", "error");
-        } finally {
-            setLoading(false);
-        }
-    };
     fetchData();
   }, [id, showToast]);
   
@@ -126,6 +198,25 @@ export default function HostProfilePage() {
     }
   };
 
+  const handleReviewSubmit = async (rating: number, comment: string) => {
+      if (!host || !currentUser) return;
+      try {
+          const newReview: Omit<Review, 'id'> = {
+              rating,
+              comment,
+              reviewerId: currentUser.id,
+              reviewerName: currentUser.displayName,
+              reviewerImage: currentUser.profilePicture,
+              date: new Date().toISOString(),
+          };
+          await api.addReview(host.id, newReview);
+          showToast("Feedback posted! Thank you.", "success");
+          fetchData(); // Refresh reviews
+      } catch (error) {
+          showToast("Failed to post review.", "error");
+      }
+  };
+
   if (loading) {
       return (
           <div className="flex justify-center items-center h-full bg-white dark:bg-gray-950">
@@ -142,6 +233,9 @@ export default function HostProfilePage() {
   const isCurrentUserProfile = currentUser.id === host.id;
   const isOfficialDistributor = host.distributorVerificationStatus === 'approved';
   const isBusiness = host.isBusiness;
+
+  const fullAddress = `${host.address.street} ${host.address.number}, ${host.address.city}, ${host.address.country}`;
+  const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(fullAddress)}`;
 
   return (
     <div className={`bg-white dark:bg-gray-950 min-h-full ${isBusiness ? 'border-t-[12px] border-amber-500' : ''}`}>
@@ -182,6 +276,21 @@ export default function HostProfilePage() {
                 </div>
             </div>
 
+            {/* Business Highlight Banner */}
+            {isBusiness && (
+                <div className="mt-8 p-6 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/10 rounded-[2rem] border border-amber-100 dark:border-amber-800 flex items-center justify-between gap-4 animate-fade-in-up">
+                    <div className="flex items-center gap-4">
+                        <div className="bg-white dark:bg-gray-800 p-3 rounded-2xl shadow-sm">
+                            <DropletIcon className="w-8 h-8 text-amber-500" />
+                        </div>
+                        <div>
+                            <h4 className="font-black text-amber-800 dark:text-amber-200 uppercase tracking-widest text-xs mb-1">On-Site Wellness</h4>
+                            <p className="text-sm font-bold text-gray-700 dark:text-gray-300">Free Kangen Water for all guests & customers. ✨</p>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Metrics Row */}
             <div className="grid grid-cols-3 gap-4 py-8 my-8 border-y border-gray-100 dark:border-gray-800">
                 <Metric
@@ -220,13 +329,25 @@ export default function HostProfilePage() {
                             Chat
                         </button>
                     </div>
-                    {host.isAcceptingRequests && isOfficialDistributor && (
-                         <button
-                            onClick={() => navigate(`/request/${id}`)}
-                            className={`flex-[1.5] text-white font-black px-8 py-4 rounded-2xl text-xs uppercase tracking-[0.2em] transition-all shadow-xl active:scale-95 ${isBusiness ? 'bg-amber-500 hover:bg-amber-600 shadow-amber-200 dark:shadow-none' : 'bg-brand-blue hover:bg-blue-600 shadow-blue-200 dark:shadow-none'}`}
+                    {isBusiness ? (
+                        <a 
+                            href={mapsUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex-[1.5] text-white font-black px-8 py-4 rounded-2xl text-xs uppercase tracking-[0.2em] transition-all shadow-xl active:scale-95 bg-amber-500 hover:bg-amber-600 shadow-amber-200 dark:shadow-none flex items-center justify-center gap-2"
                         >
-                            Request Water
-                        </button>
+                            <MapPinIcon className="w-5 h-5" />
+                            Get Directions
+                        </a>
+                    ) : (
+                        host.isAcceptingRequests && isOfficialDistributor && (
+                            <button
+                                onClick={() => navigate(`/request/${id}`)}
+                                className="flex-[1.5] text-white font-black px-8 py-4 rounded-2xl text-xs uppercase tracking-[0.2em] transition-all shadow-xl active:scale-95 bg-brand-blue hover:bg-blue-600 shadow-blue-200 dark:shadow-none"
+                            >
+                                Request Water
+                            </button>
+                        )
                     )}
                 </div>
             )}
@@ -236,7 +357,9 @@ export default function HostProfilePage() {
                 <div>
                     <h3 className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.3em] mb-4">The Story</h3>
                     <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap text-lg leading-relaxed font-medium">
-                        {host.bio ? host.bio : `Welcome to our space. We share Kangen Water to promote conscious hydration and global well-being. ✨`}
+                        {host.bio ? host.bio : isBusiness 
+                            ? `Welcome to our ${host.businessCategory || 'Wellness Space'}. We are proud to serve Kangen Water to our valued guests to support a healthy lifestyle. Come visit us!` 
+                            : `Welcome to our space. We share Kangen Water to promote conscious hydration and global well-being. ✨`}
                     </p>
                 </div>
                 
@@ -273,20 +396,46 @@ export default function HostProfilePage() {
                 <h3 className="text-2xl font-black text-gray-900 dark:text-white leading-none mb-1">{isBusiness ? 'Guest Feedback' : 'Host Reviews'}</h3>
                 <p className="text-xs text-gray-400 font-bold uppercase tracking-widest">Based on {reviews.length} experiences</p>
             </div>
-            <div className="flex items-center gap-2 bg-white dark:bg-gray-800 px-4 py-2 rounded-2xl shadow-sm">
-                <StarIcon className="w-5 h-5 text-yellow-400" />
-                <span className="font-black text-xl dark:text-gray-100 leading-none">{host.rating.toFixed(1)}</span>
+            
+            <div className="flex items-center gap-3">
+                {!isCurrentUserProfile && (
+                    <button 
+                        onClick={() => setShowReviewModal(true)}
+                        className={`text-[10px] font-black uppercase tracking-widest px-4 py-2.5 rounded-xl transition-all shadow-sm ${isBusiness ? 'bg-amber-500 text-white hover:bg-amber-600' : 'bg-brand-blue text-white hover:bg-blue-600'}`}
+                    >
+                        Write a Review
+                    </button>
+                )}
+                <div className="flex items-center gap-2 bg-white dark:bg-gray-800 px-4 py-2 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
+                    <StarIcon className="w-5 h-5 text-yellow-400" />
+                    <span className="font-black text-xl dark:text-gray-100 leading-none">{host.rating.toFixed(1)}</span>
+                </div>
             </div>
          </div>
          
          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {reviews.length > 0 ? reviews.map(r => <ReviewCard key={r.id} review={r} isBusiness={isBusiness} />) : (
-                <div className="col-span-full py-16 text-center">
-                    <p className="text-gray-400 dark:text-gray-500 font-bold uppercase tracking-widest text-sm">No reviews yet. Be the first!</p>
+                <div className="col-span-full py-16 text-center bg-white dark:bg-gray-800/50 rounded-3xl border-2 border-dashed border-gray-200 dark:border-gray-800">
+                    <p className="text-gray-400 dark:text-gray-500 font-bold uppercase tracking-widest text-sm mb-4">No reviews yet. Be the first!</p>
+                    {!isCurrentUserProfile && (
+                        <button 
+                            onClick={() => setShowReviewModal(true)}
+                            className="text-brand-blue font-black uppercase tracking-widest text-xs"
+                        >
+                            Leave Feedback &rarr;
+                        </button>
+                    )}
                 </div>
             )}
          </div>
       </div>
+
+      <ReviewFormModal 
+        isOpen={showReviewModal}
+        onClose={() => setShowReviewModal(false)}
+        hostName={host.displayName}
+        onSubmit={handleReviewSubmit}
+      />
     </div>
   );
 }
