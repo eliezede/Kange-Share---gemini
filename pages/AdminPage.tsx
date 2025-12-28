@@ -4,7 +4,6 @@ import { useNavigate, Link } from 'react-router-dom';
 import * as api from '../api';
 import {
     ChevronLeftIcon,
-    // Added missing ChevronRightIcon
     ChevronRightIcon,
     UserGroupIcon,
     ClipboardDocumentListIcon,
@@ -18,16 +17,17 @@ import {
     DevicePhoneMobileIcon,
     MapPinIcon,
     ShieldExclamationIcon,
-    // Added missing ShieldCheckIcon
     ShieldCheckIcon,
     DocumentTextIcon,
     TrashIcon,
     CheckCircleIcon,
-    XCircleIcon as XCircleIconSolid,
     BuildingStorefrontIcon,
     SparklesIcon,
     CameraIcon,
-    ArrowUpTrayIcon,
+    GlobeAltIcon,
+    InstagramIcon,
+    FacebookIcon,
+    LinkedInIcon,
     Cog6ToothIcon
 } from '../components/Icons';
 import { useToast } from '../hooks/useToast';
@@ -104,6 +104,10 @@ const PartnerFormModal: React.FC<PartnerFormModalProps> = ({ isOpen, onClose, on
         email: '',
         phone: '',
         bio: '',
+        instagram: '',
+        facebook: '',
+        linkedin: '',
+        website: '',
         address: { street: '', number: '', postalCode: '', city: '', country: '' },
         phLevels: [8.5, 9.0, 9.5],
     });
@@ -116,6 +120,10 @@ const PartnerFormModal: React.FC<PartnerFormModalProps> = ({ isOpen, onClose, on
                 email: editUser.email || '',
                 phone: editUser.phone || '',
                 bio: editUser.bio || '',
+                instagram: editUser.instagram || '',
+                facebook: editUser.facebook || '',
+                linkedin: editUser.linkedin || '',
+                website: editUser.website || '',
                 address: {
                     street: editUser.address?.street || '',
                     number: editUser.address?.number || '',
@@ -133,6 +141,10 @@ const PartnerFormModal: React.FC<PartnerFormModalProps> = ({ isOpen, onClose, on
                 email: '',
                 phone: '',
                 bio: '',
+                instagram: '',
+                facebook: '',
+                linkedin: '',
+                website: '',
                 address: { street: '', number: '', postalCode: '', city: '', country: '' },
                 phLevels: [8.5, 9.0, 9.5],
             });
@@ -205,7 +217,7 @@ const PartnerFormModal: React.FC<PartnerFormModalProps> = ({ isOpen, onClose, on
 
     return (
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/70 backdrop-blur-md p-4 overflow-y-auto" onClick={onClose}>
-             <div className="bg-[#1a202c] border border-gray-700 rounded-3xl shadow-2xl w-full max-w-2xl my-8 flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
+             <div className="bg-[#1a202c] border border-gray-700 rounded-3xl shadow-2xl w-full max-w-3xl my-8 flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
                 <header className="p-6 border-b border-gray-700 flex justify-between items-center sticky top-0 bg-[#1a202c] z-10">
                     <h2 className="text-2xl font-bold text-white flex items-center gap-3">
                         <BuildingStorefrontIcon className="w-7 h-7 text-amber-500" />
@@ -216,7 +228,7 @@ const PartnerFormModal: React.FC<PartnerFormModalProps> = ({ isOpen, onClose, on
                     </button>
                 </header>
 
-                <form onSubmit={handleSubmit} className="p-8 space-y-8 overflow-y-auto no-scrollbar">
+                <form onSubmit={handleSubmit} className="p-8 space-y-10 overflow-y-auto no-scrollbar">
                     <div className="flex flex-col items-center">
                         <div className="relative group">
                             <div className="w-32 h-32 rounded-3xl overflow-hidden bg-gray-800 border-2 border-dashed border-gray-600 group-hover:border-amber-500 transition-colors flex items-center justify-center relative">
@@ -235,71 +247,102 @@ const PartnerFormModal: React.FC<PartnerFormModalProps> = ({ isOpen, onClose, on
                         <p className="text-[10px] font-bold text-gray-500 uppercase tracking-[0.2em] mt-3">Establishment Image</p>
                     </div>
 
-                    <div className="grid md:grid-cols-2 gap-8">
-                        <div className="space-y-5">
-                            <h4 className="font-black text-amber-500 text-[10px] uppercase tracking-[0.3em]">Business Info</h4>
+                    {/* Section: Basic & Location */}
+                    <div className="grid md:grid-cols-2 gap-12">
+                        <div className="space-y-6">
+                            <h4 className="font-black text-amber-500 text-[10px] uppercase tracking-[0.3em]">Business Identity</h4>
                             <div>
-                                <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1.5">Establishment Name</label>
-                                <input required value={formData.displayName} onChange={e => setFormData({...formData, displayName: e.target.value})} className="w-full p-3.5 bg-gray-800/50 border border-gray-700 rounded-xl text-white outline-none focus:ring-2 focus:ring-amber-500/50 transition" placeholder="e.g. Zen Cafe" />
+                                <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Establishment Name</label>
+                                <input required value={formData.displayName} onChange={e => setFormData({...formData, displayName: e.target.value})} className="w-full p-4 bg-gray-800/50 border border-gray-700 rounded-2xl text-white outline-none focus:ring-2 focus:ring-amber-500/50 transition" placeholder="e.g. Zen Cafe" />
                             </div>
                             <div>
-                                <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1.5">Category</label>
-                                <select value={formData.businessCategory} onChange={e => setFormData({...formData, businessCategory: e.target.value as BusinessCategory})} className="w-full p-3.5 bg-gray-800/50 border border-gray-700 rounded-xl text-white outline-none focus:ring-2 focus:ring-amber-500/50 transition">
+                                <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Category</label>
+                                <select value={formData.businessCategory} onChange={e => setFormData({...formData, businessCategory: e.target.value as BusinessCategory})} className="w-full p-4 bg-gray-800/50 border border-gray-700 rounded-2xl text-white outline-none focus:ring-2 focus:ring-amber-500/50 transition">
                                     {categories.map(c => <option key={c} value={c}>{c}</option>)}
                                 </select>
                             </div>
                              <div>
-                                <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1.5">Email Address</label>
-                                <input required type="email" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} className="w-full p-3.5 bg-gray-800/50 border border-gray-700 rounded-xl text-white outline-none focus:ring-2 focus:ring-amber-500/50 transition" placeholder="info@zen-hydration.com" />
+                                <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Admin Email</label>
+                                <input required type="email" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} className="w-full p-4 bg-gray-800/50 border border-gray-700 rounded-2xl text-white outline-none focus:ring-2 focus:ring-amber-500/50 transition" placeholder="info@zen-hydration.com" />
                             </div>
                         </div>
 
-                        <div className="space-y-5">
-                            <h4 className="font-black text-amber-500 text-[10px] uppercase tracking-[0.3em]">Location</h4>
+                        <div className="space-y-6">
+                            <h4 className="font-black text-amber-500 text-[10px] uppercase tracking-[0.3em]">Physical Location</h4>
                             <div>
-                                <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1.5">Street & Number</label>
-                                <input required value={formData.address.street} onChange={e => setFormData({...formData, address: {...formData.address, street: e.target.value}})} className="w-full p-3.5 bg-gray-800/50 border border-gray-700 rounded-xl text-white outline-none focus:ring-2 focus:ring-amber-500/50 transition" placeholder="Main St, 123" />
+                                <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Street & Number</label>
+                                <input required value={formData.address.street} onChange={e => setFormData({...formData, address: {...formData.address, street: e.target.value}})} className="w-full p-4 bg-gray-800/50 border border-gray-700 rounded-2xl text-white outline-none focus:ring-2 focus:ring-amber-500/50 transition" placeholder="Main St, 123" />
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1.5">City</label>
-                                    <input required value={formData.address.city} onChange={e => setFormData({...formData, address: {...formData.address, city: e.target.value}})} className="w-full p-3.5 bg-gray-800/50 border border-gray-700 rounded-xl text-white outline-none focus:ring-2 focus:ring-amber-500/50 transition" placeholder="Austin" />
+                                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1.5 ml-1">City</label>
+                                    <input required value={formData.address.city} onChange={e => setFormData({...formData, address: {...formData.address, city: e.target.value}})} className="w-full p-4 bg-gray-800/50 border border-gray-700 rounded-2xl text-white outline-none focus:ring-2 focus:ring-amber-500/50 transition" placeholder="Austin" />
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1.5">Postcode / Zip</label>
-                                    <input required value={formData.address.postalCode} onChange={e => setFormData({...formData, address: {...formData.address, postalCode: e.target.value}})} className="w-full p-3.5 bg-gray-800/50 border border-gray-700 rounded-xl text-white outline-none focus:ring-2 focus:ring-amber-500/50 transition" placeholder="BH1 234" />
+                                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Postcode</label>
+                                    <input required value={formData.address.postalCode} onChange={e => setFormData({...formData, address: {...formData.address, postalCode: e.target.value}})} className="w-full p-4 bg-gray-800/50 border border-gray-700 rounded-2xl text-white outline-none focus:ring-2 focus:ring-amber-500/50 transition" placeholder="BH1 234" />
                                 </div>
                             </div>
                             <div>
-                                <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1.5">Country</label>
-                                <input required value={formData.address.country} onChange={e => setFormData({...formData, address: {...formData.address, country: e.target.value}})} className="w-full p-3.5 bg-gray-800/50 border border-gray-700 rounded-xl text-white outline-none focus:ring-2 focus:ring-amber-500/50 transition" placeholder="United Kingdom" />
+                                <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Country</label>
+                                <input required value={formData.address.country} onChange={e => setFormData({...formData, address: {...formData.address, country: e.target.value}})} className="w-full p-4 bg-gray-800/50 border border-gray-700 rounded-2xl text-white outline-none focus:ring-2 focus:ring-amber-500/50 transition" placeholder="United Kingdom" />
                             </div>
                         </div>
                     </div>
 
-                    <div className="space-y-5 pt-4 border-t border-gray-700">
-                        <h4 className="font-black text-amber-500 text-[10px] uppercase tracking-[0.3em]">Water & Services</h4>
+                    {/* Section: Contact & Socials */}
+                    <div className="space-y-6 pt-4 border-t border-gray-700">
+                        <h4 className="font-black text-amber-500 text-[10px] uppercase tracking-[0.3em]">Connectivity & Channels</h4>
+                        <div className="grid md:grid-cols-2 gap-6">
+                            <div className="relative group">
+                                <GlobeAltIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 group-focus-within:text-amber-500 transition-colors" />
+                                <input value={formData.website} onChange={e => setFormData({...formData, website: e.target.value})} className="w-full pl-12 pr-4 py-4 bg-gray-800/50 border border-gray-700 rounded-2xl text-white outline-none focus:ring-2 focus:ring-amber-500/50 transition" placeholder="Website URL" />
+                            </div>
+                            <div className="relative group">
+                                <DevicePhoneMobileIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 group-focus-within:text-amber-500 transition-colors" />
+                                <input value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} className="w-full pl-12 pr-4 py-4 bg-gray-800/50 border border-gray-700 rounded-2xl text-white outline-none focus:ring-2 focus:ring-amber-500/50 transition" placeholder="Contact Phone" />
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                             <div className="relative group">
+                                <InstagramIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 group-focus-within:text-amber-500 transition-colors" />
+                                <input value={formData.instagram} onChange={e => setFormData({...formData, instagram: e.target.value})} className="w-full pl-12 pr-4 py-4 bg-gray-800/50 border border-gray-700 rounded-2xl text-white outline-none focus:ring-2 focus:ring-amber-500/50 transition" placeholder="Instagram URL" />
+                            </div>
+                             <div className="relative group">
+                                <FacebookIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 group-focus-within:text-amber-500 transition-colors" />
+                                <input value={formData.facebook} onChange={e => setFormData({...formData, facebook: e.target.value})} className="w-full pl-12 pr-4 py-4 bg-gray-800/50 border border-gray-700 rounded-2xl text-white outline-none focus:ring-2 focus:ring-amber-500/50 transition" placeholder="Facebook URL" />
+                            </div>
+                             <div className="relative group">
+                                <LinkedInIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 group-focus-within:text-amber-500 transition-colors" />
+                                <input value={formData.linkedin} onChange={e => setFormData({...formData, linkedin: e.target.value})} className="w-full pl-12 pr-4 py-4 bg-gray-800/50 border border-gray-700 rounded-2xl text-white outline-none focus:ring-2 focus:ring-amber-500/50 transition" placeholder="LinkedIn URL" />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Section: Water & Bio */}
+                    <div className="space-y-6 pt-4 border-t border-gray-700">
+                        <h4 className="font-black text-amber-500 text-[10px] uppercase tracking-[0.3em]">Water & Story</h4>
                         <div>
-                            <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Available pH Levels</label>
-                            <div className="flex flex-wrap gap-2">
+                            <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-4 ml-1">Available pH Levels</label>
+                            <div className="flex flex-wrap gap-3">
                                 {phOptions.map(ph => (
-                                    <button type="button" key={ph} onClick={() => togglePh(ph)} className={`px-5 py-2.5 rounded-2xl text-xs font-black transition-all border ${formData.phLevels.includes(ph) ? 'bg-brand-blue text-white border-brand-blue shadow-lg shadow-blue-500/20' : 'bg-gray-800 text-gray-500 border-gray-700 hover:border-gray-500'}`}>
+                                    <button type="button" key={ph} onClick={() => togglePh(ph)} className={`px-6 py-3 rounded-2xl text-xs font-black transition-all border ${formData.phLevels.includes(ph) ? 'bg-amber-500 text-white border-amber-500 shadow-lg shadow-amber-500/20' : 'bg-gray-800 text-gray-500 border-gray-700 hover:border-gray-500'}`}>
                                         pH {ph.toFixed(1)}
                                     </button>
                                 ))}
                             </div>
                         </div>
                         <div>
-                            <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1.5">Bio / Description</label>
-                            <textarea rows={3} value={formData.bio} onChange={e => setFormData({...formData, bio: e.target.value})} className="w-full p-4 bg-gray-800/50 border border-gray-700 rounded-2xl text-white outline-none focus:ring-2 focus:ring-amber-500/50 transition no-scrollbar" placeholder="Establishment story..." />
+                            <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Establishment Story</label>
+                            <textarea rows={4} value={formData.bio} onChange={e => setFormData({...formData, bio: e.target.value})} className="w-full p-4 bg-gray-800/50 border border-gray-700 rounded-2xl text-white outline-none focus:ring-2 focus:ring-amber-500/50 transition no-scrollbar" placeholder="Describe the wellness experience you offer..." />
                         </div>
                     </div>
 
                     <div className="flex gap-4 pt-6 border-t border-gray-700 sticky bottom-0 bg-[#1a202c]">
-                        <button type="button" onClick={onClose} className="flex-1 py-4 font-black text-xs uppercase tracking-widest text-gray-400 bg-gray-800 rounded-2xl hover:bg-gray-700 transition">Cancel</button>
-                        <button type="submit" disabled={isSaving} className="flex-[2] py-4 font-black text-xs uppercase tracking-[0.2em] text-white bg-amber-500 rounded-2xl shadow-xl shadow-amber-500/20 hover:bg-amber-600 transition flex items-center justify-center gap-3 active:scale-95 disabled:opacity-50">
+                        <button type="button" onClick={onClose} className="flex-1 py-5 font-black text-xs uppercase tracking-widest text-gray-400 bg-gray-800 rounded-3xl hover:bg-gray-700 transition">Cancel</button>
+                        <button type="submit" disabled={isSaving} className="flex-[2] py-5 font-black text-xs uppercase tracking-[0.2em] text-white bg-amber-500 rounded-3xl shadow-xl shadow-amber-500/20 hover:bg-amber-600 transition flex items-center justify-center gap-3 active:scale-95 disabled:opacity-50">
                             {isSaving ? <SpinnerIcon className="w-5 h-5 animate-spin" /> : <CheckCircleIcon className="w-5 h-5" />}
-                            {editUser ? 'Save Changes' : 'Register Partner'}
+                            {editUser ? 'Update Partner' : 'Register Partner'}
                         </button>
                     </div>
                 </form>
@@ -335,8 +378,6 @@ interface UserDetailModalProps {
 
 const UserDetailModal: React.FC<UserDetailModalProps> = ({ user, onClose, onUpdate, onEditPartner }) => {
     const [isProcessing, setIsProcessing] = useState<string | null>(null);
-    const [rejectionNote, setRejectionNote] = useState('');
-    const [showRejectionInput, setShowRejectionInput] = useState(false);
     const [selectedCategory, setSelectedCategory] = useState<BusinessCategory>(user.businessCategory || 'Other');
     
     const [actionToConfirm, setActionToConfirm] = useState<(() => void) | null>(null);
@@ -358,17 +399,7 @@ const UserDetailModal: React.FC<UserDetailModalProps> = ({ user, onClose, onUpda
         }
     };
     
-    const handleApprove = () => handleAction('approved', () => api.approveDistributorVerification(user.id, adminUser!.id));
     const handlePartnerToggle = () => handleAction(user.isBusiness ? 'demoted from partner' : 'promoted to partner', () => api.updateUser(user.id, { isBusiness: !user.isBusiness, businessCategory: selectedCategory }));
-    
-    const handleReject = () => {
-        if (!rejectionNote.trim()) { showToast('Reason cannot be empty.', 'error'); return; }
-        handleAction('rejected', () => api.rejectDistributorVerification(user.id, adminUser!.id, rejectionNote)).then(() => setShowRejectionInput(false));
-    };
-    const handleRevoke = () => {
-        if (!rejectionNote.trim()) { showToast('Reason cannot be empty.', 'error'); return; }
-        handleAction('revoked', () => api.revokeDistributorVerification(user.id, adminUser!.id, rejectionNote)).then(() => setShowRejectionInput(false));
-    };
     const handleBlockToggle = () => handleAction(user.isBlocked ? 'unblocked' : 'blocked', () => api.updateUserBlockStatus(user.id, !user.isBlocked));
     const handleDelete = () => {
         setConfirmationDetails({ title: "Delete User", message: `Are you sure you want to permanently delete ${user.displayName}?`, confirmText: 'Delete', isDestructive: true });

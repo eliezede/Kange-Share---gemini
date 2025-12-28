@@ -231,6 +231,10 @@ export const createWellnessPartner = async (partnerData: {
     email: string;
     phone: string;
     bio: string;
+    instagram?: string;
+    facebook?: string;
+    linkedin?: string;
+    website?: string;
     address: User['address'];
     businessAmenities: string[];
     profilePicture: string;
