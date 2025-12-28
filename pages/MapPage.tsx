@@ -46,14 +46,14 @@ const HostCard: React.FC<{ host: User; isCompact?: boolean; onClick?: () => void
   <div 
     onClick={onClick}
     className={`
-        group relative bg-white dark:bg-gray-800 rounded-2xl overflow-hidden transition-all duration-300 cursor-pointer
+        group relative bg-white dark:bg-gray-800 rounded-3xl overflow-hidden transition-all duration-300 cursor-pointer
         ${isCompact ? 'w-64 flex-shrink-0 border border-gray-100 dark:border-gray-700 shadow-sm mr-4' : 'w-full border border-gray-100 dark:border-gray-700 shadow-sm hover:shadow-md'}
-        ${host.isBusiness ? 'ring-2 ring-amber-500/10' : ''}
+        ${host.isBusiness ? 'ring-2 ring-amber-500/20' : ''}
     `}
   >
     <div className="p-4 flex items-center gap-4">
         <div className="relative flex-shrink-0">
-            <ProfilePicture src={host.profilePicture} alt={host.displayName} className="w-16 h-16 rounded-full object-cover border-2 border-white dark:border-gray-700 shadow-sm" />
+            <ProfilePicture src={host.profilePicture} alt={host.displayName} className={`w-16 h-16 rounded-full object-cover border-2 shadow-sm ${host.isBusiness ? 'border-amber-500' : 'border-white dark:border-gray-700'}`} />
             {host.isBusiness && (
                 <div className="absolute -bottom-1 -right-1 bg-amber-500 text-white p-1 rounded-full shadow-lg">
                     <BuildingStorefrontIcon className="w-3 h-3" />
@@ -166,7 +166,7 @@ const FilterModal: React.FC<{
 
     return (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm" onClick={onClose}>
-             <div className="bg-white dark:bg-gray-800 rounded-t-2xl sm:rounded-2xl shadow-2xl w-full max-w-sm m-0 sm:m-4 flex flex-col max-h-[90vh] animate-fade-in-up" onClick={e => e.stopPropagation()}>
+             <div className="bg-white dark:bg-gray-800 rounded-t-3xl sm:rounded-3xl shadow-2xl w-full max-w-sm m-0 sm:m-4 flex flex-col max-h-[90vh] animate-fade-in-up" onClick={e => e.stopPropagation()}>
                 <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
                     <h3 className="font-bold text-lg dark:text-white">Filters</h3>
                     <button onClick={onClose} className="text-gray-500 dark:text-gray-400 font-semibold text-sm">Close</button>
@@ -280,26 +280,20 @@ export default function MapPage() {
   const [loading, setLoading] = useState(true);
   const [userLocation, setUserLocation] = useState<{lat: number, lng: number} | null>(null);
   
-  // Dashboard Schedule State
   const [todaysSchedule, setTodaysSchedule] = useState<WaterRequest[]>([]);
-  
-  // View State
   const [searchQuery, setSearchQuery] = useState('');
-  const debouncedSearchQuery = useDebounce(searchQuery, 300); // 300ms debounce
+  const debouncedSearchQuery = useDebounce(searchQuery, 300);
   const [viewMode, setViewMode] = useState<'dashboard' | 'list' | 'map'>('dashboard');
   const [filters, setFilters] = useState<FilterState>({ phLevels: [], minRating: 0, openToday: false, businessOnly: false });
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [selectedHostId, setSelectedHostId] = useState<string | null>(null);
 
-  // Leaflet Refs
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
   const markersRef = useRef<{ [key: string]: any }>({});
   const userMarkerRef = useRef<any>(null);
 
-  // Fetch Data & Location
   useEffect(() => {
-      // 1. Get GPS
       if (navigator.geolocation) {
           navigator.geolocation.getCurrentPosition((position) => {
               setUserLocation({
@@ -311,7 +305,6 @@ export default function MapPage() {
           });
       }
 
-      // 2. Fetch Hosts
       const loadData = async () => {
           try {
               const hostsData = await api.getHosts();
@@ -323,7 +316,6 @@ export default function MapPage() {
               });
               setHosts(hostsWithCoords);
 
-              // 3. Fetch Schedule if logged in
               if (userData) {
                   const [myReqs, hostReqs] = await Promise.all([
                       api.getRequestsByUserId(userData.id),
@@ -335,7 +327,6 @@ export default function MapPage() {
                       r.status === 'accepted' && r.pickupDate === today
                   );
                   
-                  // Sort by time
                   allActive.sort((a, b) => a.pickupTime.localeCompare(b.pickupTime));
                   setTodaysSchedule(allActive);
               }
@@ -349,7 +340,6 @@ export default function MapPage() {
       loadData();
   }, [userData]);
 
-  // Calculate Distances
   const hostsWithDistance = useMemo(() => {
     if (!userLocation) return hosts;
     return hosts.map(host => {
@@ -363,7 +353,6 @@ export default function MapPage() {
     });
   }, [hosts, userLocation]);
 
-  // Filter Logic - Depends on Debounced Query
   const filteredHosts = useMemo(() => {
     return hostsWithDistance.filter(host => {
       const matchesSearch = host.displayName.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
@@ -384,16 +373,13 @@ export default function MapPage() {
     });
   }, [debouncedSearchQuery, hostsWithDistance, filters]);
 
-  // View Mode Management
   useEffect(() => {
       if (searchQuery && viewMode === 'dashboard') {
           setViewMode('list');
       }
   }, [searchQuery]);
 
-  // Map Initialization & Sync
   useEffect(() => {
-      // Initialize Map if in Map Mode
       if (viewMode === 'map' && !mapInstanceRef.current && mapContainerRef.current) {
           const map = L.map(mapContainerRef.current, { zoomControl: false, attributionControl: false }).setView([51.505, -0.09], 13);
           L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { maxZoom: 19 }).addTo(map);
@@ -401,17 +387,14 @@ export default function MapPage() {
           mapInstanceRef.current = map;
       }
       
-      // Handle Map resizing/updates
       if (mapInstanceRef.current) {
         setTimeout(() => mapInstanceRef.current.invalidateSize(), 200);
 
-        // Update Markers efficiently
         const map = mapInstanceRef.current;
         const currentMarkers = markersRef.current;
         const existingIds = new Set(Object.keys(currentMarkers));
         const newIds = new Set(filteredHosts.map(h => h.id));
 
-        // Remove old markers
         existingIds.forEach(id => {
             if (!newIds.has(id)) {
                 currentMarkers[id].remove();
@@ -421,9 +404,9 @@ export default function MapPage() {
 
         const customIcon = (isBusiness: boolean) => L.divIcon({
             className: 'bg-transparent border-none',
-            html: `<div style="font-size: 40px; line-height: 1; filter: drop-shadow(0 3px 3px rgba(0,0,0,0.3)); transform: translateY(-5px); cursor: pointer;">${isBusiness ? '🏢' : '💧'}</div>`,
+            html: `<div style="font-size: 40px; line-height: 1; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.3)); transform: translateY(-5px); cursor: pointer;">${isBusiness ? '🏢' : '💧'}</div>`,
             iconSize: [40, 40],
-            iconAnchor: [20, 20], // Centered
+            iconAnchor: [20, 20], 
             popupAnchor: [0, -20]
         });
 
@@ -435,71 +418,54 @@ export default function MapPage() {
                 hasBounds = true;
                 bounds.extend([host.address.coordinates.lat, host.address.coordinates.lng]);
 
-                // Only add if not already exists
                 if (!currentMarkers[host.id]) {
                     const marker = L.marker([host.address.coordinates.lat, host.address.coordinates.lng], { icon: customIcon(!!host.isBusiness) }).addTo(map);
                     
-                    // Create interactive popup content
                     const popupContent = document.createElement('div');
-                    popupContent.className = "min-w-[240px] -m-[18px] rounded-2xl overflow-hidden shadow-lg font-sans"; 
+                    popupContent.className = "min-w-[240px] -m-[18px] rounded-3xl overflow-hidden shadow-2xl font-sans"; 
                     
                     const imgSrc = host.profilePicture || `https://ui-avatars.com/api/?name=${encodeURIComponent(host.displayName)}&background=random`;
                     const isVerified = host.distributorVerificationStatus === 'approved';
                     const distanceStr = (host as any).distance ? `${(host as any).distance.toFixed(1)} km` : '';
 
-                    // SVG Strings for inner HTML
                     const verifiedIcon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4 text-brand-blue"><path fill-rule="evenodd" d="M8.603 3.799A4.49 4.49 0 0 1 12 2.25c1.357 0 2.573.6 3.397 1.549a4.49 4.49 0 0 1 3.498 1.307 4.491 4.491 0 0 1 1.307 3.497A4.49 4.49 0 0 1 21.75 12c0 1.357-.6 2.573-1.549 3.397a4.49 4.49 0 0 1-1.307 3.498 4.491 4.491 0 0 1-3.497 1.307A4.49 4.49 0 0 1 12 21.75a4.49 4.49 0 0 1-3.397-1.549 4.49 4.49 0 0 1-3.498-1.306 4.491 4.491 0 0 1-1.307-3.498A4.49 4.49 0 0 1 2.25 12c0-1.357.6-2.573 1.549-3.397a4.49 4.49 0 0 1 1.307-3.497 4.491 4.491 0 0 1 3.497-1.307Zm7.007 6.387a.75.75 0 1 0-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 0 0-1.06 1.06l2.25 2.25a.75.75 0 0 0 1.14-.094l3.75-5.25Z" clip-rule="evenodd" /></svg>`;
                     const goldIcon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4 text-amber-500"><path fill-rule="evenodd" d="M10.788 3.21c.448-1.077 1.976-1.077 2.424 0l2.082 5.006 5.404.434c1.164.093 1.636 1.545.749 2.305l-4.117 3.527 1.257 5.273c.271 1.136-.964 2.033-1.96 1.425L12 18.354 7.373 21.18c-.996.608-2.231-.29-1.96-1.425l1.257-5.273-4.117-3.527c-.887-.76-.415-2.212.749-2.305l5.404-.434 2.082-5.006z" clip-rule="evenodd" /></svg>`;
-                    const starIcon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-3.5 h-3.5 text-yellow-400"><path fill-rule="evenodd" d="M10.788 3.21c.448-1.077 1.976-1.077 2.424 0l2.082 5.006 5.404.434c1.164.093 1.636 1.545.749 2.305l-4.117 3.527 1.257 5.273c.271 1.136-.964 2.033-1.96 1.425L12 18.354 7.373 21.18c-.996.608-2.231-.29-1.96-1.425l1.257-5.273-4.117-3.527c-.887-.76-.415-2.212.749-2.305l5.404-.434 2.082-5.006z" clip-rule="evenodd" /></svg>`;
                     const arrowIcon = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" /></svg>`;
 
                     popupContent.innerHTML = `
-                        <div class="group bg-white dark:bg-gray-800 text-left cursor-pointer rounded-2xl overflow-hidden ring-1 ring-black/5 dark:ring-white/10 ${host.isBusiness ? 'border-b-4 border-amber-500' : ''}">
-                            <!-- Top Section: Info -->
-                            <div class="p-4 flex items-start gap-3 relative">
-                                <!-- Avatar with Badge -->
+                        <div class="group bg-white dark:bg-gray-800 text-left cursor-pointer rounded-3xl overflow-hidden ring-1 ring-black/5 dark:ring-white/10 ${host.isBusiness ? 'border-b-8 border-amber-500' : ''}">
+                            <div class="p-5 flex items-start gap-4 relative">
                                 <div class="relative flex-shrink-0">
-                                    <img src="${imgSrc}" class="w-12 h-12 rounded-full object-cover border-2 border-gray-50 dark:border-gray-700 shadow-sm" alt="${host.displayName}" />
-                                    ${host.isBusiness ? `<div class="absolute -bottom-1 -right-1 bg-amber-500 rounded-full p-1 shadow-sm"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="white" class="w-2 h-2"><path d="M1 8.25V14.5A1.5 1.5 0 0 0 2.5 16h15a1.5 1.5 0 0 0 1.5-1.5V8.25m-18 0V7.5a1.5 1.5 0 0 1 1.5-1.5h15A1.5 1.5 0 0 1 19 7.5v.75m-18 0h18M5 12v1.5m10-1.5v1.5m-7.5-1.5v1.5m5-1.5v1.5" /></svg></div>` : (isVerified ? `<div class="absolute -bottom-1 -right-1 bg-white dark:bg-gray-800 rounded-full p-0.5 shadow-sm">${verifiedIcon}</div>` : '')}
+                                    <img src="${imgSrc}" class="w-14 h-14 rounded-full object-cover border-2 shadow-md ${host.isBusiness ? 'border-amber-500' : 'border-gray-50 dark:border-gray-700'}" alt="${host.displayName}" />
+                                    ${host.isBusiness ? `<div class="absolute -bottom-1 -right-1 bg-amber-500 rounded-full p-1 shadow-sm"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="white" class="w-2.5 h-2.5"><path d="M1 8.25V14.5A1.5 1.5 0 0 0 2.5 16h15a1.5 1.5 0 0 0 1.5-1.5V8.25m-18 0V7.5a1.5 1.5 0 0 1 1.5-1.5h15A1.5 1.5 0 0 1 19 7.5v.75m-18 0h18M5 12v1.5m10-1.5v1.5m-7.5-1.5v1.5m5-1.5v1.5" /></svg></div>` : (isVerified ? `<div class="absolute -bottom-1 -right-1 bg-white dark:bg-gray-800 rounded-full p-0.5 shadow-sm">${verifiedIcon}</div>` : '')}
                                 </div>
-
-                                <!-- Info -->
                                 <div class="flex-1 min-w-0 pt-0.5">
-                                    <h3 class="font-bold text-gray-900 dark:text-white text-base truncate leading-snug">${host.displayName}</h3>
-                                    ${host.isBusiness ? `<p class="text-[9px] font-bold text-amber-600 uppercase tracking-widest">${host.businessCategory || 'WELLNESS PARTNER'}</p>` : `<p class="text-xs text-gray-500 dark:text-gray-400 truncate mb-1.5">${host.address.city}, ${host.address.country}</p>`}
-
-                                    <!-- Metrics Row -->
-                                    <div class="flex items-center gap-2 mt-1">
-                                        <div class="flex items-center gap-1 bg-yellow-50 dark:bg-yellow-900/30 px-1.5 py-0.5 rounded-md">
-                                            ${starIcon}
+                                    <h3 class="font-bold text-gray-900 dark:text-white text-lg truncate leading-snug">${host.displayName}</h3>
+                                    ${host.isBusiness ? `<p class="text-[10px] font-extrabold text-amber-600 uppercase tracking-widest">${host.businessCategory || 'WELLNESS PARTNER'}</p>` : `<p class="text-xs text-gray-500 dark:text-gray-400 truncate">${host.address.city}, ${host.address.country}</p>`}
+                                    <div class="flex items-center gap-2 mt-2">
+                                        <div class="flex items-center gap-1 bg-yellow-50 dark:bg-yellow-900/30 px-2 py-0.5 rounded-lg">
+                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-3.5 h-3.5 text-yellow-400"><path fill-rule="evenodd" d="M10.788 3.21c.448-1.077 1.976-1.077 2.424 0l2.082 5.006 5.404.434c1.164.093 1.636 1.545.749 2.305l-4.117 3.527 1.257 5.273c.271 1.136-.964 2.033-1.96 1.425L12 18.354 7.373 21.18c-.996.608-2.231-.29-1.96-1.425l1.257-5.273-4.117-3.527c-.887-.76-.415-2.212.749-2.305l5.404-.434 2.082-5.006z" clip-rule="evenodd" /></svg>
                                             <span class="text-xs font-bold text-yellow-700 dark:text-yellow-400">${host.rating.toFixed(1)}</span>
                                         </div>
-                                        ${distanceStr ? `
-                                        <div class="flex items-center text-gray-400 dark:text-gray-500 text-xs">
-                                            <span>•</span>
-                                            <span class="ml-1 font-medium">${distanceStr}</span>
-                                        </div>` : ''}
+                                        ${distanceStr ? `<span class="text-[10px] text-gray-400 dark:text-gray-500 font-bold uppercase tracking-wider">${distanceStr} away</span>` : ''}
                                     </div>
                                 </div>
                             </div>
-
-                            <!-- Bottom Section: CTA -->
-                            <div class="bg-gray-50 dark:bg-gray-900/50 px-4 py-2.5 flex justify-between items-center border-t border-gray-100 dark:border-gray-700 group-hover:bg-blue-50 dark:group-hover:bg-blue-900/20 transition-colors duration-200">
-                                <span class="text-xs font-bold ${host.isBusiness ? 'text-amber-600' : 'text-brand-blue'} tracking-wide uppercase">View Profile</span>
+                            <div class="bg-gray-50 dark:bg-gray-900/50 px-5 py-3.5 flex justify-between items-center border-t border-gray-100 dark:border-gray-700 group-hover:bg-blue-50 dark:group-hover:bg-blue-900/20 transition-colors duration-200">
+                                <span class="text-xs font-extrabold ${host.isBusiness ? 'text-amber-600' : 'text-brand-blue'} tracking-widest uppercase">View Profile</span>
                                 <span class="${host.isBusiness ? 'text-amber-600' : 'text-brand-blue'} transform group-hover:translate-x-1 transition-transform duration-200">${arrowIcon}</span>
                             </div>
                         </div>
                     `;
                     
-                    // Navigate on click
                     popupContent.addEventListener('click', (e) => {
-                        e.stopPropagation(); // Prevent map click
+                        e.stopPropagation();
                         navigate(`/host/${host.id}`);
                     });
 
                     marker.bindPopup(popupContent, {
-                        closeButton: false, // Cleaner look without the X
-                        minWidth: 240,
+                        closeButton: false, 
+                        minWidth: 260,
                         offset: [0, -10]
                     });
                     
@@ -512,7 +478,6 @@ export default function MapPage() {
             map.fitBounds(bounds, { padding: [50, 50] });
         }
         
-        // Add user location marker if available
         if (userLocation) {
             if (userMarkerRef.current) userMarkerRef.current.remove();
             const userIcon = L.divIcon({
@@ -542,7 +507,6 @@ export default function MapPage() {
     }, () => alert("Location access denied"));
   };
 
-  // Derived Lists for Dashboard
   const hostsNearYou = useMemo(() => {
       const list = [...hostsWithDistance];
       if (userLocation) {
@@ -550,11 +514,11 @@ export default function MapPage() {
       } else {
           list.sort((a, b) => b.rating - a.rating);
       }
-      return list.slice(0, 5);
+      return list.slice(0, 8);
   }, [hostsWithDistance, userLocation]);
 
   const wellnessPartners = useMemo(() => {
-    return hostsWithDistance.filter(h => h.isBusiness).sort((a, b) => b.rating - a.rating).slice(0, 5);
+    return hostsWithDistance.filter(h => h.isBusiness).sort((a, b) => b.rating - a.rating);
   }, [hostsWithDistance]);
 
   const activeFilterCount = filters.phLevels.length + (filters.minRating > 0 ? 1 : 0) + (filters.openToday ? 1 : 0) + (filters.businessOnly ? 1 : 0);
@@ -564,7 +528,7 @@ export default function MapPage() {
     <div className="bg-white dark:bg-gray-900 min-h-full flex flex-col relative">
         
         {/* Sticky Header with Search */}
-        <div className={`sticky top-0 fz-20 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md transition-all duration-300 ${viewMode === 'dashboard' ? 'py-4 border-b-0' : 'py-3 border-b border-gray-200 dark:border-gray-800'}`}>
+        <div className={`sticky top-0 z-30 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md transition-all duration-300 ${viewMode === 'dashboard' ? 'py-4 border-b-0' : 'py-3 border-b border-gray-200 dark:border-gray-800'}`}>
             <div className="px-4 max-w-2xl mx-auto w-full">
                  <div className="relative group">
                     <div className={`absolute inset-0 bg-brand-blue/5 rounded-full transition-transform group-hover:scale-105 duration-300 ${viewMode === 'dashboard' ? 'opacity-100' : 'opacity-0'}`}></div>
@@ -574,7 +538,7 @@ export default function MapPage() {
                         </div>
                         <input 
                             type="text" 
-                            placeholder={viewMode === 'dashboard' ? "City or host name..." : "Search..."}
+                            placeholder={viewMode === 'dashboard' ? "City or establishment name..." : "Search..."}
                             value={searchQuery}
                             onChange={(e) => {
                                 setSearchQuery(e.target.value);
@@ -583,7 +547,7 @@ export default function MapPage() {
                             onFocus={() => {
                                 if (viewMode === 'dashboard' && searchQuery.length > 0) setViewMode('list');
                             }}
-                            className="w-full py-3.5 px-3 bg-transparent border-none outline-none text-gray-800 dark:text-white placeholder-gray-500"
+                            className="w-full py-3.5 px-3 bg-transparent border-none outline-none text-gray-800 dark:text-white placeholder-gray-500 font-medium"
                         />
                          <button 
                             onClick={() => setIsFilterOpen(true)}
@@ -597,24 +561,23 @@ export default function MapPage() {
                  </div>
             </div>
             
-            {/* Filter Chips Row (Only visible in Results mode) */}
             {viewMode !== 'dashboard' && (
                  <div className="px-4 mt-3 flex gap-2 overflow-x-auto no-scrollbar max-w-2xl mx-auto">
-                    <button onClick={() => setViewMode('dashboard')} className="whitespace-nowrap px-3 py-1.5 text-sm font-medium bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 rounded-full">
+                    <button onClick={() => setViewMode('dashboard')} className="whitespace-nowrap px-4 py-1.5 text-xs font-extrabold bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 rounded-full tracking-widest uppercase">
                         &larr; Back
                     </button>
                     {filters.businessOnly && (
-                        <div className="whitespace-nowrap px-3 py-1.5 text-sm font-bold bg-amber-100 text-amber-700 rounded-full flex items-center gap-1">
-                            <BuildingStorefrontIcon className="w-3.5 h-3.5" /> Businesses
+                        <div className="whitespace-nowrap px-4 py-1.5 text-xs font-extrabold bg-amber-100 text-amber-700 rounded-full flex items-center gap-1 uppercase tracking-widest">
+                            <BuildingStorefrontIcon className="w-3.5 h-3.5" /> Partners
                         </div>
                     )}
                     {activeFilterCount > 0 && (
-                        <button onClick={() => setFilters({ phLevels: [], minRating: 0, openToday: false, businessOnly: false })} className="whitespace-nowrap px-3 py-1.5 text-sm font-medium bg-red-50 text-red-600 rounded-full">
-                            Clear Filters
+                        <button onClick={() => setFilters({ phLevels: [], minRating: 0, openToday: false, businessOnly: false })} className="whitespace-nowrap px-4 py-1.5 text-xs font-extrabold bg-red-50 text-red-600 rounded-full uppercase tracking-widest">
+                            Reset
                         </button>
                     )}
-                    <div className="px-2 text-sm text-gray-500 flex items-center">
-                        {loading ? 'Loading...' : `${filteredHosts.length} results`}
+                    <div className="px-2 text-xs text-gray-400 font-bold uppercase tracking-widest flex items-center">
+                        {loading ? 'Loading...' : `${filteredHosts.length} spots`}
                     </div>
                  </div>
             )}
@@ -623,23 +586,21 @@ export default function MapPage() {
         {/* --- DASHBOARD MODE --- */}
         {viewMode === 'dashboard' && (
             <div className="flex-1 overflow-y-auto pb-24 animate-fade-in-up">
-                {/* Hero */}
                 <div className="px-6 py-6 mb-4">
-                    <h1 className="text-3xl font-bold text-gray-800 dark:text-white mb-2">
+                    <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2 leading-tight">
                         Hi, {userData?.firstName || 'there'}! 👋
                     </h1>
-                    <p className="text-gray-500 dark:text-gray-400 mb-8 text-lg">Where can we hydrate you today?</p>
+                    <p className="text-gray-500 dark:text-gray-400 mb-8 text-lg font-medium">Ready to hydrate your potential?</p>
                     
                     <button 
                         onClick={handleNearMe}
-                        className="w-full flex items-center justify-center gap-3 py-4 bg-brand-blue text-white rounded-2xl font-bold shadow-lg shadow-blue-200 dark:shadow-blue-900/20 hover:bg-blue-600 transition-transform active:scale-95"
+                        className="w-full flex items-center justify-center gap-3 py-4 bg-brand-blue text-white rounded-2xl font-bold shadow-xl shadow-blue-500/20 hover:bg-blue-600 transition-all active:scale-95"
                     >
                         <MapPinIcon className="w-6 h-6" />
-                        Use my current location
+                        Explore Near Me
                     </button>
                 </div>
 
-                {/* Today's Schedule (New) */}
                 {todaysSchedule.length > 0 && (
                     <CategorySection 
                         title="Today's Schedule"
@@ -653,10 +614,10 @@ export default function MapPage() {
                     </CategorySection>
                 )}
 
-                {/* Wellness Partners Section (New) */}
+                {/* Wellness Partners Horizontal Showcase */}
                 {wellnessPartners.length > 0 && (
                     <CategorySection 
-                        title="Wellness Partners" 
+                        title="Certified Wellness Partners" 
                         icon={<BuildingStorefrontIcon className="w-6 h-6 text-amber-500" />}
                     >
                          {wellnessPartners.map(host => (
@@ -672,44 +633,42 @@ export default function MapPage() {
                     </CategorySection>
                 )}
 
-                {/* Contextual Recommendations */}
                 <div className="px-6 mb-8">
                     {isDistributor ? (
                         <div className="grid grid-cols-2 gap-4">
-                            <Link to="/profile/edit" className="bg-blue-50 dark:bg-blue-900/30 p-4 rounded-2xl border border-blue-100 dark:border-blue-800 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition">
+                            <Link to="/profile/edit" className="bg-blue-50 dark:bg-blue-900/20 p-5 rounded-3xl border border-blue-100 dark:border-blue-800 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition">
                                 <PresentationChartBarIcon className="w-8 h-8 text-brand-blue mb-2" />
-                                <p className="font-bold text-gray-800 dark:text-gray-100 leading-tight">Manage Availability</p>
+                                <p className="font-extrabold text-gray-900 dark:text-gray-100 leading-tight">Availability</p>
                             </Link>
-                            <Link to="/requests" className="bg-purple-50 dark:bg-purple-900/30 p-4 rounded-2xl border border-purple-100 dark:border-purple-800 hover:bg-purple-100 dark:hover:bg-purple-900/50 transition relative">
+                            <Link to="/requests" className="bg-purple-50 dark:bg-purple-900/20 p-5 rounded-3xl border border-purple-100 dark:border-purple-800 hover:bg-purple-100 dark:hover:bg-purple-900/40 transition relative">
                                 <ClipboardDocumentListIcon className="w-8 h-8 text-purple-600 mb-2" />
-                                <p className="font-bold text-gray-800 dark:text-gray-100 leading-tight">Requests Waiting</p>
+                                <p className="font-extrabold text-gray-900 dark:text-gray-100 leading-tight">Requests</p>
                                 {pendingHostRequestCount > 0 && (
-                                    <span className="absolute top-3 right-3 bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+                                    <span className="absolute top-4 right-4 bg-red-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full">
                                         {pendingHostRequestCount}
                                     </span>
                                 )}
                             </Link>
                         </div>
                     ) : (
-                        <Link to="/become-distributor" className="block bg-gradient-to-r from-brand-blue to-blue-600 p-5 rounded-2xl shadow-md text-white relative overflow-hidden group">
-                            <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full -mr-8 -mt-8 pointer-events-none"></div>
+                        <Link to="/become-distributor" className="block bg-gradient-to-br from-brand-blue to-blue-600 p-6 rounded-3xl shadow-xl shadow-blue-500/20 text-white relative overflow-hidden group">
+                            <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-12 -mt-12 pointer-events-none transition-transform group-hover:scale-110"></div>
                             <div className="relative z-10 flex items-center justify-between">
                                 <div>
-                                    <h3 className="font-bold text-lg">Become a Distributor</h3>
-                                    <p className="text-blue-100 text-sm">Verify your status to start hosting.</p>
+                                    <h3 className="font-black text-xl mb-1">Join the Network</h3>
+                                    <p className="text-blue-100 text-sm font-medium">Verify your machine to host others.</p>
                                 </div>
-                                <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
-                                    <CheckBadgeIcon className="w-6 h-6 text-white" />
+                                <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center group-hover:rotate-12 transition-transform">
+                                    <CheckBadgeIcon className="w-7 h-7 text-white" />
                                 </div>
                             </div>
                         </Link>
                     )}
                 </div>
 
-                {/* Hosts Near You */}
                 <CategorySection 
-                    title="Hosts Near You" 
-                    icon={<MapPinIcon className="w-6 h-6 text-red-500" />}
+                    title="Recommended for You" 
+                    icon={<SparklesIcon className="w-6 h-6 text-brand-blue" />}
                 >
                     {loading ? (
                         <>
@@ -736,14 +695,13 @@ export default function MapPage() {
         {/* --- RESULTS MODE (LIST & MAP) --- */}
         {viewMode !== 'dashboard' && (
             <div className="flex-1 relative h-full">
-                {/* List View Content */}
                 <div className={`h-full overflow-y-auto p-4 pb-28 space-y-4 ${viewMode === 'list' ? 'block' : 'hidden'}`}>
                     {loading ? (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                              {[...Array(6)].map((_, i) => <HostCardSkeleton key={i} />)}
                         </div>
                     ) : filteredHosts.length > 0 ? (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                             {filteredHosts.map(host => (
                                 <HostCard 
                                     key={host.id} 
@@ -754,33 +712,34 @@ export default function MapPage() {
                             ))}
                         </div>
                     ) : (
-                        <div className="text-center py-20">
-                            <p className="text-gray-500 dark:text-gray-400 text-lg">No hosts found matching your criteria.</p>
-                            <button onClick={() => setFilters({ phLevels: [], minRating: 0, openToday: false, businessOnly: false })} className="mt-4 text-brand-blue font-bold">Clear Filters</button>
+                        <div className="text-center py-24">
+                            <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4 text-gray-400">
+                                <SearchIcon className="w-8 h-8" />
+                            </div>
+                            <p className="text-gray-500 dark:text-gray-400 text-lg font-bold">No results found</p>
+                            <button onClick={() => setFilters({ phLevels: [], minRating: 0, openToday: false, businessOnly: false })} className="mt-4 text-brand-blue font-extrabold uppercase tracking-widest text-xs border-b-2 border-brand-blue">Clear all filters</button>
                         </div>
                     )}
                 </div>
 
-                {/* Map View Content */}
                 <div className={`absolute inset-0 z-0 ${viewMode === 'map' ? 'block' : 'hidden'}`}>
                     <div ref={mapContainerRef} className="w-full h-full" />
                 </div>
 
-                {/* Floating Toggle Button */}
-                <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-30">
+                <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-40">
                     <button 
                         onClick={() => setViewMode(prev => prev === 'list' ? 'map' : 'list')}
-                        className="flex items-center gap-2 px-6 py-3 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-full font-bold shadow-2xl transform hover:scale-105 transition-all"
+                        className="flex items-center gap-2 px-8 py-4 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-full font-black shadow-2xl transform hover:scale-105 active:scale-95 transition-all uppercase tracking-widest text-xs"
                     >
                         {viewMode === 'list' ? (
                             <>
                                 <MapIcon className="w-5 h-5" />
-                                Show Map
+                                Map View
                             </>
                         ) : (
                             <>
                                 <ListBulletIcon className="w-5 h-5" />
-                                Show List
+                                List View
                             </>
                         )}
                     </button>

@@ -17,7 +17,7 @@ export interface DistributorProofDocument {
 }
 
 export type DistributorVerificationStatus = 'none' | 'pending' | 'approved' | 'rejected' | 'revoked';
-export type BusinessCategory = 'Cafe' | 'Clinic' | 'Gym' | 'Spa' | 'Yoga Studio' | 'Other';
+export type BusinessCategory = 'Organic Cafe' | 'Health Clinic' | 'Fitness Center' | 'Day Spa' | 'Yoga Studio' | 'Holistic Center' | 'Other';
 
 // A unified type for all users. Any user can become a host.
 export interface User {
@@ -57,6 +57,7 @@ export interface User {
   isBusiness?: boolean;
   businessCategory?: BusinessCategory;
   businessAmenities?: string[]; // e.g. ["BYO Bottle", "Glassware Provided"]
+  businessPhotos?: string[]; // Array of URLs
 
   // Host-specific fields
   rating: number;

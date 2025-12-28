@@ -21,7 +21,11 @@ import {
     CheckCircleIcon,
     XCircleIcon as XCircleIconSolid,
     BuildingStorefrontIcon,
-    SparklesIcon
+    SparklesIcon,
+    MapIcon,
+    AdjustmentsHorizontalIcon,
+    DropletIcon,
+    CameraIcon
 } from '../components/Icons';
 import { useToast } from '../hooks/useToast';
 import { useAuth } from '../App';
@@ -74,6 +78,138 @@ const UserStatusBadge: React.FC<{ user: User }> = ({ user }) => {
         default:
             return <span className="px-2.5 py-0.5 text-xs font-semibold rounded-full bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200">User</span>;
     }
+};
+
+// --- Modals ---
+
+const CreatePartnerModal: React.FC<{ isOpen: boolean; onClose: () => void; onCreated: () => void }> = ({ isOpen, onClose, onCreated }) => {
+    const { showToast } = useToast();
+    const [isSaving, setIsSaving] = useState(false);
+    const [formData, setFormData] = useState({
+        displayName: '',
+        businessCategory: 'Organic Cafe' as BusinessCategory,
+        email: '',
+        phone: '',
+        bio: '',
+        address: { street: '', number: '', postalCode: '', city: '', country: '' },
+        phLevels: [8.5, 9.0, 9.5],
+        businessAmenities: [] as string[],
+        profilePicture: ''
+    });
+
+    const categories: BusinessCategory[] = ['Organic Cafe', 'Health Clinic', 'Fitness Center', 'Day Spa', 'Yoga Studio', 'Holistic Center', 'Other'];
+    const phOptions = [2.5, 8.5, 9.0, 9.5, 11.5];
+
+    if (!isOpen) return null;
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setIsSaving(true);
+        try {
+            // Mock profile picture if none provided
+            const finalData = { 
+                ...formData, 
+                profilePicture: formData.profilePicture || `https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&q=80&w=400` 
+            };
+            await api.createWellnessPartner(finalData);
+            showToast("Wellness Partner registered successfully!", "success");
+            onCreated();
+            onClose();
+        } catch (error) {
+            showToast("Failed to register partner.", "error");
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const togglePh = (ph: number) => {
+        setFormData(prev => ({
+            ...prev,
+            phLevels: prev.phLevels.includes(ph) ? prev.phLevels.filter(p => p !== ph) : [...prev.phLevels, ph]
+        }));
+    };
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto" onClick={onClose}>
+             <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl w-full max-w-2xl my-8 flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
+                <header className="p-6 border-b dark:border-gray-700 flex justify-between items-center sticky top-0 bg-white dark:bg-gray-800 z-10">
+                    <h2 className="text-2xl font-bold dark:text-white flex items-center gap-2">
+                        <BuildingStorefrontIcon className="w-6 h-6 text-amber-500" />
+                        Register Wellness Partner
+                    </h2>
+                    <button onClick={onClose} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700">
+                        <XMarkIcon className="w-6 h-6 text-gray-500" />
+                    </button>
+                </header>
+
+                <form onSubmit={handleSubmit} className="p-6 space-y-6 overflow-y-auto">
+                    <div className="grid md:grid-cols-2 gap-6">
+                        <div className="space-y-4">
+                            <h4 className="font-bold text-amber-600 text-xs uppercase tracking-widest">Business Info</h4>
+                            <div>
+                                <label className="block text-sm font-bold mb-1 dark:text-gray-200">Establishment Name</label>
+                                <input required value={formData.displayName} onChange={e => setFormData({...formData, displayName: e.target.value})} className="w-full p-3 bg-gray-50 dark:bg-gray-700 border-none rounded-xl dark:text-white" placeholder="e.g. Zen Water Cafe" />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-bold mb-1 dark:text-gray-200">Category</label>
+                                <select value={formData.businessCategory} onChange={e => setFormData({...formData, businessCategory: e.target.value as BusinessCategory})} className="w-full p-3 bg-gray-50 dark:bg-gray-700 border-none rounded-xl dark:text-white">
+                                    {categories.map(c => <option key={c} value={c}>{c}</option>)}
+                                </select>
+                            </div>
+                             <div>
+                                <label className="block text-sm font-bold mb-1 dark:text-gray-200">Email Address</label>
+                                <input required type="email" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} className="w-full p-3 bg-gray-50 dark:bg-gray-700 border-none rounded-xl dark:text-white" placeholder="contact@business.com" />
+                            </div>
+                        </div>
+
+                        <div className="space-y-4">
+                            <h4 className="font-bold text-amber-600 text-xs uppercase tracking-widest">Location</h4>
+                            <div>
+                                <label className="block text-sm font-bold mb-1 dark:text-gray-200">Street & Number</label>
+                                <input required value={formData.address.street} onChange={e => setFormData({...formData, address: {...formData.address, street: e.target.value}})} className="w-full p-3 bg-gray-50 dark:bg-gray-700 border-none rounded-xl dark:text-white" placeholder="Main St, 123" />
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label className="block text-sm font-bold mb-1 dark:text-gray-200">City</label>
+                                    <input required value={formData.address.city} onChange={e => setFormData({...formData, address: {...formData.address, city: e.target.value}})} className="w-full p-3 bg-gray-50 dark:bg-gray-700 border-none rounded-xl dark:text-white" placeholder="Austin" />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-bold mb-1 dark:text-gray-200">Country</label>
+                                    <input required value={formData.address.country} onChange={e => setFormData({...formData, address: {...formData.address, country: e.target.value}})} className="w-full p-3 bg-gray-50 dark:bg-gray-700 border-none rounded-xl dark:text-white" placeholder="USA" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="space-y-4">
+                        <h4 className="font-bold text-amber-600 text-xs uppercase tracking-widest">Water & Services</h4>
+                        <div>
+                            <label className="block text-sm font-bold mb-2 dark:text-gray-200">Available pH Levels</label>
+                            <div className="flex flex-wrap gap-2">
+                                {phOptions.map(ph => (
+                                    <button type="button" key={ph} onClick={() => togglePh(ph)} className={`px-4 py-2 rounded-full text-xs font-bold transition-all border ${formData.phLevels.includes(ph) ? 'bg-brand-blue text-white border-brand-blue shadow-md' : 'bg-gray-50 dark:bg-gray-700 text-gray-500 border-gray-100 dark:border-gray-600'}`}>
+                                        pH {ph.toFixed(1)}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-bold mb-1 dark:text-gray-200">Bio / Description</label>
+                            <textarea rows={3} value={formData.bio} onChange={e => setFormData({...formData, bio: e.target.value})} className="w-full p-3 bg-gray-50 dark:bg-gray-700 border-none rounded-xl dark:text-white" placeholder="Describe the business..." />
+                        </div>
+                    </div>
+
+                    <div className="flex gap-4 pt-4 border-t dark:border-gray-700 sticky bottom-0 bg-white dark:bg-gray-800">
+                        <button type="button" onClick={onClose} className="flex-1 py-4 font-bold text-gray-500 bg-gray-100 dark:bg-gray-700 rounded-2xl hover:bg-gray-200 transition">Cancel</button>
+                        <button type="submit" disabled={isSaving} className="flex-[2] py-4 font-extrabold text-white bg-amber-500 rounded-2xl shadow-lg shadow-amber-200 dark:shadow-none hover:bg-amber-600 transition flex items-center justify-center gap-2">
+                            {isSaving ? <SpinnerIcon className="w-5 h-5 animate-spin" /> : <CheckCircleIcon className="w-5 h-5" />}
+                            Register Partner
+                        </button>
+                    </div>
+                </form>
+             </div>
+        </div>
+    );
 };
 
 const ConfirmationModal: React.FC<{ isOpen: boolean; title: string; message: string; onConfirm: () => void; onCancel: () => void; confirmText?: string; isDestructive?: boolean }> = ({ isOpen, title, message, onConfirm, onCancel, confirmText = "Confirm", isDestructive = false }) => {
@@ -151,7 +287,7 @@ const UserDetailModal: React.FC<UserDetailModalProps> = ({ user, onClose, onUpda
         setActionToConfirm(() => () => handleAction('deleted', () => api.deleteUser(user.id)).then(() => onClose()));
     };
 
-    const categories: BusinessCategory[] = ['Cafe', 'Clinic', 'Gym', 'Spa', 'Yoga Studio', 'Other'];
+    const categories: BusinessCategory[] = ['Organic Cafe', 'Health Clinic', 'Fitness Center', 'Day Spa', 'Yoga Studio', 'Holistic Center', 'Other'];
 
     return (
         <>
@@ -305,6 +441,7 @@ export default function AdminPage() {
     const [userFilter, setUserFilter] = useState<'all' | 'pending' | 'verified' | 'blocked' | 'partners'>('all');
     const [userSearchQuery, setUserSearchQuery] = useState('');
     const [selectedUser, setSelectedUser] = useState<User | null>(null);
+    const [isCreatePartnerModalOpen, setIsCreatePartnerModalOpen] = useState(false);
 
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage, setItemsPerPage] = useState(10);
@@ -389,6 +526,17 @@ export default function AdminPage() {
 
             {loading ? renderLoading() : (
                 <div className="p-4 md:p-6 space-y-6">
+                    {/* Actions */}
+                    <section>
+                         <button 
+                            onClick={() => setIsCreatePartnerModalOpen(true)}
+                            className="w-full flex items-center justify-center gap-3 py-4 bg-amber-500 text-white rounded-2xl font-extrabold shadow-lg shadow-amber-200 dark:shadow-none hover:bg-amber-600 transition active:scale-95"
+                         >
+                            <SparklesIcon className="w-6 h-6" />
+                            Register New Wellness Partner
+                         </button>
+                    </section>
+
                     {/* Key Metrics */}
                     <section>
                         <h2 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-3">Key Metrics</h2>
@@ -504,16 +652,18 @@ export default function AdminPage() {
                     user={selectedUser}
                     onClose={() => setSelectedUser(null)}
                     onUpdate={async () => {
-                        // Do not clear selected user here immediately to avoid UI jank, 
-                        // the detail modal itself handles its own state updates via api call,
-                        // but we refresh the main list.
                         await fetchData();
-                        // Re-fetch the selected user data to update the modal content if it's still open
                         const updatedUser = await api.getUserById(selectedUser.id);
                         if (updatedUser) setSelectedUser(updatedUser);
                     }}
                 />
             )}
+
+            <CreatePartnerModal 
+                isOpen={isCreatePartnerModalOpen}
+                onClose={() => setIsCreatePartnerModalOpen(false)}
+                onCreated={fetchData}
+            />
         </div>
     );
 }
