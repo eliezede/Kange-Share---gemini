@@ -1,11 +1,11 @@
 
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import * as api from '../api';
-import { User, WaterRequest, Review } from '../types';
-import { useAuth } from '../App';
-import { StarIcon, SpinnerIcon, ChevronLeftIcon } from '../components/Icons';
-import { useToast } from '../hooks/useToast';
+import * as api from '../api.ts';
+import { User, WaterRequest, Review } from '../types.ts';
+import { useAuth } from '../App.tsx';
+import { StarIcon, SpinnerIcon, ChevronLeftIcon } from '../components/Icons.tsx';
+import { useToast } from '../hooks/useToast.tsx';
 
 export default function RateHostPage() {
   const { requestId } = useParams<{ requestId: string }>();

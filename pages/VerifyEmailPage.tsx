@@ -1,6 +1,7 @@
+
 import React from 'react';
 import { useNavigate, useLocation, Navigate } from 'react-router-dom';
-import { EnvelopeIcon, ChevronRightIcon } from '../components/Icons';
+import { EnvelopeIcon, ChevronRightIcon } from '../components/Icons.tsx';
 
 export default function VerifyEmailPage() {
     const navigate = useNavigate();

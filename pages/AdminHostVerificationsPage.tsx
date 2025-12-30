@@ -1,10 +1,11 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import * as api from '../api';
-import { User } from '../types';
-import { useToast } from '../hooks/useToast';
-import { useAuth } from '../App';
-import { ChevronLeftIcon, SpinnerIcon, DocumentTextIcon, CheckCircleIcon, XCircleIcon } from '../components/Icons';
+import * as api from '../api.ts';
+import { User } from '../types.ts';
+import { useToast } from '../hooks/useToast.tsx';
+import { useAuth } from '../App.tsx';
+import { ChevronLeftIcon, SpinnerIcon, DocumentTextIcon, CheckCircleIcon, XCircleIcon } from '../components/Icons.tsx';
 
 // Sub-component for each user card
 const VerificationCard: React.FC<{
@@ -170,29 +171,4 @@ export default function AdminHostVerificationsPage() {
             </header>
             
             <main className="p-4 md:p-6">
-                {loading ? (
-                    <div className="flex justify-center items-center h-64">
-                        <SpinnerIcon className="w-10 h-10 text-brand-blue animate-spin" />
-                    </div>
-                ) : pendingUsers.length > 0 ? (
-                    <div className="space-y-4">
-                        {pendingUsers.map(user => (
-                            <VerificationCard 
-                                key={user.id} 
-                                user={user} 
-                                onApprove={handleApprove}
-                                onReject={handleReject}
-                            />
-                        ))}
-                    </div>
-                ) : (
-                    <div className="text-center p-8 bg-white dark:bg-gray-800 rounded-xl">
-                        <CheckCircleIcon className="w-12 h-12 mx-auto mb-4 text-green-500" />
-                        <h2 className="text-lg font-semibold text-gray-700 dark:text-gray-200">All caught up!</h2>
-                        <p className="text-gray-500 dark:text-gray-400">There are no pending distributor verifications.</p>
-                    </div>
-                )}
-            </main>
-        </div>
-    );
-}
+                {loading

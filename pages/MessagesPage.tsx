@@ -1,9 +1,10 @@
+
 import React, { useMemo, useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import * as api from '../api';
-import { WaterRequest, User } from '../types';
-import { SpinnerIcon } from '../components/Icons';
-import { useAuth } from '../App';
+import * as api from '../api.ts';
+import { WaterRequest, User } from '../types.ts';
+import { SpinnerIcon } from '../components/Icons.tsx';
+import { useAuth } from '../App.tsx';
 
 const ChatPreviewCard: React.FC<{ request: WaterRequest }> = ({ request }) => {
     const { userData: currentUser } = useAuth();

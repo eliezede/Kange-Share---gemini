@@ -2,36 +2,34 @@
 import React, { useState, useContext, createContext, useCallback, useEffect, useMemo, Suspense, lazy } from 'react';
 import { HashRouter, Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom';
 import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
-import { auth } from './firebase';
-import * as api from './api';
-import { User, Notification } from './types';
-import { SpinnerIcon } from './components/Icons';
-import Header from './components/Header';
-import BottomNav from './components/BottomNav';
-import { ToastProvider } from './hooks/useToast';
-import { ToastContainer } from './components/Toast';
-import { LanguageProvider } from './contexts/LanguageContext';
-import LoginModal from './pages/LoginPage'; 
-import LandingPage from './pages/LandingPage'; 
+import { auth } from './firebase.ts';
+import * as api from './api.ts';
+import { User, Notification } from './types.ts';
+import { SpinnerIcon } from './components/Icons.tsx';
+import Header from './components/Header.tsx';
+import BottomNav from './components/BottomNav.tsx';
+import { ToastProvider } from './hooks/useToast.tsx';
+import { ToastContainer } from './components/Toast.tsx';
+import LoginModal from './pages/LoginPage.tsx'; 
+import LandingPage from './pages/LandingPage.tsx'; 
 
-// Lazy load non-critical pages
-const MapPage = lazy(() => import('./pages/MapPage'));
-const HostProfilePage = lazy(() => import('./pages/HostProfilePage'));
-const RequestWaterPage = lazy(() => import('./pages/RequestWaterPage'));
-const ChatPage = lazy(() => import('./pages/ChatPage'));
-const RateHostPage = lazy(() => import('./pages/RateHostPage'));
-const UserProfilePage = lazy(() => import('./pages/UserProfilePage'));
-const UserDashboardPage = lazy(() => import('./pages/UserDashboardPage'));
-const RequestsPage = lazy(() => import('./pages/RequestsPage'));
-const RequestDetailPage = lazy(() => import('./pages/RequestDetailPage'));
-const MessagesPage = lazy(() => import('./pages/MessagesPage'));
-const FollowListPage = lazy(() => import('./pages/FollowListPage'));
-const AdminPage = lazy(() => import('./pages/AdminPage'));
-const SignUpPage = lazy(() => import('./pages/SignUpPage'));
-const OnboardingPage = lazy(() => import('./pages/OnboardingPage'));
-const BecomeDistributorPage = lazy(() => import('./pages/BecomeDistributorPage'));
-const SettingsPage = lazy(() => import('./pages/SettingsPage'));
-const AdminHostVerificationsPage = lazy(() => import('./pages/AdminHostVerificationsPage'));
+const MapPage = lazy(() => import('./pages/MapPage.tsx'));
+const HostProfilePage = lazy(() => import('./pages/HostProfilePage.tsx'));
+const RequestWaterPage = lazy(() => import('./pages/RequestWaterPage.tsx'));
+const ChatPage = lazy(() => import('./pages/ChatPage.tsx'));
+const RateHostPage = lazy(() => import('./pages/RateHostPage.tsx'));
+const UserProfilePage = lazy(() => import('./pages/UserProfilePage.tsx'));
+const UserDashboardPage = lazy(() => import('./pages/UserDashboardPage.tsx'));
+const RequestsPage = lazy(() => import('./pages/RequestsPage.tsx'));
+const RequestDetailPage = lazy(() => import('./pages/RequestDetailPage.tsx'));
+const MessagesPage = lazy(() => import('./pages/MessagesPage.tsx'));
+const FollowListPage = lazy(() => import('./pages/FollowListPage.tsx'));
+const AdminPage = lazy(() => import('./pages/AdminPage.tsx'));
+const SignUpPage = lazy(() => import('./pages/SignUpPage.tsx'));
+const OnboardingPage = lazy(() => import('./pages/OnboardingPage.tsx'));
+const BecomeDistributorPage = lazy(() => import('./pages/BecomeDistributorPage.tsx'));
+const SettingsPage = lazy(() => import('./pages/SettingsPage.tsx'));
+const AdminHostVerificationsPage = lazy(() => import('./pages/AdminHostVerificationsPage.tsx'));
 
 type Theme = 'light' | 'dark';
 
@@ -44,9 +42,7 @@ const ThemeContext = createContext<ThemeContextType | null>(null);
 
 export const useTheme = () => {
     const context = useContext(ThemeContext);
-    if (!context) {
-        throw new Error('useTheme must be used within a ThemeProvider');
-    }
+    if (!context) throw new Error('useTheme must be used within a ThemeProvider');
     return context;
 };
 
@@ -54,9 +50,7 @@ const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) =>
     const [theme, setTheme] = useState<Theme>(() => {
         if (typeof window !== 'undefined' && window.localStorage) {
             const storedTheme = localStorage.getItem('theme');
-            if (storedTheme) {
-                return storedTheme as Theme;
-            }
+            if (storedTheme) return storedTheme as Theme;
             return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
         }
         return 'light';
@@ -64,11 +58,8 @@ const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) =>
 
     useEffect(() => {
         const root = window.document.documentElement;
-        if (theme === 'dark') {
-            root.classList.add('dark');
-        } else {
-            root.classList.remove('dark');
-        }
+        if (theme === 'dark') root.classList.add('dark');
+        else root.classList.remove('dark');
         localStorage.setItem('theme', theme);
     }, [theme]);
 
@@ -106,9 +97,7 @@ const AuthContext = createContext<AuthContextType | null>(null);
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
+  if (!context) throw new Error('useAuth must be used within an AuthProvider');
   return context;
 };
 
@@ -182,29 +171,15 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
   const closeLoginModal = useCallback(() => setLoginModalOpen(false), []);
 
   const value: AuthContextType = {
-    user,
-    userData,
-    isAuthenticated: !!user,
-    isLoginModalOpen,
-    loading,
+    user, userData, isAuthenticated: !!user, isLoginModalOpen, loading,
     loginWithEmail: (email, password) => api.loginWithEmail(email, password).then(res => { closeLoginModal(); return res; }),
     loginWithGoogle: () => api.loginWithGoogle().then(res => { closeLoginModal(); return res; }),
     signUpWithEmail: api.signUpWithEmail,
     logout: api.logout,
-    openLoginModal,
-    closeLoginModal,
-    setUserData,
-    notifications,
-    unreadCount,
-    pendingHostRequestCount,
-    unreadMessagesCount,
+    openLoginModal, closeLoginModal, setUserData, notifications, unreadCount, pendingHostRequestCount, unreadMessagesCount,
   };
 
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
 const LoadingFallback = () => (
@@ -300,7 +275,7 @@ const AppContent = () => {
     const { isLoginModalOpen, closeLoginModal } = useAuth();
     return (
         <HashRouter>
-            <div className="max-w-4xl mx-auto bg-white dark:bg-gray-900 h-full overflow-hidden relative shadow-2xl shadow-gray-300/20 dark:shadow-black/20">
+            <div className="max-w-4xl mx-auto bg-white dark:bg-gray-900 h-full overflow-hidden relative shadow-2xl">
                 <LoginModal isOpen={isLoginModalOpen} onClose={closeLoginModal} />
                 <AppRoutes />
                 <ToastContainer />
@@ -311,14 +286,12 @@ const AppContent = () => {
 
 export default function App() {
   return (
-    <LanguageProvider>
-        <ThemeProvider>
+    <ThemeProvider>
         <ToastProvider>
             <AuthProvider>
                 <AppContent />
             </AuthProvider>
         </ToastProvider>
-        </ThemeProvider>
-    </LanguageProvider>
+    </ThemeProvider>
   );
 }

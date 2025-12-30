@@ -1,7 +1,8 @@
+
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useAuth } from '../App';
-import { GoogleIcon, EnvelopeIcon, XMarkIcon, SpinnerIcon } from '../components/Icons';
+import { useAuth } from '../App.tsx';
+import { GoogleIcon, EnvelopeIcon, XMarkIcon, SpinnerIcon } from '../components/Icons.tsx';
 
 export default function LoginModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const { loginWithEmail, loginWithGoogle } = useAuth();

@@ -1,11 +1,11 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import * as api from '../api';
-import { User, DistributorVerificationStatus, DistributorProofDocument } from '../types';
-import { ChevronLeftIcon, CameraIcon, ArrowLeftOnRectangleIcon, TrashIcon, ShieldCheckIcon, SpinnerIcon, SunIcon, MoonIcon, ProfilePicture, VideoCameraIcon, ArrowUpTrayIcon, DocumentTextIcon, CheckCircleIcon, ShieldExclamationIcon, CurrentLocationIcon, SearchIcon } from '../components/Icons';
-import { useAuth, useTheme } from '../App';
-import { useToast } from '../hooks/useToast';
+import * as api from '../api.ts';
+import { User, DistributorVerificationStatus, DistributorProofDocument } from '../types.ts';
+import { ChevronLeftIcon, CameraIcon, ArrowLeftOnRectangleIcon, TrashIcon, ShieldCheckIcon, SpinnerIcon, SunIcon, MoonIcon, ProfilePicture, VideoCameraIcon, ArrowUpTrayIcon, DocumentTextIcon, CheckCircleIcon, ShieldExclamationIcon, CurrentLocationIcon, SearchIcon } from '../components/Icons.tsx';
+import { useAuth, useTheme } from '../App.tsx';
+import { useToast } from '../hooks/useToast.tsx';
 
 const PhotoSourceModal: React.FC<{
     isOpen: boolean;

@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState } from 'react';
-import { useToast, ToastType } from '../hooks/useToast';
-import { CheckCircleIcon, XCircleIcon, InformationCircleIcon, ExclamationTriangleIcon } from './Icons';
+import { useToast, ToastType } from '../hooks/useToast.tsx';
+import { CheckCircleIcon, XCircleIcon, InformationCircleIcon, ExclamationTriangleIcon } from './Icons.tsx';
 
 interface ToastMessageProps {
   id: number;

@@ -1,9 +1,10 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import * as api from '../api';
-import { User } from '../types';
-import { ChevronLeftIcon, SpinnerIcon } from '../components/Icons';
-import { useAuth } from '../App';
+import * as api from '../api.ts';
+import { User } from '../types.ts';
+import { ChevronLeftIcon, SpinnerIcon } from '../components/Icons.tsx';
+import { useAuth } from '../App.tsx';
 
 interface UserCardProps {
     user: User;

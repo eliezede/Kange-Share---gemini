@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import * as api from '../api';
+import * as api from '../api.ts';
 import {
     ChevronLeftIcon,
     ChevronRightIcon,
@@ -29,10 +29,10 @@ import {
     FacebookIcon,
     LinkedInIcon,
     Cog6ToothIcon
-} from '../components/Icons';
-import { useToast } from '../hooks/useToast';
-import { useAuth } from '../App';
-import { User, WaterRequest, RequestStatus, BusinessCategory } from '../types';
+} from '../components/Icons.tsx';
+import { useToast } from '../hooks/useToast.tsx';
+import { useAuth } from '../App.tsx';
+import { User, WaterRequest, RequestStatus, BusinessCategory } from '../types.ts';
 
 const MetricCard: React.FC<{ icon: React.ReactNode; label: string; value: number | string }> = ({ icon, label, value }) => (
     <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 flex items-center gap-4">
@@ -82,8 +82,6 @@ const UserStatusBadge: React.FC<{ user: User }> = ({ user }) => {
             return <span className="px-2.5 py-0.5 text-xs font-semibold rounded-full bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200">User</span>;
     }
 };
-
-// --- Form Modal for Creating/Editing Partners ---
 
 interface PartnerFormModalProps {
     isOpen: boolean;
@@ -171,6 +169,18 @@ const PartnerFormModal: React.FC<PartnerFormModalProps> = ({ isOpen, onClose, on
         e.preventDefault();
         setIsSaving(true);
         try {
+            // Geocoding Step: Attempt to find real coordinates for the business address
+            const searchStr = `${formData.address.street}, ${formData.address.city}, ${formData.address.country}`;
+            const geoResults = await api.searchAddress(searchStr);
+            let finalCoordinates = editUser?.address?.coordinates;
+            
+            if (geoResults && geoResults.length > 0) {
+                finalCoordinates = {
+                    lat: parseFloat(geoResults[0].lat),
+                    lng: parseFloat(geoResults[0].lon)
+                };
+            }
+
             let profilePictureUrl = photoPreview || `https://ui-avatars.com/api/?name=${encodeURIComponent(formData.displayName)}&background=random`;
             
             if (photoFile) {
@@ -178,20 +188,25 @@ const PartnerFormModal: React.FC<PartnerFormModalProps> = ({ isOpen, onClose, on
                 profilePictureUrl = await api.uploadProfilePicture(targetId, photoFile);
             }
 
+            const dataToSave = {
+                ...formData,
+                profilePicture: profilePictureUrl,
+                address: {
+                    ...formData.address,
+                    coordinates: finalCoordinates
+                }
+            };
+
             if (editUser) {
-                // Update existing
                 await api.updateUser(editUser.id, {
-                    ...formData,
-                    profilePicture: profilePictureUrl,
+                    ...dataToSave,
                     displayName: formData.displayName,
                     firstName: formData.displayName,
                 });
                 showToast("Wellness Partner updated!", "success");
             } else {
-                // Create new
                 await api.createWellnessPartner({
-                    ...formData,
-                    profilePicture: profilePictureUrl,
+                    ...dataToSave,
                     businessAmenities: []
                 });
                 showToast("Wellness Partner registered!", "success");
@@ -247,7 +262,6 @@ const PartnerFormModal: React.FC<PartnerFormModalProps> = ({ isOpen, onClose, on
                         <p className="text-[10px] font-bold text-gray-500 uppercase tracking-[0.2em] mt-3">Establishment Image</p>
                     </div>
 
-                    {/* Section: Basic & Location */}
                     <div className="grid md:grid-cols-2 gap-12">
                         <div className="space-y-6">
                             <h4 className="font-black text-amber-500 text-[10px] uppercase tracking-[0.3em]">Business Identity</h4>
@@ -290,7 +304,6 @@ const PartnerFormModal: React.FC<PartnerFormModalProps> = ({ isOpen, onClose, on
                         </div>
                     </div>
 
-                    {/* Section: Contact & Socials */}
                     <div className="space-y-6 pt-4 border-t border-gray-700">
                         <h4 className="font-black text-amber-500 text-[10px] uppercase tracking-[0.3em]">Connectivity & Channels</h4>
                         <div className="grid md:grid-cols-2 gap-6">
@@ -303,23 +316,8 @@ const PartnerFormModal: React.FC<PartnerFormModalProps> = ({ isOpen, onClose, on
                                 <input value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} className="w-full pl-12 pr-4 py-4 bg-gray-800/50 border border-gray-700 rounded-2xl text-white outline-none focus:ring-2 focus:ring-amber-500/50 transition" placeholder="Contact Phone" />
                             </div>
                         </div>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                             <div className="relative group">
-                                <InstagramIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 group-focus-within:text-amber-500 transition-colors" />
-                                <input value={formData.instagram} onChange={e => setFormData({...formData, instagram: e.target.value})} className="w-full pl-12 pr-4 py-4 bg-gray-800/50 border border-gray-700 rounded-2xl text-white outline-none focus:ring-2 focus:ring-amber-500/50 transition" placeholder="Instagram URL" />
-                            </div>
-                             <div className="relative group">
-                                <FacebookIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 group-focus-within:text-amber-500 transition-colors" />
-                                <input value={formData.facebook} onChange={e => setFormData({...formData, facebook: e.target.value})} className="w-full pl-12 pr-4 py-4 bg-gray-800/50 border border-gray-700 rounded-2xl text-white outline-none focus:ring-2 focus:ring-amber-500/50 transition" placeholder="Facebook URL" />
-                            </div>
-                             <div className="relative group">
-                                <LinkedInIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 group-focus-within:text-amber-500 transition-colors" />
-                                <input value={formData.linkedin} onChange={e => setFormData({...formData, linkedin: e.target.value})} className="w-full pl-12 pr-4 py-4 bg-gray-800/50 border border-gray-700 rounded-2xl text-white outline-none focus:ring-2 focus:ring-amber-500/50 transition" placeholder="LinkedIn URL" />
-                            </div>
-                        </div>
                     </div>
 
-                    {/* Section: Water & Bio */}
                     <div className="space-y-6 pt-4 border-t border-gray-700">
                         <h4 className="font-black text-amber-500 text-[10px] uppercase tracking-[0.3em]">Water & Story</h4>
                         <div>
@@ -367,8 +365,6 @@ const ConfirmationModal: React.FC<{ isOpen: boolean; title: string; message: str
     );
 };
 
-// --- User Detail Modal ---
-
 interface UserDetailModalProps {
     user: User;
     onClose: () => void;
@@ -379,10 +375,8 @@ interface UserDetailModalProps {
 const UserDetailModal: React.FC<UserDetailModalProps> = ({ user, onClose, onUpdate, onEditPartner }) => {
     const [isProcessing, setIsProcessing] = useState<string | null>(null);
     const [selectedCategory, setSelectedCategory] = useState<BusinessCategory>(user.businessCategory || 'Other');
-    
     const [actionToConfirm, setActionToConfirm] = useState<(() => void) | null>(null);
     const [confirmationDetails, setConfirmationDetails] = useState({ title: '', message: '', confirmText: 'Confirm', isDestructive: false });
-    const { userData: adminUser } = useAuth();
     const { showToast } = useToast();
 
     const handleAction = async (action: string, apiCall: () => Promise<void>) => {
@@ -399,7 +393,7 @@ const UserDetailModal: React.FC<UserDetailModalProps> = ({ user, onClose, onUpda
         }
     };
     
-    const handlePartnerToggle = () => handleAction(user.isBusiness ? 'demoted from partner' : 'promoted to partner', () => api.updateUser(user.id, { isBusiness: !user.isBusiness, businessCategory: selectedCategory }));
+    const handlePartnerToggle = () => handleAction(user.isBusiness ? 'demoted' : 'promoted', () => api.updateUser(user.id, { isBusiness: !user.isBusiness, businessCategory: selectedCategory }));
     const handleBlockToggle = () => handleAction(user.isBlocked ? 'unblocked' : 'blocked', () => api.updateUserBlockStatus(user.id, !user.isBlocked));
     const handleDelete = () => {
         setConfirmationDetails({ title: "Delete User", message: `Are you sure you want to permanently delete ${user.displayName}?`, confirmText: 'Delete', isDestructive: true });
@@ -418,7 +412,6 @@ const UserDetailModal: React.FC<UserDetailModalProps> = ({ user, onClose, onUpda
                         <XMarkIcon className="w-6 h-6 text-gray-600 dark:text-gray-300" />
                     </button>
                 </header>
-                
                 <main className="p-8 space-y-8 overflow-y-auto no-scrollbar">
                     <div className="flex items-center gap-6">
                         <img src={user.profilePicture} alt={user.displayName} className="w-24 h-24 rounded-full object-cover shadow-lg border-4 border-gray-50 dark:border-gray-700" />
@@ -428,120 +421,44 @@ const UserDetailModal: React.FC<UserDetailModalProps> = ({ user, onClose, onUpda
                             <div className="mt-2"><UserStatusBadge user={user} /></div>
                         </div>
                         {user.isBusiness && (
-                            <button 
-                                onClick={() => { onClose(); onEditPartner(user); }}
-                                className="p-3 bg-gray-100 dark:bg-gray-700 rounded-2xl hover:bg-amber-500 hover:text-white transition-all text-gray-600 dark:text-gray-300"
-                            >
+                            <button onClick={() => { onClose(); onEditPartner(user); }} className="p-3 bg-gray-100 dark:bg-gray-700 rounded-2xl hover:bg-amber-500 hover:text-white transition-all">
                                 <Cog6ToothIcon className="w-6 h-6" />
                             </button>
                         )}
                     </div>
-                    
-                    {/* Wellness Partner Section */}
                     <div className="bg-amber-50 dark:bg-amber-900/20 p-6 rounded-3xl border border-amber-100 dark:border-amber-800 space-y-6">
                         <div className="flex items-center gap-3">
-                            <div className="bg-amber-500 p-2 rounded-xl text-white">
-                                <BuildingStorefrontIcon className="w-6 h-6" />
-                            </div>
+                            <div className="bg-amber-500 p-2 rounded-xl text-white"><BuildingStorefrontIcon className="w-6 h-6" /></div>
                             <h4 className="font-black text-amber-800 dark:text-amber-200 uppercase tracking-widest text-sm">Wellness Partner Status</h4>
                         </div>
-                        
                         <div className="space-y-4">
-                            <div>
-                                <label className="block text-[10px] font-black text-amber-700 dark:text-amber-300 uppercase tracking-[0.2em] mb-2">Category Assignment</label>
-                                <select 
-                                    value={selectedCategory}
-                                    onChange={(e) => setSelectedCategory(e.target.value as BusinessCategory)}
-                                    className="w-full p-3.5 text-sm bg-white dark:bg-gray-800 border border-amber-200 dark:border-amber-700 rounded-xl outline-none focus:ring-2 focus:ring-amber-500 shadow-sm"
-                                >
-                                    {categories.map(c => <option key={c} value={c}>{c}</option>)}
-                                </select>
-                            </div>
-                            
-                            <button 
-                                onClick={handlePartnerToggle}
-                                disabled={!!isProcessing}
-                                className={`w-full py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-md flex items-center justify-center gap-3 ${user.isBusiness ? 'bg-white dark:bg-gray-800 text-amber-600 border border-amber-200 dark:border-amber-700' : 'bg-amber-500 text-white'}`}
-                            >
+                            <select value={selectedCategory} onChange={(e) => setSelectedCategory(e.target.value as BusinessCategory)} className="w-full p-3.5 text-sm bg-white dark:bg-gray-800 border border-amber-200 dark:border-amber-700 rounded-xl outline-none">
+                                {categories.map(c => <option key={c} value={c}>{c}</option>)}
+                            </select>
+                            <button onClick={handlePartnerToggle} disabled={!!isProcessing} className={`w-full py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-md flex items-center justify-center gap-3 ${user.isBusiness ? 'bg-white dark:bg-gray-800 text-amber-600' : 'bg-amber-500 text-white'}`}>
                                 {isProcessing?.includes('partner') ? <SpinnerIcon className="w-4 h-4 animate-spin"/> : <SparklesIcon className="w-4 h-4" />}
                                 {user.isBusiness ? 'Demote from Partner' : 'Promote to Wellness Partner'}
                             </button>
                         </div>
                     </div>
-
-                    {/* Contact & Location Details */}
                     <div className="grid md:grid-cols-2 gap-8">
                         <div className="space-y-5">
                             <h4 className="font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest text-[10px]">Contact Info</h4>
-                            <div className="flex items-center gap-3 text-sm text-gray-700 dark:text-gray-300">
-                                <EnvelopeIcon className="w-5 h-5 text-gray-400" />
-                                <span className="font-bold">{user.email}</span>
-                            </div>
-                            <div className="flex items-center gap-3 text-sm text-gray-700 dark:text-gray-300">
-                                <DevicePhoneMobileIcon className="w-5 h-5 text-gray-400" />
-                                <span className="font-bold">{user.phone || 'No phone provided'}</span>
-                            </div>
+                            <div className="flex items-center gap-3 text-sm font-bold"><EnvelopeIcon className="w-5 h-5 text-gray-400" />{user.email}</div>
+                            <div className="flex items-center gap-3 text-sm font-bold"><DevicePhoneMobileIcon className="w-5 h-5 text-gray-400" />{user.phone || 'No phone'}</div>
                         </div>
                          <div className="space-y-5">
-                            <h4 className="font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest text-[10px]">Primary Location</h4>
-                            <div className="flex items-center gap-3 text-sm text-gray-700 dark:text-gray-300">
-                                <MapPinIcon className="w-5 h-5 text-gray-400" />
-                                <span className="font-bold">{user.address.city}, {user.address.country}</span>
-                            </div>
-                            {user.address.postalCode && (
-                                <div className="flex items-center gap-3 text-sm text-gray-700 dark:text-gray-300">
-                                    <div className="w-5 h-5" />
-                                    <span className="font-bold uppercase">{user.address.postalCode}</span>
-                                </div>
-                            )}
+                            <h4 className="font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest text-[10px]">Location</h4>
+                            <div className="flex items-center gap-3 text-sm font-bold"><MapPinIcon className="w-5 h-5 text-gray-400" />{user.address.city}, {user.address.country}</div>
                         </div>
-                    </div>
-
-                    {/* Verification & Risk */}
-                    <div className="bg-gray-50 dark:bg-gray-900/50 p-6 rounded-3xl border border-gray-100 dark:border-gray-700 space-y-6">
-                         <div className="flex items-center gap-3">
-                            <div className="bg-gray-800 p-2 rounded-xl text-white">
-                                <ShieldCheckIcon className="w-6 h-6" />
-                            </div>
-                            <h4 className="font-black text-gray-700 dark:text-gray-200 uppercase tracking-widest text-sm">Security & Verification</h4>
-                        </div>
-
-                         <div className="flex items-center justify-between">
-                            <div className="flex flex-col">
-                                <span className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-1">Account Blocking</span>
-                                <span className="text-sm font-medium dark:text-gray-300">{user.isBlocked ? 'This account is restricted' : 'Account is in good standing'}</span>
-                            </div>
-                             <button onClick={handleBlockToggle} disabled={!!isProcessing} className={`font-black text-[10px] uppercase tracking-widest px-6 py-2.5 rounded-xl transition shadow-sm ${user.isBlocked ? 'bg-gray-200 text-gray-800' : 'bg-red-500 text-white hover:bg-red-600'}`}>
-                                {isProcessing?.includes('block') ? <SpinnerIcon className="w-4 h-4 animate-spin"/> : (user.isBlocked ? 'Unblock Account' : 'Block Account')}
-                            </button>
-                         </div>
-
-                         <div className="h-px bg-gray-200 dark:bg-gray-700"></div>
-
-                         <div className="flex items-center justify-between">
-                            <div className="flex flex-col">
-                                <span className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-1">Permanent Removal</span>
-                                <span className="text-sm font-medium dark:text-gray-300">Remove all data associated with user</span>
-                            </div>
-                            <button onClick={handleDelete} disabled={!!isProcessing} className="font-black text-[10px] uppercase tracking-widest px-6 py-2.5 rounded-xl transition bg-gray-800 text-white hover:bg-black">
-                                {isProcessing === 'deleted' ? <SpinnerIcon className="w-4 h-4 animate-spin"/> : 'Delete User'}
-                            </button>
-                         </div>
                     </div>
                 </main>
             </div>
         </div>
-        <ConfirmationModal 
-            isOpen={!!actionToConfirm}
-            onCancel={() => setActionToConfirm(null)}
-            onConfirm={() => { if(actionToConfirm) actionToConfirm(); setActionToConfirm(null); }}
-            {...confirmationDetails}
-        />
+        <ConfirmationModal isOpen={!!actionToConfirm} onCancel={() => setActionToConfirm(null)} onConfirm={() => { if(actionToConfirm) actionToConfirm(); setActionToConfirm(null); }} {...confirmationDetails} />
         </>
     );
 };
-
-// --- Main Admin Dashboard ---
 
 export default function AdminPage() {
     const navigate = useNavigate();
@@ -553,9 +470,6 @@ export default function AdminPage() {
     const [selectedUser, setSelectedUser] = useState<User | null>(null);
     const [isPartnerFormOpen, setIsPartnerFormOpen] = useState(false);
     const [partnerToEdit, setPartnerToEdit] = useState<User | null>(null);
-
-    const [currentPage, setCurrentPage] = useState(1);
-    const [itemsPerPage, setItemsPerPage] = useState(10);
 
     const fetchData = async () => {
         setLoading(true);
@@ -572,19 +486,6 @@ export default function AdminPage() {
     
     useEffect(() => { fetchData(); }, []);
     
-    const metrics = useMemo(() => {
-        const verifiedHosts = users.filter(u => u.distributorVerificationStatus === 'approved');
-        const wellnessPartners = users.filter(u => u.isBusiness);
-        return {
-            totalUsers: users.length,
-            totalRequests: requests.filter(r => r.status !== 'chatting').length,
-            verifiedHosts: verifiedHosts.length,
-            wellnessPartners: wellnessPartners.length,
-            pendingRequests: requests.filter(r => r.status === 'pending').length,
-            pendingVerifications: users.filter(u => u.distributorVerificationStatus === 'pending').length,
-        };
-    }, [users, requests]);
-
     const filteredUsers = useMemo(() => {
         return users
             .filter(user => {
@@ -602,22 +503,10 @@ export default function AdminPage() {
             });
     }, [users, userFilter, userSearchQuery]);
 
-    const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
-    const paginatedUsers = useMemo(() => filteredUsers.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage), [filteredUsers, currentPage, itemsPerPage]);
-
-    const recentRequests = useMemo(() => {
-        return requests
-            .filter(r => r.status !== 'chatting')
-            .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-            .slice(0, 5);
-    }, [requests]);
-    
     return (
         <div className="bg-gray-50 dark:bg-gray-900 min-h-screen pb-6">
             <header className="p-4 flex items-center border-b border-gray-200 dark:border-gray-700 sticky top-0 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm z-10">
-                <button onClick={() => navigate('/profile')} className="p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800">
-                    <ChevronLeftIcon className="w-6 h-6 text-gray-800 dark:text-gray-200" />
-                </button>
+                <button onClick={() => navigate('/profile')} className="p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800"><ChevronLeftIcon className="w-6 h-6 text-gray-800 dark:text-gray-200" /></button>
                 <h1 className="text-xl font-black text-center dark:text-gray-100 uppercase tracking-widest flex-1">Admin HQ</h1>
                 <div className="w-6"></div>
             </header>
@@ -627,132 +516,41 @@ export default function AdminPage() {
             ) : (
                 <div className="p-4 md:p-8 space-y-10">
                     <section>
-                         <button 
-                            onClick={() => { setPartnerToEdit(null); setIsPartnerFormOpen(true); }}
-                            className="w-full flex items-center justify-center gap-4 py-5 bg-amber-500 text-white rounded-3xl font-black uppercase tracking-widest shadow-xl shadow-amber-500/20 hover:bg-amber-600 transition-all active:scale-[0.98]"
-                         >
-                            <SparklesIcon className="w-7 h-7" />
-                            Register New Wellness Partner
+                         <button onClick={() => { setPartnerToEdit(null); setIsPartnerFormOpen(true); }} className="w-full flex items-center justify-center gap-4 py-5 bg-amber-500 text-white rounded-3xl font-black uppercase tracking-widest shadow-xl">
+                            <SparklesIcon className="w-7 h-7" />Register New Wellness Partner
                          </button>
                     </section>
 
                     <section>
-                        <h2 className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.3em] mb-4">Core Intelligence</h2>
-                        <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            <MetricCard icon={<UserGroupIcon className="w-6 h-6 text-brand-blue" />} label="Total Network" value={metrics.totalUsers} />
-                            <MetricCard icon={<CheckBadgeIcon className="w-6 h-6 text-brand-blue" />} label="Verified Hosts" value={metrics.verifiedHosts} />
-                            <MetricCard icon={<SparklesIcon className="w-6 h-6 text-amber-500" />} label="Wellness Hubs" value={metrics.wellnessPartners} />
-                            <Link to="/admin/distributor-verifications" className="block h-full">
-                                <div className="bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 flex items-center gap-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors h-full relative overflow-hidden">
-                                    <div className="p-3 bg-orange-100 dark:bg-orange-900/50 rounded-full z-10"><ShieldExclamationIcon className="w-6 h-6 text-orange-500" /></div>
-                                    <div className="z-10">
-                                        <p className="text-2xl font-black text-gray-800 dark:text-gray-100">{metrics.pendingVerifications}</p>
-                                        <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">Pending Approvals</p>
-                                    </div>
-                                    <div className="absolute -right-4 -bottom-4 opacity-5"><ShieldExclamationIcon className="w-24 h-24 text-orange-500" /></div>
-                                </div>
-                            </Link>
-                            <MetricCard icon={<ClipboardDocumentListIcon className="w-6 h-6 text-purple-500" />} label="Liters Requested" value={metrics.totalRequests} />
-                            <MetricCard icon={<ClockIcon className="w-6 h-6 text-yellow-500" />} label="Active Sessions" value={metrics.pendingRequests} />
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                            <MetricCard icon={<UserGroupIcon className="w-6 h-6 text-brand-blue" />} label="Users" value={users.length} />
+                            <MetricCard icon={<SparklesIcon className="w-6 h-6 text-amber-500" />} label="Partners" value={users.filter(u => u.isBusiness).length} />
+                            <Link to="/admin/distributor-verifications"><MetricCard icon={<ShieldExclamationIcon className="w-6 h-6 text-orange-500" />} label="Pending" value={users.filter(u => u.distributorVerificationStatus === 'pending').length} /></Link>
                         </div>
                     </section>
                     
                     <section>
-                        <h2 className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.3em] mb-4">Registry Management</h2>
-                        <div className="bg-white dark:bg-gray-800 p-6 rounded-[2rem] shadow-sm border border-gray-100 dark:border-gray-700 mb-6 flex flex-col md:flex-row gap-6">
-                            <div className="relative flex-1">
-                                <SearchIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                                <input
-                                    type="text" placeholder="Search registry..."
-                                    value={userSearchQuery} onChange={(e) => { setUserSearchQuery(e.target.value); setCurrentPage(1); }}
-                                    className="w-full pl-12 pr-4 py-3.5 bg-gray-50 dark:bg-gray-900/50 rounded-2xl border-none outline-none dark:text-gray-100 text-sm font-medium"
-                                />
-                            </div>
-                            <div className="flex items-center gap-2 p-1.5 bg-gray-100 dark:bg-gray-900 rounded-2xl overflow-x-auto no-scrollbar">
-                                {(['all', 'partners', 'pending', 'verified', 'blocked'] as const).map(f => (
-                                    <button
-                                        key={f} onClick={() => { setUserFilter(f); setCurrentPage(1); }}
-                                        className={`px-5 py-2.5 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all ${userFilter === f ? 'bg-white dark:bg-gray-800 text-brand-blue shadow-md' : 'text-gray-500 hover:text-gray-800 dark:hover:text-gray-200'}`}
-                                    >
-                                        {f}
-                                    </button>
-                                ))}
-                            </div>
+                        <div className="bg-white dark:bg-gray-800 p-4 rounded-[2rem] shadow-sm border border-gray-100 dark:border-gray-700 mb-6 flex gap-4">
+                            <input type="text" placeholder="Search registry..." value={userSearchQuery} onChange={(e) => setUserSearchQuery(e.target.value)} className="flex-1 p-3.5 bg-gray-50 dark:bg-gray-900 rounded-2xl outline-none" />
                         </div>
-
                         <div className="bg-white dark:bg-gray-800 rounded-[2.5rem] shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
                             <div className="divide-y divide-gray-50 dark:divide-gray-700/50">
-                                {paginatedUsers.map(u => (
-                                    <div key={u.id} onClick={() => setSelectedUser(u)} className="p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 hover:bg-gray-50 dark:hover:bg-gray-700/30 cursor-pointer transition-all">
-                                        <div className="flex items-center gap-4 flex-1">
-                                            <img src={u.profilePicture} alt={u.displayName} className="w-12 h-12 rounded-full object-cover shadow-sm" />
-                                            <div>
-                                                <p className="font-black text-gray-900 dark:text-gray-100 leading-tight">{u.displayName}</p>
-                                                <p className="text-xs text-gray-500 font-bold uppercase tracking-widest mt-0.5">{u.email}</p>
-                                            </div>
+                                {filteredUsers.map(u => (
+                                    <div key={u.id} onClick={() => setSelectedUser(u)} className="p-5 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-700/30 cursor-pointer">
+                                        <div className="flex items-center gap-4">
+                                            <img src={u.profilePicture} alt={u.displayName} className="w-12 h-12 rounded-full object-cover" />
+                                            <div><p className="font-black leading-tight">{u.displayName}</p><p className="text-[10px] text-gray-500 uppercase font-bold">{u.email}</p></div>
                                         </div>
-                                        <div className="flex items-center gap-4 w-full md:w-auto self-end md:self-center">
-                                             <UserStatusBadge user={u} />
-                                             <ChevronRightIcon className="w-5 h-5 text-gray-300" />
-                                        </div>
+                                        <UserStatusBadge user={u} />
                                     </div>
                                 ))}
-                            </div>
-                            {totalPages > 1 && (
-                                <div className="p-6 flex justify-between items-center bg-gray-50/50 dark:bg-gray-900/20 border-t dark:border-gray-700/50">
-                                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Page {currentPage} / {totalPages}</span>
-                                    <div className="flex gap-2">
-                                        <button onClick={() => setCurrentPage(p => p - 1)} disabled={currentPage === 1} className="px-4 py-2 rounded-xl text-[10px] font-black uppercase bg-white dark:bg-gray-700 border border-gray-100 dark:border-gray-600 disabled:opacity-30">Prev</button>
-                                        <button onClick={() => setCurrentPage(p => p + 1)} disabled={currentPage === totalPages} className="px-4 py-2 rounded-xl text-[10px] font-black uppercase bg-white dark:bg-gray-700 border border-gray-100 dark:border-gray-600 disabled:opacity-30">Next</button>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    </section>
-
-                    <section>
-                        <h2 className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.3em] mb-4">Latest Operations</h2>
-                         <div className="bg-white dark:bg-gray-800 rounded-[2rem] shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
-                             <div className="divide-y divide-gray-50 dark:divide-gray-700/50">
-                                {recentRequests.length > 0 ? recentRequests.map(r => (
-                                        <Link to={`/request-detail/${r.id}`} key={r.id} className="p-5 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-all">
-                                            <div>
-                                                <p className="font-black text-gray-900 dark:text-gray-100 text-sm">
-                                                    {r.requesterName} <span className="font-medium text-gray-400 mx-1">→</span> {r.hostName}
-                                                </p>
-                                                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">{new Date(r.createdAt).toLocaleString()}</p>
-                                            </div>
-                                            <RequestStatusBadge status={r.status} />
-                                        </Link>
-                                )) : <p className="p-8 text-center text-gray-400 font-bold uppercase tracking-widest text-xs">No recorded operations.</p>}
                             </div>
                         </div>
                     </section>
                 </div>
             )}
-            
-            {selectedUser && (
-                <UserDetailModal
-                    user={selectedUser}
-                    onClose={() => setSelectedUser(null)}
-                    onUpdate={async () => {
-                        await fetchData();
-                        const updated = await api.getUserById(selectedUser.id);
-                        if (updated) setSelectedUser(updated);
-                    }}
-                    onEditPartner={(user) => {
-                        setPartnerToEdit(user);
-                        setIsPartnerFormOpen(true);
-                    }}
-                />
-            )}
-
-            <PartnerFormModal 
-                isOpen={isPartnerFormOpen}
-                onClose={() => { setIsPartnerFormOpen(false); setPartnerToEdit(null); }}
-                onSaved={fetchData}
-                editUser={partnerToEdit}
-            />
+            {selectedUser && <UserDetailModal user={selectedUser} onClose={() => setSelectedUser(null)} onUpdate={fetchData} onEditPartner={(user) => { setPartnerToEdit(user); setIsPartnerFormOpen(true); }} />}
+            <PartnerFormModal isOpen={isPartnerFormOpen} onClose={() => { setIsPartnerFormOpen(false); setPartnerToEdit(null); }} onSaved={fetchData} editUser={partnerToEdit} />
         </div>
     );
 }

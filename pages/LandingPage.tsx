@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { useAuth } from '../App';
+import { useAuth } from '../App.tsx';
 import { 
     DropletIcon, 
     MapPinIcon, 
@@ -16,7 +16,7 @@ import {
     SparklesIcon,
     ChevronRightIcon,
     BuildingStorefrontIcon
-} from '../components/Icons';
+} from '../components/Icons.tsx';
 
 // --- Components ---
 

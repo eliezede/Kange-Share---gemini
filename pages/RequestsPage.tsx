@@ -1,8 +1,8 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import * as api from '../api';
-import { WaterRequest, RequestStatus, User } from '../types';
+import * as api from '../api.ts';
+import { WaterRequest, RequestStatus, User } from '../types.ts';
 import { 
     CheckBadgeIcon, 
     CheckCircleIcon, 
@@ -14,14 +14,12 @@ import {
     SearchIcon,
     AdjustmentsHorizontalIcon,
     ChevronRightIcon,
-    UserIcon
-} from '../components/Icons';
-import { useAuth } from '../App';
-import { useToast } from '../hooks/useToast';
-import { RequestCardSkeleton } from '../components/Skeleton';
-import { SpinnerIcon } from '../components/Icons';
-
-// --- Helper Components ---
+    UserIcon,
+    SpinnerIcon
+} from '../components/Icons.tsx';
+import { useAuth } from '../App.tsx';
+import { useToast } from '../hooks/useToast.tsx';
+import { RequestCardSkeleton } from '../components/Skeleton.tsx';
 
 const StatusBadge: React.FC<{ status: RequestStatus }> = ({ status }) => {
     const statusStyles: Record<RequestStatus, string> = {
@@ -92,7 +90,6 @@ const RichRequestCard: React.FC<{
             onClick={handleCardClick} 
             className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-gray-700 hover:shadow-md transition-all cursor-pointer group"
         >
-            {/* Header: Avatar & Identity */}
             <div className="flex justify-between items-start mb-3">
                 <div className="flex items-center gap-3">
                     <div onClick={handleProfileClick} className="relative cursor-pointer hover:opacity-80 transition-opacity">
@@ -116,7 +113,6 @@ const RichRequestCard: React.FC<{
                 <StatusBadge status={request.status} />
             </div>
 
-            {/* Body: Details Grid */}
             <div className="bg-gray-50 dark:bg-gray-700/30 rounded-xl p-3 mb-4 grid grid-cols-2 gap-y-2 gap-x-4">
                 <div className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
                     <CalendarDaysIcon className="w-4 h-4 text-gray-400" />
@@ -138,9 +134,7 @@ const RichRequestCard: React.FC<{
                 )}
             </div>
 
-            {/* Footer: Actions */}
             <div className="flex items-center gap-2">
-                {/* Primary Actions */}
                 {isHost && isActive ? (
                     <>
                         <button 
@@ -179,87 +173,12 @@ const RichRequestCard: React.FC<{
     );
 };
 
-// --- Filter Bar Component ---
-
-interface FilterBarProps {
-    searchQuery: string;
-    setSearchQuery: (q: string) => void;
-    statusFilter: RequestStatus | 'all';
-    setStatusFilter: (s: RequestStatus | 'all') => void;
-    sortOrder: 'asc' | 'desc';
-    setSortOrder: (o: 'asc' | 'desc') => void;
-}
-
-const FilterBar: React.FC<FilterBarProps> = ({ searchQuery, setSearchQuery, statusFilter, setStatusFilter, sortOrder, setSortOrder }) => {
-    const statuses: (RequestStatus | 'all')[] = ['all', 'pending', 'accepted', 'completed', 'cancelled'];
-
-    return (
-        <div className="pb-2">
-            <div className="px-4 py-2">
-                <div className="relative">
-                    <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                    <input 
-                        type="text" 
-                        placeholder="Filter by name or city..." 
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full pl-9 pr-4 py-2 bg-gray-100 dark:bg-gray-800 border-none rounded-xl text-sm focus:ring-2 focus:ring-brand-blue outline-none dark:text-white"
-                    />
-                </div>
-            </div>
-            <div className="flex items-center gap-2 px-4 overflow-x-auto no-scrollbar pb-2">
-                <button 
-                    onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
-                    className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 text-xs font-bold whitespace-nowrap hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
-                >
-                    <AdjustmentsHorizontalIcon className="w-3.5 h-3.5" />
-                    {sortOrder === 'asc' ? 'Oldest' : 'Newest'}
-                </button>
-                <div className="w-px h-4 bg-gray-300 dark:bg-gray-700 mx-1 flex-shrink-0"></div>
-                {statuses.map(status => (
-                    <button
-                        key={status}
-                        onClick={() => setStatusFilter(status)}
-                        className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all border ${
-                            statusFilter === status 
-                            ? 'bg-brand-blue text-white border-brand-blue shadow-sm' 
-                            : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-700 hover:border-brand-blue'
-                        }`}
-                    >
-                        {status.charAt(0).toUpperCase() + status.slice(1)}
-                    </button>
-                ))}
-            </div>
-        </div>
-    );
-};
-
-// --- Section Component ---
-
-const RequestSection: React.FC<{ title: string; requests: WaterRequest[]; emptyMessage: string; children: React.ReactNode }> = ({ title, requests, emptyMessage, children }) => {
-    if (requests.length === 0) return null;
-    return (
-        <div className="mb-6 animate-fade-in-up">
-            <h2 className="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3 px-4">{title}</h2>
-            <div className="space-y-3 px-4">
-                {children}
-            </div>
-        </div>
-    );
-};
-
-
-// --- Main Page ---
-
 export default function RequestsPage() {
     const { userData } = useAuth();
     const [activeTab, setActiveTab] = useState<'my_requests' | 'host_dashboard'>('my_requests');
-    
     const [rawRequests, setRawRequests] = useState<WaterRequest[]>([]);
     const [users, setUsers] = useState<Record<string, User>>({});
     const [loading, setLoading] = useState(true);
-
-    // Filters
     const [searchQuery, setSearchQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState<RequestStatus | 'all'>('all');
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
@@ -269,14 +188,10 @@ export default function RequestsPage() {
         const fetchData = async () => {
             setLoading(true);
             try {
-                // Fetch based on tab
                 const reqs = activeTab === 'my_requests' 
                     ? await api.getRequestsByUserId(userData.id)
                     : await api.getRequestsByHostId(userData.id);
-                
                 setRawRequests(reqs);
-
-                // Fetch user details for cards
                 const userIds = [...new Set(reqs.flatMap(r => [r.hostId, r.requesterId]))];
                 if (userIds.length > 0) {
                     const userDocs = await Promise.all(userIds.map(id => api.getUserById(id)));
@@ -286,11 +201,7 @@ export default function RequestsPage() {
                     }, {} as Record<string, User>);
                     setUsers(usersMap);
                 }
-            } catch (error) {
-                console.error("Failed to fetch requests:", error);
-            } finally {
-                setLoading(false);
-            }
+            } catch (error) { console.error(error); } finally { setLoading(false); }
         };
         fetchData();
     }, [userData, activeTab]);
@@ -300,177 +211,69 @@ export default function RequestsPage() {
         await api.updateRequestStatus(requestId, newStatus);
     };
 
-    // Process Data: Filter -> Sort -> Group
     const processedGroups = useMemo(() => {
-        const todayStr = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-
+        const todayStr = new Date().toISOString().split('T')[0];
         let filtered = rawRequests.filter(req => {
-            // Status Filter
             if (statusFilter !== 'all' && req.status !== statusFilter) return false;
-            
-            // Search Filter
             if (searchQuery) {
                 const otherId = activeTab === 'my_requests' ? req.hostId : req.requesterId;
                 const otherUser = users[otherId];
                 if (!otherUser) return false;
                 const query = searchQuery.toLowerCase();
-                return otherUser.displayName.toLowerCase().includes(query) || 
-                       otherUser.address.city.toLowerCase().includes(query);
+                return otherUser.displayName.toLowerCase().includes(query) || otherUser.address.city.toLowerCase().includes(query);
             }
             return true;
         });
 
-        // Sort
         filtered.sort((a, b) => {
             const dateA = new Date(`${a.pickupDate}T${a.pickupTime}`).getTime();
             const dateB = new Date(`${b.pickupDate}T${b.pickupTime}`).getTime();
             return sortOrder === 'asc' ? dateA - dateB : dateB - dateA;
         });
 
-        // Grouping
-        const groups = {
-            today: [] as WaterRequest[],
-            upcoming: [] as WaterRequest[],
-            past: [] as WaterRequest[]
-        };
-
+        const groups = { today: [] as WaterRequest[], upcoming: [] as WaterRequest[], past: [] as WaterRequest[] };
         filtered.forEach(req => {
             const isActive = ['pending', 'accepted', 'chatting'].includes(req.status);
             const isToday = req.pickupDate === todayStr;
             const isPastDate = req.pickupDate < todayStr;
-
-            if (isActive && isToday) {
-                groups.today.push(req);
-            } else if (isActive && !isPastDate) {
-                groups.upcoming.push(req);
-            } else {
-                // Past includes completed, cancelled, declined, OR active requests that missed their date
-                groups.past.push(req);
-            }
+            if (isActive && isToday) groups.today.push(req);
+            else if (isActive && !isPastDate) groups.upcoming.push(req);
+            else groups.past.push(req);
         });
-
-        // Re-sort Past to always be Newest First (Desc) regardless of toggle, usually better for history
         groups.past.sort((a, b) => new Date(b.pickupDate).getTime() - new Date(a.pickupDate).getTime());
-
         return groups;
     }, [rawRequests, statusFilter, searchQuery, users, activeTab, sortOrder]);
 
-    const TabButton: React.FC<{ tabId: 'my_requests' | 'host_dashboard', label: string }> = ({ tabId, label }) => (
-        <button
-            onClick={() => { setActiveTab(tabId); setSearchQuery(''); setStatusFilter('all'); }}
-            className={`flex-1 py-4 font-bold text-sm text-center transition-all relative ${activeTab === tabId ? 'text-brand-blue' : 'text-gray-500 dark:text-gray-400'}`}
-        >
-            {label}
-            {activeTab === tabId && (
-                <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-12 h-1 bg-brand-blue rounded-t-full"></span>
-            )}
-        </button>
-    );
-
-    const renderRequestList = () => {
+    const renderList = () => {
         const { today, upcoming, past } = processedGroups;
-        const isEmpty = today.length === 0 && upcoming.length === 0 && past.length === 0;
-
-        if (loading) {
-            return (
-                <div className="pb-28 pt-4 px-4">
-                    <RequestCardSkeleton />
-                    <RequestCardSkeleton />
-                    <RequestCardSkeleton />
-                </div>
-            );
-        }
-
-        if (isEmpty) {
-            return (
-                <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
-                    <div className="bg-gray-100 dark:bg-gray-800 p-6 rounded-full mb-6">
-                        <DropletIcon className="w-12 h-12 text-gray-400 dark:text-gray-500" />
-                    </div>
-                    <h3 className="text-xl font-bold text-gray-800 dark:text-white mb-2">No requests found</h3>
-                    <p className="text-gray-500 dark:text-gray-400 max-w-xs mx-auto mb-8">
-                        {activeTab === 'my_requests' 
-                            ? "You haven't made any water requests yet. Find a host on the map to get started!" 
-                            : "You don't have any incoming requests matching your filters."}
-                    </p>
-                    {activeTab === 'my_requests' && (
-                        <Link to="/map" className="px-6 py-3 bg-brand-blue text-white font-bold rounded-xl shadow-lg shadow-blue-200 dark:shadow-none hover:bg-blue-600 transition-colors">
-                            Find Water Nearby
-                        </Link>
-                    )}
-                </div>
-            );
-        }
+        if (loading) return <div className="p-4"><RequestCardSkeleton /><RequestCardSkeleton /></div>;
+        if (today.length + upcoming.length + past.length === 0) return <div className="text-center p-20 text-gray-500">No requests found.</div>;
 
         const perspective = activeTab === 'my_requests' ? 'requester' : 'host';
-
         return (
-            <div className="pb-28 pt-4">
-                <RequestSection title="Today's Activity" requests={today} emptyMessage="">
-                    {today.map(req => (
-                        <RichRequestCard 
-                            key={req.id} 
-                            request={req} 
-                            perspective={perspective}
-                            otherParty={users[perspective === 'requester' ? req.hostId : req.requesterId]}
-                            onUpdateStatus={handleUpdateStatus}
-                        />
-                    ))}
-                </RequestSection>
-
-                <RequestSection title="Upcoming" requests={upcoming} emptyMessage="">
-                    {upcoming.map(req => (
-                        <RichRequestCard 
-                            key={req.id} 
-                            request={req} 
-                            perspective={perspective}
-                            otherParty={users[perspective === 'requester' ? req.hostId : req.requesterId]}
-                            onUpdateStatus={handleUpdateStatus}
-                        />
-                    ))}
-                </RequestSection>
-
-                <RequestSection title="Past & Completed" requests={past} emptyMessage="">
-                    {past.map(req => (
-                        <RichRequestCard 
-                            key={req.id} 
-                            request={req} 
-                            perspective={perspective}
-                            otherParty={users[perspective === 'requester' ? req.hostId : req.requesterId]}
-                            onUpdateStatus={handleUpdateStatus}
-                        />
-                    ))}
-                </RequestSection>
+            <div className="p-4 space-y-8 pb-32">
+                {today.length > 0 && (
+                    <div><h2 className="text-xs font-black uppercase text-gray-400 mb-3">Today</h2>{today.map(r => <RichRequestCard key={r.id} request={r} otherParty={users[perspective === 'requester' ? r.hostId : r.requesterId]} perspective={perspective} onUpdateStatus={handleUpdateStatus}/>)}</div>
+                )}
+                {upcoming.length > 0 && (
+                    <div><h2 className="text-xs font-black uppercase text-gray-400 mb-3">Upcoming</h2>{upcoming.map(r => <RichRequestCard key={r.id} request={r} otherParty={users[perspective === 'requester' ? r.hostId : r.requesterId]} perspective={perspective} onUpdateStatus={handleUpdateStatus}/>)}</div>
+                )}
+                {past.length > 0 && (
+                    <div><h2 className="text-xs font-black uppercase text-gray-400 mb-3">Past & Completed</h2>{past.map(r => <RichRequestCard key={r.id} request={r} otherParty={users[perspective === 'requester' ? r.hostId : r.requesterId]} perspective={perspective} onUpdateStatus={handleUpdateStatus}/>)}</div>
+                )}
             </div>
         );
     };
 
     return (
-        <div className="flex flex-col min-h-screen bg-gray-50 dark:bg-gray-900">
-            {/* Consolidated Header (Sticky) */}
-            <div className="sticky top-0 z-20 bg-white/95 dark:bg-gray-900/95 backdrop-blur-md shadow-sm">
-                {/* Tabs */}
-                <div className="flex border-b border-gray-200 dark:border-gray-800 px-4">
-                    <TabButton tabId="my_requests" label="My Requests" />
-                    {userData?.isHost && (
-                        <TabButton tabId="host_dashboard" label="Host Dashboard" />
-                    )}
+        <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+            <header className="sticky top-0 z-20 bg-white dark:bg-gray-900 border-b dark:border-gray-800">
+                <div className="flex px-4">
+                    <button onClick={() => setActiveTab('my_requests')} className={`flex-1 py-4 font-bold text-sm ${activeTab === 'my_requests' ? 'text-brand-blue border-b-2 border-brand-blue' : 'text-gray-500'}`}>My Requests</button>
+                    {userData?.isHost && <button onClick={() => setActiveTab('host_dashboard')} className={`flex-1 py-4 font-bold text-sm ${activeTab === 'host_dashboard' ? 'text-brand-blue border-b-2 border-brand-blue' : 'text-gray-500'}`}>Host Dashboard</button>}
                 </div>
-                {/* Filter Bar */}
-                <FilterBar 
-                    searchQuery={searchQuery}
-                    setSearchQuery={setSearchQuery}
-                    statusFilter={statusFilter}
-                    setStatusFilter={setStatusFilter}
-                    sortOrder={sortOrder}
-                    setSortOrder={setSortOrder}
-                />
-            </div>
-
-            {/* Content */}
-            <div className="flex-1">
-                {renderRequestList()}
-            </div>
+            </header>
+            {renderList()}
         </div>
     );
 }

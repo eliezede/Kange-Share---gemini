@@ -1,12 +1,11 @@
 
-
 import React, { useState, useMemo, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import * as api from '../api';
-import { ChevronLeftIcon, SpinnerIcon } from '../components/Icons';
-import { User } from '../types';
-import { useAuth } from '../App';
-import { useToast } from '../hooks/useToast';
+import * as api from '../api.ts';
+import { ChevronLeftIcon, SpinnerIcon } from '../components/Icons.tsx';
+import { User } from '../types.ts';
+import { useAuth } from '../App.tsx';
+import { useToast } from '../hooks/useToast.tsx';
 
 const LITER_OPTIONS = [1, 2, 5, 10];
 

@@ -1,5 +1,5 @@
 
-import { db, auth, storage, googleProvider } from './firebase';
+import { db, auth, storage, googleProvider } from './firebase.ts';
 import {
     collection,
     doc,
@@ -34,7 +34,7 @@ import {
     getDownloadURL,
     deleteObject
 } from 'firebase/storage';
-import { User, WaterRequest, Message, RequestStatus, Review, Notification, NotificationType, DistributorVerificationStatus, DistributorProofDocument, BusinessCategory } from './types';
+import { User, WaterRequest, Message, RequestStatus, Review, Notification, NotificationType, DistributorVerificationStatus, DistributorProofDocument, BusinessCategory } from './types.ts';
 
 // Placed at the top for reuse
 const defaultAvailability = {

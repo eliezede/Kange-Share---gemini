@@ -1,10 +1,10 @@
+
 import React, { useState, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../App';
-import { DropletIcon, BellIcon } from './Icons';
-import { ProfilePicture } from './Icons';
-import NotificationsPanel from './NotificationsPanel';
-import AccountDropdown from './AccountDropdown';
+import { useAuth } from '../App.tsx';
+import { DropletIcon, BellIcon, ProfilePicture } from './Icons.tsx';
+import NotificationsPanel from './NotificationsPanel.tsx';
+import AccountDropdown from './AccountDropdown.tsx';
 
 export default function Header() {
     const { userData, notifications, unreadCount } = useAuth();

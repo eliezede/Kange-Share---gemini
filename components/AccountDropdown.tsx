@@ -1,6 +1,7 @@
+
 import React, { useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth, useTheme } from '../App';
+import { useAuth, useTheme } from '../App.tsx';
 import { 
     UserCircleIcon, 
     ClipboardDocumentListIcon, 
@@ -10,8 +11,8 @@ import {
     ArrowLeftOnRectangleIcon, 
     PresentationChartBarIcon, 
     ShieldCheckIcon 
-} from './Icons';
-import { useClickOutside } from '../hooks/useClickOutside';
+} from './Icons.tsx';
+import { useClickOutside } from '../hooks/useClickOutside.ts';
 
 interface AccountDropdownProps {
   isOpen: boolean;

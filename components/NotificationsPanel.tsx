@@ -1,11 +1,11 @@
 
 import React, { useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../App';
-import * as api from '../api';
-import { Notification, NotificationType } from '../types';
-import { UserGroupIcon, ClipboardDocumentListIcon, ChatBubbleOvalLeftEllipsisIcon, StarIcon, BellIcon, ProfilePicture, CheckCircleIcon, XCircleIcon, ShieldExclamationIcon, UserCircleIcon } from './Icons';
-import { useClickOutside } from '../hooks/useClickOutside';
+import { useAuth } from '../App.tsx';
+import * as api from '../api.ts';
+import { Notification, NotificationType } from '../types.ts';
+import { UserGroupIcon, ClipboardDocumentListIcon, ChatBubbleOvalLeftEllipsisIcon, StarIcon, BellIcon, ProfilePicture, CheckCircleIcon, XCircleIcon, ShieldExclamationIcon, UserCircleIcon } from './Icons.tsx';
+import { useClickOutside } from '../hooks/useClickOutside.ts';
 
 const TimeAgo: React.FC<{ dateString: string }> = ({ dateString }) => {
     const date = new Date(dateString);

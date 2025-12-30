@@ -1,12 +1,12 @@
 
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import * as api from '../api';
-import { WaterRequest, RequestStatus, User } from '../types';
-import { ChevronLeftIcon, DropletIcon, CalendarDaysIcon, ClockIcon, ChatBubbleOvalLeftEllipsisIcon, SpinnerIcon, CheckBadgeIcon, QrCodeIcon, StarIcon, ChevronRightIcon, ExclamationTriangleIcon, CheckCircleIcon, XCircleIcon } from '../components/Icons';
-import { useAuth } from '../App';
-import { QRCodeDisplayModal, QRScannerModal } from '../components/QRModals';
-import { useToast } from '../hooks/useToast';
+import * as api from '../api.ts';
+import { WaterRequest, RequestStatus, User } from '../types.ts';
+import { ChevronLeftIcon, DropletIcon, CalendarDaysIcon, ClockIcon, ChatBubbleOvalLeftEllipsisIcon, SpinnerIcon, CheckBadgeIcon, QrCodeIcon, StarIcon, ChevronRightIcon, ExclamationTriangleIcon, CheckCircleIcon, XCircleIcon } from '../components/Icons.tsx';
+import { useAuth } from '../App.tsx';
+import { QRCodeDisplayModal, QRScannerModal } from '../components/QRModals.tsx';
+import { useToast } from '../hooks/useToast.tsx';
 
 const StatusBadge: React.FC<{ status: RequestStatus }> = ({ status }) => {
     const statusInfo: Record<RequestStatus, { className: string; text: string }> = {

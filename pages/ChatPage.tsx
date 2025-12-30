@@ -1,10 +1,10 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import * as api from '../api';
-import { ChevronLeftIcon, PaperAirplaneIcon, SpinnerIcon } from '../components/Icons';
-import { Message, WaterRequest, User } from '../types';
-import { useAuth } from '../App';
+import * as api from '../api.ts';
+import { ChevronLeftIcon, PaperAirplaneIcon, SpinnerIcon } from '../components/Icons.tsx';
+import { Message, WaterRequest, User } from '../types.ts';
+import { useAuth } from '../App.tsx';
 
 export default function ChatPage() {
   const { requestId } = useParams<{ requestId: string }>();

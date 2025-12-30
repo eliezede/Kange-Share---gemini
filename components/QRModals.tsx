@@ -1,5 +1,6 @@
+
 import React, { useEffect, useRef } from 'react';
-import { XMarkIcon, SpinnerIcon } from './Icons';
+import { XMarkIcon, SpinnerIcon } from './Icons.tsx';
 
 interface QRCodeDisplayModalProps {
     isOpen: boolean;
@@ -19,7 +20,7 @@ export const QRCodeDisplayModal: React.FC<QRCodeDisplayModalProps> = ({ isOpen, 
 
     return (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4" onClick={onClose}>
-            <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-sm p-6 text-center relative" onClick={e => e.stopPropagation()}>
+            <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-sm p-6 text-center relative" onClick={e => e.stopPropagation()}>
                 <button onClick={onClose} className="absolute top-4 right-4 p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition">
                     <XMarkIcon className="w-6 h-6 text-gray-600 dark:text-gray-300" />
                 </button>
